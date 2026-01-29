@@ -21,6 +21,7 @@ tags: [instructions, snapshot]
 - `version` (int): Schema version (bump only when breaking changes are made).
 - `updated` (timestamp string): Last update time.
 - `project` (object): Project metadata (name/summary/repo root).
+- `session` (object, optional): Active agent session metadata for recovery.
 - `retention` (object): Retention policy for keeping the snapshot small (optional but recommended).
 - `counters` (object): Highest allocated IDs per type (used for new ID allocation).
 - `focus` (object): Current in-flight IDs (empty strings if none).
@@ -47,6 +48,9 @@ Each item entry must include:
 - `title` (string): Short human title (no ID).
 - `status` (string)
 - `owner` (string)
+Optional collaboration fields:
+- `claimed_by` (string): Agent/user currently working this item (if any).
+- `claim_started` (string): Timestamp when the claim began.
 
 Then type-specific fields, for example:
 - Feature: `goal`, `requirements` (REQ IDs), `tasks` (TASK IDs), `issues` (ISS IDs), `tests` (TST IDs), `workflows` (WF IDs), `release`
@@ -67,10 +71,18 @@ Then type-specific fields, for example:
   - If a task `parent: FEAT-0001`, that feature’s `tasks` must include the task ID.
   - If an issue lists `features: [FEAT-0001]`, the feature should list the issue under `issues` (unless intentionally omitted).
 
+## Session fields (optional)
+Use these to support recovery and multi-agent collaboration:
+- `session.agent_id`: identifier for the current agent/user.
+- `session.started`: timestamp for when the session began.
+- `session.last_heartbeat`: timestamp for the last update by the agent.
+- `session.current_step`: short text describing the current work step.
+
 ## Update rules (agent behavior)
 - Agents/LLMs must update the snapshot **before** starting implementation work (create/modify issues/features/tasks/risks as needed).
 - After finishing work, agents/LLMs must update snapshot statuses and relationships and clear/move `focus`.
 - Keep `counters` up to date when allocating new IDs.
+- If using multi-agent collaboration, update `session` and `claimed_by` during work and clear claims on handoff.
 
 ## Retention policy (active + recent)
 The snapshot is not a full historical database.

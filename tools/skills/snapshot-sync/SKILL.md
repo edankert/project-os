@@ -30,4 +30,5 @@ tags: [skills, snapshot]
 3. Check relationship consistency:
    - task `parent` ↔ feature/issue lists
    - issue ↔ feature links
-4. Update `metrics` counts in the snapshot.
+4. If `claimed_by` exists, ensure it is intentional and not stale (update or clear).
+5. Update `metrics` counts in the snapshot.

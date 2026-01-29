@@ -34,3 +34,7 @@ This documentation system relies on explicit link graphs so agents can follow re
 ## Snapshot alignment
 - Represent the link graph in `../../SNAPSHOT.yaml` using IDs.
 - The snapshot must include `file` paths for jump-to-source.
+
+## Import provenance
+- When deriving items from existing sources, record origin in note frontmatter `source` and/or Evidence sections.
+- See `IMPORTING.md` for recommended conventions.

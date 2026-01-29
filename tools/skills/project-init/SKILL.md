@@ -13,6 +13,7 @@ tags: [skills, init]
 ## When to use
 - You copied the contents of the template into your repo root and want to initialize it.
 - You want `../../../SNAPSHOT.yaml` to stop being a template and reflect your project.
+ - If you are initializing an existing project, use `../project-derive/SKILL.md` instead.
 
 ## Inputs
 - Project name and a short summary.

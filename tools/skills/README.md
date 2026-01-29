@@ -38,3 +38,5 @@ Reusable playbooks for an LLM (or other agents) to keep this documentation syste
 - Backlog grooming: `backlog-grooming/SKILL.md`
 - Risk mitigation planning: `risk-mitigation-planning/SKILL.md`
 - Project init: `project-init/SKILL.md`
+- Project derive (existing project import): `project-derive/SKILL.md`
+- Ad-hoc prompt intake: `ad-hoc-intake/SKILL.md`

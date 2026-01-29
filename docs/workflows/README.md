@@ -4,7 +4,7 @@ id: WORKFLOWS-README
 status: active
 owner: team:docs
 created: 2026-01-26
-updated: 2026-01-26
+updated: 2026-01-29
 tags: [workflows]
 ---
 
@@ -26,4 +26,7 @@ Workflow notes describe the **canonical entrypoints** for common activities in t
 - `../changes/`: add a change note when a workflow materially changes (scripts, paths, required env vars).
 
 ## Index
+- `[[WF-0001-Existing-Project-Init]]` (existing project derive/import)
+- `[[WF-0002-Template-Sync]]` (sync template updates into a repo)
+- `[[WF-0003-Recovery-Resume]]` (resume work after failure / multi-agent)
 - REPLACE ME: add links to your `WF-####-*.md` notes as you create them.

@@ -10,6 +10,13 @@ project:
   summary: "REPLACE ME"
   repo_root: "REPLACE ME"
 
+# Optional session metadata for recovery/multi-agent coordination.
+# session:
+#   agent_id: "agent-identifier"
+#   started: "2026-01-29T12:00Z"
+#   last_heartbeat: "2026-01-29T12:30Z"
+#   current_step: "Drafting feature notes for existing project import"
+
 retention:
   policy: active-and-recent
   recent_changes_max: 25

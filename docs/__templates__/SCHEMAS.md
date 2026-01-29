@@ -30,6 +30,8 @@ Conventions (naming, linking, property rules): `../../tools/instructions/OBSIDIA
 - (required) `updated` (date string): Last material edit date; bump when meaningfully changed.
 - (optional) `related` (list of links/strings): Cross-links to other notes and/or repo paths.
   - Prefer links (`[[...]]`) when pointing to other notes in this docs set.
+- (optional) `source` (list of strings/links): Provenance for imported/derived items.
+  - Use for links to external trackers, changelogs, or source documents.
 
 ## `adr.md` (`type: [[adr]]`)
 

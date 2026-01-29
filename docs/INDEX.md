@@ -28,10 +28,15 @@ Primary entrypoints for this documentation system.
 - Status taxonomy: `../tools/instructions/STATUSES.md`
 - Taxonomy values: `../tools/instructions/TAXONOMY.md`
 - Traceability: `../tools/instructions/TRACEABILITY.md`
+- Syncing template updates: `../tools/instructions/SYNCING.md`
+- Handoff/recovery: `../tools/instructions/HANDOFF.md`
 - Decisions/ADRs: `../tools/instructions/DECISIONS.md`
 - Quality/close-out: `../tools/instructions/QUALITY.md`
 - Skills playbooks: `../tools/skills/README.md`
 - Project init: `../tools/skills/project-init/SKILL.md`
+- Project derive (existing project import): `../tools/skills/project-derive/SKILL.md`
+- Ad-hoc prompt intake: `../tools/skills/ad-hoc-intake/SKILL.md`
+- Importing guidance: `../tools/instructions/IMPORTING.md`
 
 ## Bases (optional views)
 
