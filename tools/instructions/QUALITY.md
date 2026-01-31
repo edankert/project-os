@@ -20,6 +20,12 @@ These rules define what “done” means for work tracked in this documentation 
   - update related item statuses if appropriate (issue fixed/closed, feature progressed)
 - If behavior/paths/contracts changed, create a `CHG-*` note and link it.
 
+## Documentation Fidelity
+- Ensure `metrics` in `../../SNAPSHOT.yaml` accurately reflect the count of `done` features and tasks.
+- Verify that every item in the snapshot has a valid `file` path that exists on disk.
+- Discrepancies between the filesystem and the snapshot are considered a build failure.
+- **Enforcement:** Use the `snapshot-sync` skill (`../skills/snapshot-sync/SKILL.md`) to validate invariants and reconcile drift between the snapshot and notes.
+
 ## Verification gating (tests)
 - Do not mark an implementation task `done` unless verification is complete:
   - If verification is automated: link to the relevant `[[test]]` and ensure it is `status: passing` (and record evidence in the test note).

@@ -52,6 +52,14 @@ When the project uses phase-gated development (see `../../docs/PHASES.md`):
 4. **Flag scope concerns**: If a task requires future-phase dependencies, document it and discuss before proceeding.
 5. **Track active phase**: Keep `focus.phase` in `../../SNAPSHOT.yaml` aligned with the current development milestone.
 
+## Mandatory Automated Documentation
+Agents are REQUIRED to automatically keep the documentation system in sync with code changes.
+- **No Orphaned Code:** Every functional code change must have a corresponding Task under `../../docs/features/<slug>/plan/tasks/`.
+  - Functional code changes include: new features, bug fixes, refactors that alter behavior, API changes, and dependency updates.
+  - Excluded: typo fixes, comment-only edits, formatting changes, and pure documentation updates (these may be tracked via `CHG-*` notes if significant).
+- **The Atomic Sync Rule:** The global `../../SNAPSHOT.yaml` and relevant Markdown notes MUST be updated in the same turn or immediately following the code implementation.
+- **Counter Integrity:** Always increment the relevant `counters` in `../../SNAPSHOT.yaml` when creating new IDs.
+
 ## Execution (implementation phase)
 - Only start code changes once planning artifacts exist (issue/feature/tasks as appropriate).
 - Keep snapshot `focus` aligned with what is actually being worked.
