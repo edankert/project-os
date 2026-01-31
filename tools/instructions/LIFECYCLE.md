@@ -43,6 +43,15 @@ When a prompt implies work (bugfix, feature, refactor, behavior change):
 
 If the prompt is purely a question/explanation (no work requested), you may skip preflight.
 
+## Phase alignment (optional gating)
+When the project uses phase-gated development (see `../../docs/PHASES.md`):
+1. **Verify phase**: Check the `phase` property in the task/feature frontmatter before starting work.
+2. **Consult registry**: Review `../../docs/PHASES.md` to understand the boundaries and context of that phase.
+3. **Prevent phase bleeding**: Do not introduce implementations from future phases prematurely.
+   - Example: Don't build Phase 4 export logic while working on a Phase 2 core engine task.
+4. **Flag scope concerns**: If a task requires future-phase dependencies, document it and discuss before proceeding.
+5. **Track active phase**: Keep `focus.phase` in `../../SNAPSHOT.yaml` aligned with the current development milestone.
+
 ## Execution (implementation phase)
 - Only start code changes once planning artifacts exist (issue/feature/tasks as appropriate).
 - Keep snapshot `focus` aligned with what is actually being worked.

@@ -17,6 +17,8 @@ properties:
     displayName: ID
   status:
     displayName: Status
+  phase:
+    displayName: Phase
   severity:
     displayName: Severity
   component:
@@ -37,6 +39,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - severity
       - component
       - owner
@@ -52,6 +55,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - severity
       - component
       - owner
@@ -65,8 +69,20 @@ views:
       - file.name
       - formula.display_title
       - id
+      - phase
       - severity
       - component
+  - type: cards
+    name: By Phase
+    groupBy:
+      property: phase
+      direction: ASC
+    order:
+      - file.name
+      - formula.display_title
+      - id
+      - status
+      - severity
   - type: cards
     name: Triage
     filters: 'status == "triage"'

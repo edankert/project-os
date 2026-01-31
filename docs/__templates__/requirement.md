@@ -3,6 +3,7 @@ type: "[[requirement]]"
 id: REQ-0000
 title: ""
 status: draft
+phase:
 owner: unassigned
 created: 2026-01-26
 updated: 2026-01-26

@@ -23,14 +23,20 @@ tags: [skills, issues]
 
 ## Checklist
 1. Assign the next `ISS-####` (use `../../../SNAPSHOT.yaml -> counters.ISS`).
-2. Update `../../../SNAPSHOT.yaml`:
-   - add `items.issues.<ISS-####>` with `title`, `status`, `severity`, `component`, `file`
+2. **Determine phase (optional)**:
+   - If the issue is tied to a specific milestone, assign a `phase` (consult `../../../docs/PHASES.md`).
+   - If the issue affects an existing feature, inherit phase from that feature.
+   - Leave `phase` empty for issues not tied to a specific milestone.
+3. Update `../../../SNAPSHOT.yaml`:
+   - add `items.issues.<ISS-####>` with `title`, `status`, `severity`, `component`, `phase` (if applicable), `file`
    - link to impacted `features` and/or planned `tasks`
    - set `focus.issue` if this is the current work
-3. Create/update the issue note from `../../../docs/__templates__/issue.md`:
+4. Create/update the issue note from `../../../docs/__templates__/issue.md`:
+   - set `phase` in frontmatter if applicable
    - include repro, expected vs actual, evidence paths
-4. If the fix requires implementation:
+5. If the fix requires implementation:
    - ensure there is a parent `FEAT-*` (create if needed)
    - create one or more `TASK-*` under the feature and link them in snapshot + notes
-5. Run a quick risk scan (use `../risk-scan/SKILL.md`) if the issue implies contract/dependency changes.
-6. If verification is needed, create a `TST-*` note (use `../test-authoring/SKILL.md`) and link it from the issue/task/requirement as appropriate.
+   - tasks inherit phase from the issue or parent feature
+6. Run a quick risk scan (use `../risk-scan/SKILL.md`) if the issue implies contract/dependency changes.
+7. If verification is needed, create a `TST-*` note (use `../test-authoring/SKILL.md`) and link it from the issue/task/requirement as appropriate.

@@ -24,6 +24,9 @@ Conventions (naming, linking, property rules): `../../tools/instructions/OBSIDIA
   - Keep short; no need to repeat the ID.
   - Keep it consistent with `SNAPSHOT.yaml` where possible.
 - (required) `status` (string): Lifecycle state; each note type has its own allowed values.
+- (optional) `phase` (integer 1–N): Development phase for milestone grouping. See `[[PHASES]]` for definitions.
+  - Enables machine-filtering, automated progress tracking, and dashboard grouping.
+  - Leave empty/omit for items not tied to a specific phase.
 - (required) `owner` (string): Accountable person/team (can be `unassigned`).
   - Values must be defined in `[[OWNERSHIP]]` (or be `unassigned`).
 - (required) `created` (date string): Creation date; keep stable.

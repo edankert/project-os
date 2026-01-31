@@ -30,6 +30,8 @@ docs_system:
   instructions:
     - tools/instructions/OBSIDIAN.md
     - tools/instructions/LIFECYCLE.md
+  references:
+    - docs/PHASES.md           # Phase registry (optional phase-gated development)
 
 # ID allocation helpers (highest allocated numbers).
 counters:
@@ -46,6 +48,7 @@ counters:
 
 # Current focus (set when something is actively being worked).
 focus:
+  phase: ""        # Active development phase (integer 1–N, see docs/PHASES.md)
   feature: ""
   task: ""
   issue: ""

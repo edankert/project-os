@@ -17,6 +17,8 @@ properties:
     displayName: ID
   status:
     displayName: Status
+  phase:
+    displayName: Phase
   priority:
     displayName: Priority
   scope:
@@ -34,6 +36,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - priority
       - scope
       - owner
@@ -46,6 +49,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - priority
       - scope
       - owner
@@ -58,6 +62,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - priority
       - scope
       - owner
@@ -70,6 +75,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - priority
       - scope
       - owner
@@ -83,8 +89,20 @@ views:
       - file.name
       - formula.display_title
       - id
+      - phase
       - priority
       - scope
+  - type: cards
+    name: By Phase
+    groupBy:
+      property: phase
+      direction: ASC
+    order:
+      - file.name
+      - formula.display_title
+      - id
+      - status
+      - priority
   - type: cards
     name: Draft
     filters: 'status == "draft"'

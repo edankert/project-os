@@ -17,6 +17,8 @@ properties:
     displayName: ID
   status:
     displayName: Status
+  phase:
+    displayName: Phase
   owner:
     displayName: Owner
   goal:
@@ -34,6 +36,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - owner
       - goal
       - release
@@ -46,6 +49,7 @@ views:
       - formula.display_title
       - id
       - status
+      - phase
       - owner
       - goal
       - release
@@ -59,6 +63,18 @@ views:
       - file.name
       - formula.display_title
       - id
+      - phase
+      - owner
+  - type: cards
+    name: By Phase
+    groupBy:
+      property: phase
+      direction: ASC
+    order:
+      - file.name
+      - formula.display_title
+      - id
+      - status
       - owner
   - type: cards
     name: Backlog

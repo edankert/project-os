@@ -29,6 +29,7 @@ Without Obsidian, the Markdown remains usable; Obsidian wiki-links (`[[...]]`) a
 - `decisions/`: ADRs for design and process decisions.
 - `changes/`: change notes for traceability after merges.
 - `risks/`: risks and mitigations.
+- `PHASES.md`: phase registry for milestone-based development (optional phase-gating).
 - `GLOSSARY.md`: shared terms.
 - `OWNERSHIP.md`: canonical registry of `owner:` identities (teams, groups, users, systems).
 - `__templates__/`: note templates (canonical front-matter keys and statuses).

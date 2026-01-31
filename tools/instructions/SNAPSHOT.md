@@ -24,7 +24,7 @@ tags: [instructions, snapshot]
 - `session` (object, optional): Active agent session metadata for recovery.
 - `retention` (object): Retention policy for keeping the snapshot small (optional but recommended).
 - `counters` (object): Highest allocated IDs per type (used for new ID allocation).
-- `focus` (object): Current in-flight IDs (empty strings if none).
+- `focus` (object): Current in-flight IDs and active phase (empty strings if none).
 - `items` (object): Canonical state for each tracked item type.
 - `metrics` (object): Derived counts (optional but recommended).
 
@@ -42,6 +42,17 @@ The snapshot should contain (at least) these collections:
 
 Projects may add collections (e.g. `epics`, `milestones`) if rules are documented and applied consistently.
 
+## Focus object
+The `focus` object tracks the current work context:
+- `focus.phase` (integer or empty string): Active development phase (see `../../docs/PHASES.md` for definitions).
+- `focus.feature` (string): Currently active feature ID (or empty string).
+- `focus.task` (string): Currently active task ID (or empty string).
+- `focus.issue` (string): Currently active issue ID (or empty string).
+
+When phase-gated development is used:
+- Update `focus.phase` when transitioning to a new milestone.
+- Agents should verify work aligns with the active phase before starting implementation.
+
 ## Required fields per item (minimum)
 Each item entry must include:
 - `file` (string): Repo-relative path to the canonical note (e.g. `docs/issues/ISS-0001-...md`).
@@ -53,11 +64,11 @@ Optional collaboration fields:
 - `claim_started` (string): Timestamp when the claim began.
 
 Then type-specific fields, for example:
-- Feature: `goal`, `requirements` (REQ IDs), `tasks` (TASK IDs), `issues` (ISS IDs), `tests` (TST IDs), `workflows` (WF IDs), `release`
-- Task: `parent` (FEAT/ISS ID), `effort`, `due`, `depends`, `blocks`, `related`
+- Feature: `goal`, `phase` (optional), `requirements` (REQ IDs), `tasks` (TASK IDs), `issues` (ISS IDs), `tests` (TST IDs), `workflows` (WF IDs), `release`
+- Task: `parent` (FEAT/ISS ID), `phase` (optional, inherit from parent), `effort`, `due`, `depends`, `blocks`, `related`
 - Task: (verification) `tests` (TST IDs) when applicable
-- Issue: `severity`, `component`, `features` (FEAT IDs), optional `tasks` (TASK IDs), optional `tests` (TST IDs)
-- Requirement: `priority`, `scope`, `features` (FEAT IDs), `verifies` (paths/links), optional `tests` (TST IDs)
+- Issue: `severity`, `component`, `phase` (optional), `features` (FEAT IDs), optional `tasks` (TASK IDs), optional `tests` (TST IDs)
+- Requirement: `priority`, `scope`, `phase` (optional), `features` (FEAT IDs), `verifies` (paths/links), optional `tests` (TST IDs)
 - Risk: `likelihood`, `impact`, `related` (IDs), optional `mitigation_tasks` (TASK IDs)
 - Test: `scope`, `kind`, `level`, `entrypoint`, `requirements` (REQ IDs), optional `features`/`issues`/`tasks` (IDs), optional `artifacts`, optional `last_run`
 - Workflow: `entrypoints` (paths), optional `inputs`/`outputs`
