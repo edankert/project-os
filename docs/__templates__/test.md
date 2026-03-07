@@ -3,6 +3,7 @@ type: "[[test]]"
 id: TST-0000
 title: ""
 status: draft
+platform:
 owner: unassigned
 created: 2026-01-27
 updated: 2026-01-27

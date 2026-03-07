@@ -40,6 +40,8 @@ When a prompt implies work (bugfix, feature, refactor, behavior change):
    - Task: `../../docs/features/<slug>/plan/tasks/TASK-####-*.md` (must have `parent`)
    - Risk: `../../docs/risks/RISK-####-*.md`
 4. Ensure note frontmatter is consistent with the snapshot (IDs/statuses/links) so Bases dashboards reflect reality.
+5. For multi-platform projects: set `platform` in new notes when work is platform-specific.
+   Infer from parent item, code paths, or tags. Leave empty if truly cross-cutting.
 
 If the prompt is purely a question/explanation (no work requested), you may skip preflight.
 

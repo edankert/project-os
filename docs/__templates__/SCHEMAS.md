@@ -27,6 +27,9 @@ Conventions (naming, linking, property rules): `../../tools/instructions/OBSIDIA
 - (optional) `phase` (integer 1–N): Development phase for milestone grouping. See `[[PHASES]]` for definitions.
   - Enables machine-filtering, automated progress tracking, and dashboard grouping.
   - Leave empty/omit for items not tied to a specific phase.
+- (optional) `platform` (string): Target platform for multi-platform projects.
+  Allowed: `ios`, `android`, `shared`, `""` (empty = not platform-specific).
+  Use `shared` for items spanning all platforms. Leave empty for platform-agnostic items.
 - (required) `owner` (string): Accountable person/team (can be `unassigned`).
   - Values must be defined in `[[OWNERSHIP]]` (or be `unassigned`).
 - (required) `created` (date string): Creation date; keep stable.

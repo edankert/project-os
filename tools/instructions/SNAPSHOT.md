@@ -63,6 +63,9 @@ Optional collaboration fields:
 - `claimed_by` (string): Agent/user currently working this item (if any).
 - `claim_started` (string): Timestamp when the claim began.
 
+Optional cross-cutting fields:
+- `platform` (string, optional): Target platform (`ios`, `android`, `shared`, or empty). For multi-platform projects only.
+
 Then type-specific fields, for example:
 - Feature: `goal`, `phase` (optional), `requirements` (REQ IDs), `tasks` (TASK IDs), `issues` (ISS IDs), `tests` (TST IDs), `workflows` (WF IDs), `release`
 - Task: `parent` (FEAT/ISS ID), `phase` (optional, inherit from parent), `effort`, `due`, `depends`, `blocks`, `related`
@@ -74,6 +77,16 @@ Then type-specific fields, for example:
 - Workflow: `entrypoints` (paths), optional `inputs`/`outputs`
 - Change: `commit`, `pr`, `issues` (ISS IDs), `features` (FEAT IDs)
 - Decision (ADR): `decision`, `context`, `supersedes`, `superseded`, `related` (IDs)
+
+## Optional metrics: `by_platform`
+For multi-platform projects, the `metrics` section may include a `by_platform` block with per-platform counts:
+```yaml
+metrics:
+  by_platform:
+    ios: { tasks_total: N, tasks_done: N }
+    android: { tasks_total: N, tasks_done: N }
+    shared: { tasks_total: N, tasks_done: N }
+```
 
 ## Invariants
 - `file` must point to an existing note under `../../docs/`, and the note’s frontmatter `id` should match the snapshot key.

@@ -44,3 +44,6 @@ Project-defined free text label, but keep it stable. Examples:
 
 ## `scope` (tests)
 - `feature`, `system`
+
+## `platform` (all notes except adr, change — optional)
+- `ios`, `android`, `shared`, `""` (empty = not platform-specific)
