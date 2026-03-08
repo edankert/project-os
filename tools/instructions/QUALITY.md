@@ -1,13 +1,3 @@
----
-type: instruction
-id: INSTR-QUALITY
-status: active
-owner: group:maintainers
-created: 2026-01-27
-updated: 2026-01-27
-tags: [instructions, quality]
----
-
 # Quality and close-out rules
 
 These rules define what “done” means for work tracked in this documentation system.
@@ -33,6 +23,18 @@ These rules define what “done” means for work tracked in this documentation 
 - Do not mark an issue `closed` unless the verifying test(s) are `passing` (use `fixed` for “implemented but not yet verified”).
 - Do not mark a requirement `verified` unless the verifying test(s) are `passing`.
 - Do not mark a feature `done` unless its required tasks are `done` and required tests are `passing`.
+
+## Acceptance tests
+- Acceptance tests (`level: acceptance`) verify that requirements are met from a user perspective.
+- They are linked to requirements and features, and are typically `kind: manual` (run by a human) though they may be `kind: automated` when tooling supports it.
+- Acceptance test notes must include: Preconditions, Procedure (numbered steps with expected outcomes), and Result (pass/fail).
+- The `last_run` field records when the test was last executed. A test is **stale** when its linked feature has tasks updated after `last_run`.
+
+## Release gating
+- Before any release, run the `release-verification` skill (`../skills/release-verification/SKILL.md`).
+- The skill identifies all acceptance tests linked to changed features and checks staleness.
+- A release is blocked if any in-scope acceptance test is stale, untested, or failing.
+- After re-running and passing all tests, `last_run` is updated, creating the baseline for the next release cycle.
 
 ## Verification expectations (generic)
 - Prefer a reproducible command, test, or check that demonstrates the change.

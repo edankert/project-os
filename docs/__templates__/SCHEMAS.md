@@ -161,6 +161,27 @@ Fields:
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.tests`) for agent context and linked from test notes.
 
+## `release.md` (`type: [[release]]`)
+
+Purpose: record what was shipped, when, and with what verification evidence.
+
+Naming:
+- Filename should be `REL-####-Short-Name.md`.
+- `id` should match the filename without `.md`.
+
+Fields:
+- (required) `version` (string): Semantic version or release label (e.g. `1.2.0`).
+- (recommended) `tag` (string): Git tag for the release (e.g. `v1.2.0`).
+- (recommended) `date` (string): Release date (ISO 8601).
+- (required) `features` (list of links): Features included in this release (`[[FEAT-...]]`).
+- (optional) `changes` (list of links): Change notes included (`[[CHG-...]]`).
+- (required) `tests_verified` (list of links): Acceptance tests verified for this release (`[[TST-...]]`).
+- (optional) `previous_release` (string/link): Link to the prior release note (`[[REL-...]]`).
+
+Where used:
+- Tracked in `SNAPSHOT.yaml` (`items.releases`) for agent context and linked from release notes.
+- The release-verification skill creates/updates REL-* notes as part of the release gating workflow.
+
 ## `workflow.md` (`type: [[workflow]]`)
 
 Purpose: canonical “front door” for a repo activity (what to run, inputs/outputs).

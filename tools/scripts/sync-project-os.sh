@@ -60,6 +60,8 @@ copy_file() {
 # Template-owned directories
 copy_dir "tools/instructions"
 copy_dir "tools/skills"
+copy_dir "tools/adapters"
+copy_dir "tools/scripts"
 copy_dir "docs/__templates__"
 copy_dir "docs/__bases__"
 

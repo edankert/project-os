@@ -36,8 +36,8 @@ related:
 - Snapshot and relevant notes for in-flight work.
 
 ## Outputs
-- Updated snapshot (focus, session, claims) and aligned notes.
+- Updated snapshot (focus, statuses) and aligned notes.
 
 ## Notes / Troubleshooting
-- Clear or update stale `claimed_by` fields.
-- Record the new `session.current_step` before resuming.
+- Check `git status` for uncommitted or partial work from interrupted sessions.
+- Agent coordination is handled by your tool's native orchestration (Agent Teams, Codex parallel, etc.).

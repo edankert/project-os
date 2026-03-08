@@ -40,7 +40,7 @@ Project-defined free text label, but keep it stable. Examples:
 - `manual`, `automated`
 
 ## `level` (tests)
-- `unit`, `integration`, `system`, `e2e`
+- `unit`, `integration`, `system`, `e2e`, `acceptance`
 
 ## `scope` (tests)
 - `feature`, `system`

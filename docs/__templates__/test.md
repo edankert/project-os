@@ -27,11 +27,18 @@ related: []
 ## Purpose
 <What does this test verify?>
 
-## Procedure
-- <step-by-step>
+## Preconditions
+- [ ] <Environment or state required before running>
 
-## Expected results
-- <observable outcomes>
+## Procedure
+1. [ ] <Step description>
+   - **Expected**: <Observable outcome>
+2. [ ] <Step description>
+   - **Expected**: <Observable outcome>
+
+## Result
+- [ ] **PASS** — all expected outcomes met
+- [ ] **FAIL** — describe which step failed and actual vs expected
 
 ## Evidence (fill after running)
 - <paths/log excerpts/screenshots/etc>

@@ -10,12 +10,17 @@ project:
   summary: "REPLACE ME"
   repo_root: "REPLACE ME"
 
-# Optional session metadata for recovery/multi-agent coordination.
-# session:
-#   agent_id: "agent-identifier"
-#   started: "2026-01-29T12:00Z"
-#   last_heartbeat: "2026-01-29T12:30Z"
-#   current_step: "Drafting feature notes for existing project import"
+# Optional team model for multi-user/multi-agent projects.
+# Agent coordination is handled by your tool's native orchestration
+# (e.g., Claude Code Agent Teams, Codex parallel agents).
+# team:
+#   members:
+#     - id: user:edwin
+#       tool: claude-code
+#       adapter: tools/adapters/claude-code
+#     - id: user:alice
+#       tool: codex
+#       adapter: tools/adapters/codex
 
 retention:
   policy: active-and-recent
@@ -42,6 +47,7 @@ counters:
   ISS: 0
   REQ: 0
   RISK: 0
+  REL: 0
   TASK: 0
   TST: 0
   WF: 0
@@ -61,9 +67,21 @@ items:
   requirements: {}
   risks: {}
   tests: {}
+  releases: {}
   workflows: {}
   changes: {}
   decisions: {}
+
+# Latest release context for agents (lightweight; full history in REL-* notes).
+# releases:
+#   latest:
+#     id: REL-0001
+#     version: "1.0.0"
+#     tag: v1.0.0
+#     date: "2026-03-08"
+#     status: released
+#   history:
+#     - { id: REL-0001, version: "1.0.0", date: "2026-03-08", status: released }
 
 metrics:
   counts:
@@ -77,4 +95,5 @@ metrics:
     issues_open: 0
     issues_triage: 0
     risks_open: 0
+    releases_total: 0
     decisions_total: 0
