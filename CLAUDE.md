@@ -31,6 +31,7 @@ These files contain detailed rules. Read them when performing the related operat
 - Obsidian conventions: tools/instructions/OBSIDIAN.md
 - Handoff/recovery: tools/instructions/HANDOFF.md
 - Importing from existing projects: tools/instructions/IMPORTING.md
+- Acceptance test tiers and lifecycle: tools/instructions/TESTING.md
 - Hook contracts: tools/instructions/HOOKS.md
 - Syncing template updates: tools/instructions/SYNCING.md
 
@@ -51,6 +52,7 @@ These files contain detailed rules. Read them when performing the related operat
 - Backlog grooming: tools/skills/backlog-grooming/SKILL.md
 - Risk mitigation: tools/skills/risk-mitigation-planning/SKILL.md
 - Impact analysis: tools/skills/impact-analysis/SKILL.md
+- Release preparation: tools/skills/release-prep/SKILL.md
 - Release verification: tools/skills/release-verification/SKILL.md
 - Adapter sync: tools/skills/adapter-sync/SKILL.md
 - Project init: tools/skills/project-init/SKILL.md

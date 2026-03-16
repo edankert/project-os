@@ -48,10 +48,11 @@ If a project needs different states, update this file and the templates in `../.
   - `proposed` → `rejected`
 
 ## `[[release]]`
-- Allowed: `draft`, `staged`, `released`, `rolled-back`
+- Allowed: `draft`, `staged`, `published`, `rolled-back`
 - Typical transitions:
-  - `draft` → `staged` → `released`
-  - `released` → `rolled-back`
+  - `draft` → `staged` → `published`
+  - `draft` → `published` (skip staging for direct deployment)
+  - `published` → `rolled-back`
 
 ## `[[test]]`
 - Allowed: `draft`, `ready`, `passing`, `failing`, `blocked`, `deprecated`

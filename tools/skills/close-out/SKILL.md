@@ -38,11 +38,15 @@ tags: [skills, closeout]
 4. If user-facing behavior/paths/contracts changed:
    - create `../../../docs/changes/CHG-YYYYMMDD-Short-Description.md`
    - link it to `issues`/`features` in note + snapshot
-5. **Risk scan (mandatory check):**
+5. **Acceptance test maintenance (see `../../instructions/TESTING.md`):**
+   - If a feature was implemented: verify Tier 1 acceptance tests exist for the user-visible behavior. If missing, flag to the user.
+   - If an issue was fixed: create a Tier 2 regression test that reproduces the original bug scenario.
+   - If code was changed: uncheck any acceptance tests in `../../../docs/tests/ACCEPTANCE_TESTS.md` whose scope overlaps with the changed code.
+6. **Risk scan (mandatory check):**
    - Review the completed work against risk scan triggers (see `../../instructions/LIFECYCLE.md` — Risk scan triggers section).
    - Check for: new dependencies, new env vars, path changes, performance changes, security/credential exposure.
    - If ANY trigger applies: run `../risk-scan/SKILL.md` and create/update `RISK-*` notes.
    - If no triggers apply: note "No new risks identified" and proceed.
-6. **Retention enforcement:**
+7. **Retention enforcement:**
    - If the closed item matches the retention policy for pruning (e.g., `keep_done_tasks_in_snapshot: false` and task is now `done`): remove it from the snapshot. The note under `docs/` is the archive.
    - Update `metrics` counts after pruning.

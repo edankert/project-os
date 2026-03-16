@@ -73,6 +73,26 @@ After completing a task/issue/feature:
 4. If new hazards were introduced (new dependency, env var, contract), add/update a `RISK-*` and link it.
 5. Do not delete completed notes; use status + links to preserve history.
 6. Apply verification gating (see `QUALITY.md`): only close/verify/done when required `[[test]]` notes are `status: passing`.
+7. **Acceptance test maintenance** (see `TESTING.md`):
+   - After implementing a feature: ensure Tier 1 acceptance tests exist for the user-visible behavior.
+   - After fixing an issue: create a Tier 2 regression test that reproduces the original bug scenario.
+   - After any code change: uncheck acceptance tests whose scope overlaps with the changed code.
+
+## Release (must happen before shipping)
+When preparing a release:
+1. **Triage open issues:** For each open `ISS-*`, decide: fix before release, or ship as known issue.
+2. **Verify acceptance tests:** All Tier 1 and Tier 2 tests must be checked (passing). See `QUALITY.md` for gating rules.
+3. **Create release note:** `../../docs/releases/REL-####-v<version>.md` from template. Include scope (features, fixed issues), known issues, verification summary, and user-facing release notes.
+4. **Update SNAPSHOT:** Add `items.releases.<REL-ID>`, set `focus.release`, increment `counters.REL`.
+5. **Version bump:** Update the application version (versionCode + versionName or equivalent).
+6. **Build:** Create signed release artifact.
+7. **Tag:** `git tag -a v<version> -m "Release <version>"` and push.
+
+After release is deployed:
+1. Update `REL-*` status to `published`.
+2. Remove Tier 3 acceptance tests (verified by unit tests).
+3. Clear SNAPSHOT focus and set to next milestone.
+4. Open issues become the backlog for the next release.
 
 ## Snapshot retention (active + recent)
 - Keep `../../SNAPSHOT.yaml` focused on active + recent items.
