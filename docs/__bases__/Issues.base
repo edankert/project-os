@@ -17,33 +17,42 @@ properties:
     displayName: ID
   status:
     displayName: Status
-  phase:
-    displayName: Phase
   severity:
     displayName: Severity
+  category:
+    displayName: Category
   component:
     displayName: Component
-  owner:
-    displayName: Owner
+  affects:
+    displayName: Affects
   file.mtime:
     displayName: Updated
 views:
+  - type: table
+    name: Triage
+    filters: 'status == "triage"'
+    order:
+      - formula.display_title
+      - severity
+      - component
+      - file.mtime
   - type: table
     name: Active
     filters:
       and:
         - 'status != "fixed"'
         - 'status != "closed"'
+        - 'status != "triage"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - phase
       - severity
+      - affects
       - component
-      - owner
       - file.mtime
+    sort:
+      - property: severity
+        direction: DESC
   - type: table
     name: Completed
     filters:
@@ -51,54 +60,19 @@ views:
         - 'status == "fixed"'
         - 'status == "closed"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - phase
       - severity
       - component
-      - owner
       - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
   - type: cards
     name: Board
     groupBy:
-      property: status
-      direction: ASC
+      property: severity
+      direction: DESC
     order:
-      - file.name
       - formula.display_title
-      - id
-      - phase
-      - severity
-      - component
-  - type: cards
-    name: By Phase
-    groupBy:
-      property: phase
-      direction: ASC
-    order:
-      - file.name
-      - formula.display_title
-      - id
       - status
-      - severity
-  - type: cards
-    name: Triage
-    filters: 'status == "triage"'
-  - type: cards
-    name: Open
-    filters: 'status == "open"'
-  - type: cards
-    name: In-progress
-    filters: 'status == "in-progress"'
-  - type: cards
-    name: Blocked
-    filters: 'status == "blocked"'
-  - type: cards
-    name: Fixed
-    filters: 'status == "fixed"'
-  - type: cards
-    name: Closed
-    filters: 'status == "closed"'
-

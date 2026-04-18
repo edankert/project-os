@@ -20,6 +20,12 @@ See `OWNERSHIP.md` for allowed formats and the canonical registry.
 ## `severity` (issues)
 - `low`, `medium`, `high`, `critical`
 
+## `category` (issues)
+- `bug` — something is broken
+- `enhancement` — something works but could be better
+- `feedback` — product insight from a user, no specific fix expected
+- `ux` — usability or design concern
+
 ## `priority` (requirements)
 - `low`, `medium`, `high`
 
