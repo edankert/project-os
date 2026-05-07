@@ -16,7 +16,8 @@ if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
   exit 0
 fi
 
-SNAPSHOT="SNAPSHOT.yaml"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+SNAPSHOT="$PROJECT_DIR/SNAPSHOT.yaml"
 if [ ! -f "$SNAPSHOT" ]; then
   exit 0
 fi

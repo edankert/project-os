@@ -22,7 +22,7 @@ esac
 # Check if the edit contains a status transition to a terminal state
 CONTENT=$(echo "$INPUT" | grep -o '"new_string"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1)
 
-if echo "$CONTENT" | grep -qE 'status:[[:space:]]*(done|closed|verified)'; then
+if echo "$CONTENT" | grep -qE 'status:[[:space:]]*(done|closed|fixed|verified)'; then
   echo "NOTE: Status transition to done/closed/verified detected. Ensure all linked TST-* notes are status: passing before finalizing (HC-003 Verification Gate)."
 fi
 

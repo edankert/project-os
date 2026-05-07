@@ -58,15 +58,15 @@ Each contract has:
 
 ## HC-003: Verification Gate
 
-**Trigger**: Before a status transition to `done`, `closed`, or `verified` (detected by writes to note frontmatter or SNAPSHOT.yaml that set these statuses).
+**Trigger**: After a status transition to `done`, `closed`, `fixed`, or `verified` (detected by writes to note frontmatter or SNAPSHOT.yaml that set these statuses).
 
 **Check logic**:
 1. Identify the item being transitioned
 2. Find all linked `TST-*` IDs in the snapshot
 3. For each linked test, check its `status` field
-4. If any linked test is not `status: passing`: block the transition
+4. If any linked test is not `status: passing`: remind the agent
 
-**On failure**: **Block.** The agent must not transition the item. Report which tests are failing.
+**On failure**: **Warn (non-blocking).** The agent receives a reminder to verify linked tests are passing before finalizing. The edit is not rolled back — the agent should check and address the reminder as part of its normal flow.
 
 **Enforces**: QUALITY.md verification gating, close-out skill step 1, status-transition skill verification gate.
 
@@ -127,10 +127,10 @@ Each contract has:
 
 | Contract | Claude Code | Codex | Cursor | Generic |
 |---|---|---|---|---|
-| HC-001 Document-First | PreToolUse agent hook | — | — | Instruction only |
+| HC-001 Document-First | PreToolUse command hook | — | — | Instruction only |
 | HC-002 Snapshot Freshness | SessionStart command hook | — | — | Instruction only |
-| HC-003 Verification Gate | PostToolUse prompt hook | — | — | Instruction only |
-| HC-004 Phase Alignment | PostToolUse prompt hook | — | — | Instruction only |
+| HC-003 Verification Gate | PostToolUse command hook | — | — | Instruction only |
+| HC-004 Phase Alignment | PostToolUse command hook | — | — | Instruction only |
 | HC-005 Risk Scan Trigger | PostToolUse command hook | — | — | Instruction only |
 | HC-006 Close-out Check | Stop command hook | — | — | Instruction only |
 
@@ -154,5 +154,7 @@ Prompt and agent hooks must return:
 
 The effect of `ok: false` depends on the event:
 - **PreToolUse**: blocks the tool call (agent must fix the issue first)
-- **PostToolUse**: shows the reason to the agent as feedback (tool already ran)
+- **PostToolUse**: stops agent continuation — use sparingly since the tool already ran
 - **Stop**: prevents Claude from stopping, forces continuation with the reason as instruction
+
+**Non-blocking reminders (PostToolUse):** For checks that should remind without stopping the agent, return `{"ok": true, "message": "reminder text"}`. The agent sees the message but continues working. Prefer this for PostToolUse hooks where the edit has already happened (HC-003, HC-004).

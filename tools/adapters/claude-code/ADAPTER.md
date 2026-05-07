@@ -108,21 +108,20 @@ If `.claude/settings.json` already exists with other settings, merge the `hooks`
 
 Ensure hook scripts are executable: `chmod +x tools/adapters/claude-code/hooks/*.sh`
 
+> **Note:** Hook commands use `$CLAUDE_PROJECT_DIR` for reliable path resolution. Claude Code does not guarantee hooks run from the project root, so relative paths are unreliable.
+
 ### Hook events and types
 
 | Event | Hooks | Type | Purpose |
 |---|---|---|---|
-| `PreToolUse` | HC-001 Document-First | `agent` | Reads SNAPSHOT.yaml, blocks code edits without focus |
-| `PostToolUse` | HC-003 Verification Gate | `prompt` | Detects status→done/closed, reminds about test verification |
-| `PostToolUse` | HC-004 Phase Alignment | `prompt` | Detects status→doing, reminds about phase check |
+| `PreToolUse` | HC-001 Document-First | `command` | Reads SNAPSHOT.yaml, blocks code edits without focus |
+| `PostToolUse` | HC-003 Verification Gate | `command` | Detects status→done/closed/fixed, reminds about test verification |
+| `PostToolUse` | HC-004 Phase Alignment | `command` | Detects status→doing, reminds about phase check |
 | `PostToolUse` | HC-005 Risk Scan Trigger | `command` | Detects package/env/CI file changes |
 | `Stop` | HC-006 Close-out Check | `command` | Checks focus is cleared, forces close-out if not |
 | `SessionStart` | HC-002 Snapshot Freshness | `command` | Reminds agent to read SNAPSHOT.yaml |
 
-**Hook types used:**
-- `command`: fast shell scripts for simple checks (HC-002, HC-005, HC-006). Stop hooks use `{decision: "block", reason: "..."}` to force continuation.
-- `prompt`: single-turn LLM evaluation for semantic understanding (HC-003, HC-004). Returns `{ok: true}` to allow or `{ok: false, reason: "..."}` to block/flag.
-- `agent`: subagent with file access for checks that need to read project files (HC-001). Same response schema as prompt hooks.
+**All hooks are `command` type** (fast shell scripts, no API calls). This avoids LLM cost/latency and 529 overload errors. Stop hooks use `{decision: "block", reason: "..."}` to force continuation. All scripts use `$CLAUDE_PROJECT_DIR` for path resolution.
 
 See `tools/instructions/HOOKS.md` for the full hook contract specifications and `hooks/` in this directory for the implementations.
 
