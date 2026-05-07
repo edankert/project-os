@@ -19,10 +19,6 @@ properties:
     displayName: Status
   phase:
     displayName: Phase
-  owner:
-    displayName: Owner
-  goal:
-    displayName: Goal
   release:
     displayName: Release
   file.mtime:
@@ -32,63 +28,32 @@ views:
     name: Active
     filters: 'status != "done"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
       - phase
-      - owner
-      - goal
       - release
       - file.mtime
+    sort:
+      - property: phase
+        direction: ASC
+      - property: status
+        direction: ASC
   - type: table
-    name: Done
+    name: Completed
     filters: 'status == "done"'
     order:
-      - file.name
       - formula.display_title
-      - id
-      - status
       - phase
-      - owner
-      - goal
       - release
       - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
   - type: cards
     name: Board
-    groupBy:
-      property: status
-      direction: ASC
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - phase
-      - owner
-  - type: cards
-    name: By Phase
     groupBy:
       property: phase
       direction: ASC
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - owner
-  - type: cards
-    name: Backlog
-    filters: 'status == "backlog"'
-  - type: cards
-    name: Planned
-    filters: 'status == "planned"'
-  - type: cards
-    name: In-progress
-    filters: 'status == "in-progress"'
-  - type: cards
-    name: In-review
-    filters: 'status == "in-review"'
-  - type: cards
-    name: Done cards
-    filters: 'status == "done"'
-

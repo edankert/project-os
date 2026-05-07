@@ -29,11 +29,11 @@ tags: [skills, snapshot]
    - ensure note frontmatter `status` matches snapshot `status` (flag mismatches)
    - ensure note frontmatter `type` matches the expected type for its collection (flag mismatches)
 3. **Bi-directional link consistency (check each pair explicitly):**
-   - For each task: does `parent` point to a feature or issue? Does that parent's `tasks` list include this task ID? Flag any missing back-links.
-   - For each feature: does each ID in `tasks` have `parent` pointing back to this feature? Flag any orphaned task references.
-   - For each feature: does each ID in `requirements` have this feature in its `implements`/`features` list? Flag mismatches.
-   - For each issue: does each ID in `features` have this issue in its `issues` list? Flag mismatches.
-   - For each test: does each ID in `requirements` have this test in its `tests` list? Flag mismatches.
+   - For each task: does `implements` point to a feature, or `fixes` point to an issue? Does that feature's `tasks` list (or issue's `tasks` list) include this task ID? Flag any missing back-links.
+   - For each feature: does each ID in `tasks` have `implements` pointing back to this feature? Flag any orphaned task references.
+   - For each feature: does each ID in `requirements` have this feature in its `features` list? Flag mismatches.
+   - For each issue: does `affects` point to features? Do those features have this issue in their `issues` list? Flag mismatches.
+   - For each test: does `validates` reference the correct features/requirements/tasks? Do those items link back to this test? Flag mismatches.
    - For each risk: do referenced `mitigation_tasks` exist and link back? Flag broken links.
 4. **Verification status consistency:**
    - For each task with `status: done`: check all linked `TST-*` IDs. If any test is not `status: passing`, flag the inconsistency.

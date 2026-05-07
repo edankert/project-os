@@ -1,6 +1,7 @@
 ---
 type: "[[adr]]"
 id: ADR-0000
+aliases: ["ADR-0000"]
 title: ""
 status: proposed
 owner: unassigned

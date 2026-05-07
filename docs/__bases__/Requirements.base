@@ -17,14 +17,12 @@ properties:
     displayName: ID
   status:
     displayName: Status
-  phase:
-    displayName: Phase
   priority:
     displayName: Priority
   scope:
     displayName: Scope
-  owner:
-    displayName: Owner
+  specifies:
+    displayName: Specifies
   file.mtime:
     displayName: Updated
 views:
@@ -32,86 +30,35 @@ views:
     name: Active
     filters: 'status != "retired"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - phase
       - priority
       - scope
-      - owner
       - file.mtime
+    sort:
+      - property: status
+        direction: ASC
   - type: table
-    name: Approved
-    filters: 'status == "approved"'
+    name: Completed
+    filters:
+      or:
+        - 'status == "verified"'
+        - 'status == "retired"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - phase
       - priority
       - scope
-      - owner
       - file.mtime
-  - type: table
-    name: Verified
-    filters: 'status == "verified"'
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - status
-      - phase
-      - priority
-      - scope
-      - owner
-      - file.mtime
-  - type: table
-    name: Retired
-    filters: 'status == "retired"'
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - status
-      - phase
-      - priority
-      - scope
-      - owner
-      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
   - type: cards
     name: Board
     groupBy:
       property: status
       direction: ASC
     order:
-      - file.name
       - formula.display_title
-      - id
-      - phase
       - priority
       - scope
-  - type: cards
-    name: By Phase
-    groupBy:
-      property: phase
-      direction: ASC
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - status
-      - priority
-  - type: cards
-    name: Draft
-    filters: 'status == "draft"'
-  - type: cards
-    name: Approved cards
-    filters: 'status == "approved"'
-  - type: cards
-    name: Verified cards
-    filters: 'status == "verified"'
-  - type: cards
-    name: Retired cards
-    filters: 'status == "retired"'

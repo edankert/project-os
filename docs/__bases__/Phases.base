@@ -3,7 +3,7 @@ formulas:
 filters:
   and:
     - file.ext == "md"
-    - type == "[[release]]"
+    - type == "[[phase]]"
     - not:
         - file.inFolder("__templates__")
         - file.inFolder(".trash")
@@ -17,14 +17,10 @@ properties:
     displayName: ID
   status:
     displayName: Status
-  version:
-    displayName: Version
-  tag:
-    displayName: Tag
-  date:
-    displayName: Date
-  previous_release:
-    displayName: Previous
+  order:
+    displayName: Order
+  goal:
+    displayName: Goal
   file.mtime:
     displayName: Updated
 views:
@@ -33,11 +29,20 @@ views:
     order:
       - formula.display_title
       - status
-      - version
-      - tag
-      - date
-      - previous_release
+      - order
+      - goal
       - file.mtime
     sort:
-      - property: date
-        direction: DESC
+      - property: order
+        direction: ASC
+  - type: table
+    name: Active
+    filters: 'status == "active"'
+    order:
+      - formula.display_title
+      - order
+      - goal
+      - file.mtime
+    sort:
+      - property: order
+        direction: ASC

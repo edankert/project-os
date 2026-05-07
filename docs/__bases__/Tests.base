@@ -19,72 +19,33 @@ properties:
     displayName: Status
   scope:
     displayName: Scope
-  kind:
-    displayName: Kind
   level:
     displayName: Level
-  entrypoint:
-    displayName: Entrypoint
-  owner:
-    displayName: Owner
+  validates:
+    displayName: Validates
   last_run:
     displayName: Last run
   file.mtime:
     displayName: Updated
 views:
   - type: table
-    name: Active
-    filters: 'status != "deprecated"'
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - status
-      - scope
-      - kind
-      - level
-      - entrypoint
-      - owner
-      - last_run
-      - file.mtime
-  - type: table
-    name: Passing
-    filters: 'status == "passing"'
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - scope
-      - kind
-      - level
-      - entrypoint
-      - owner
-      - last_run
-      - file.mtime
-  - type: table
     name: Failing
     filters: 'status == "failing"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - scope
-      - kind
       - level
-      - entrypoint
-      - owner
       - last_run
       - file.mtime
-  - type: cards
-    name: Board
-    groupBy:
-      property: status
-      direction: ASC
+  - type: table
+    name: All
     order:
-      - file.name
       - formula.display_title
-      - id
+      - status
       - scope
-      - kind
       - level
-      - owner
+      - last_run
+      - file.mtime
+    sort:
+      - property: last_run
+        direction: DESC

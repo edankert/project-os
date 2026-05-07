@@ -1,9 +1,10 @@
 ---
 type: "[[requirement]]"
 id: REQ-0000
+aliases: ["REQ-0000"]
 title: ""
 status: draft
-phase:
+phase: []
 platform:
 owner: unassigned
 created: 2026-01-26
@@ -12,7 +13,7 @@ source: []
 priority: medium
 scope: ""
 acceptance: []
-implements: []
+specifies: []
 verifies: []
 related: []
 tests: []

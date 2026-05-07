@@ -20,13 +20,16 @@ Conventions (naming, linking, property rules): `../../tools/instructions/OBSIDIA
   - Used by tools/automation to classify notes; the snapshot references these types.
 - (required) `id` (string): Stable identifier (should match the filename prefix).
   - Used for traceability and for `SNAPSHOT.yaml` keys.
+- (required) `aliases` (list of strings): Must contain the `id` value. Enables Obsidian to resolve `[[FEAT-0007]]` to `FEAT-0007-Relationship-Model.md`.
+  - When creating a note, set `aliases: ["<id>"]` (e.g., `aliases: ["FEAT-0007"]`).
+  - Agents and skills must set this when creating notes from templates.
 - (recommended) `title` (string): Human-friendly title for dashboards and summaries.
   - Keep short; no need to repeat the ID.
   - Keep it consistent with `SNAPSHOT.yaml` where possible.
 - (required) `status` (string): Lifecycle state; each note type has its own allowed values.
-- (optional) `phase` (integer 1–N): Development phase for milestone grouping. See `[[PHASES]]` for definitions.
+- (optional) `phase` (list of links): Development phase(s) for milestone grouping. Link to phase notes, e.g. `phase: ["[[PHASE-001-Foundation]]"]`.
   - Enables machine-filtering, automated progress tracking, and dashboard grouping.
-  - Leave empty/omit for items not tied to a specific phase.
+  - Leave as empty list for items not tied to a specific phase.
 - (optional) `platform` (string): Target platform for multi-platform projects.
   Allowed: `ios`, `android`, `shared`, `""` (empty = not platform-specific).
   Use `shared` for items spanning all platforms. Leave empty for platform-agnostic items.
@@ -74,17 +77,15 @@ Where used:
 
 ## `feature.md` (`type: [[feature]]`)
 
-Purpose: a work package describing a capability, with traceability to requirements and tasks.
+Purpose: a work package describing a capability. Child items (tasks, requirements, tests) link back to the feature via their relationship fields — the feature note does not maintain child lists.
 
 Fields:
 - (required) `goal` (string): Short outcome statement.
-- (optional) `requirements` (list of links): `[[REQ-...]]` links implemented by this feature.
-- (optional) `tasks` (list of links): `[[TASK-...]]` links that deliver the feature.
-- (optional) `tests` (list of links): `[[TST-...]]` links used to verify the feature.
 - (optional) `release` (string): Milestone/release label.
 
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.features`) for agent context and linked from feature notes.
+- Related tasks use `implements`, requirements use `specifies`, tests use `validates`, issues use `affects` to link back.
 
 ## `issue.md` (`type: [[issue]]`)
 
@@ -93,7 +94,7 @@ Purpose: canonical problem report / gap / bug.
 Fields:
 - (required) `severity` (string): e.g. `low|medium|high|critical` (project-defined).
 - (recommended) `component` (string): Subsystem/area label (project-defined).
-- (optional) `parent` (string/link): Link to a parent feature/epic note.
+- (optional) `affects` (list of links): Feature(s) where this issue was found (`[[FEAT-...]]`).
 - (optional) `tests` (list of links): `[[TST-...]]` links used to reproduce/verify the issue.
 
 Where used:
@@ -107,7 +108,7 @@ Fields:
 - (required) `priority` (string): e.g. `low|medium|high` (project-defined).
 - (optional) `scope` (string): Short scoping label (area/domain).
 - (required) `acceptance` (list): Acceptance criteria statements (strings).
-- (optional) `implements` (list of links): Notes implementing the requirement (usually features).
+- (optional) `specifies` (list of links): Feature(s) this requirement constrains (`[[FEAT-...]]`).
 - (optional) `verifies` (list of links/paths): Proof/verification pointers (workflows/tests/repo paths).
 - (optional) `tests` (list of links): `[[TST-...]]` links that verify this requirement.
 
@@ -131,12 +132,15 @@ Where used:
 Purpose: actionable unit of work with a Definition of Done.
 
 Fields:
-- (required) `parent` (link): Link to a feature or issue note this task belongs to.
+- (optional) `implements` (list of links): Feature(s) this task delivers (`[[FEAT-...]]`).
+- (optional) `fixes` (list of links): Issue(s) this task resolves (`[[ISS-...]]`).
 - (optional) `effort` (string): Size label (e.g. `XS|S|M|L`).
 - (optional) `due` (string/date): Due date.
 - (optional) `depends` (list of links): Tasks/issues that must complete first.
 - (optional) `blocks` (list of links): Tasks/issues blocked by this task.
 - (optional) `tests` (list of links): `[[TST-...]]` links used to verify completion.
+
+Note: A task should have at least one of `implements` or `fixes` set.
 
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.tasks`) for agent context and linked from task notes.
@@ -150,10 +154,7 @@ Fields:
 - (required) `kind` (string): `manual|automated`.
 - (recommended) `level` (string): `unit|integration|system|e2e`.
 - (optional) `entrypoint` (string): Repo-relative command/script to run (or blank for purely manual tests).
-- (recommended) `requirements` (list of links): Requirements verified by this test (`[[REQ-...]]`).
-- (optional) `features` (list of links): Related features (`[[FEAT-...]]`).
-- (optional) `issues` (list of links): Related issues (`[[ISS-...]]`).
-- (optional) `tasks` (list of links): Related tasks (`[[TASK-...]]`).
+- (optional) `validates` (list of links): Feature(s) or requirement(s) this test verifies (`[[FEAT-...]]`, `[[REQ-...]]`).
 - (optional) `artifacts` (list): Expected artifacts/logs.
 - (optional) `evidence` (list): Evidence from the last run (paths/log excerpts).
 - (optional) `last_run` (string): Timestamp/label for the last execution.
@@ -181,6 +182,25 @@ Fields:
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.releases`) for agent context and linked from release notes.
 - The release-verification skill creates/updates REL-* notes as part of the release gating workflow.
+
+## `phase.md` (`type: [[phase]]`)
+
+Purpose: a development milestone grouping features, tasks, and other items into a coherent delivery stage.
+
+Naming:
+- Filename should be `PHASE-###-Short-Name.md`.
+- `id` should match the filename without `.md`.
+
+Fields:
+- (required) `order` (integer): Sort order for dashboards (1, 2, 3...).
+- (required) `goal` (string): What this phase delivers.
+
+Statuses: `draft`, `active`, `completed`.
+
+Where used:
+- Tracked in `SNAPSHOT.yaml` (`items.phases`) for agent context.
+- Other notes link to phase notes via `phase: ["[[PHASE-001-...]]"]`.
+- The CONTEXT.base sidebar filters on `phase contains this.file` to show all items in a selected phase.
 
 ## `workflow.md` (`type: [[workflow]]`)
 

@@ -1,6 +1,7 @@
 ---
 type: "[[change]]"
 id: CHG-YYYYMMDD-Short-Description
+aliases: ["CHG-YYYYMMDD-Short-Description"]
 title: ""
 status: merged
 owner: unassigned

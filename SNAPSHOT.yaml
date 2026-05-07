@@ -45,6 +45,7 @@ counters:
     last_date: 0
   FEAT: 0
   ISS: 0
+  PHASE: 0
   REQ: 0
   RISK: 0
   REL: 0
@@ -54,7 +55,7 @@ counters:
 
 # Current focus (set when something is actively being worked).
 focus:
-  phase: ""        # Active development phase (integer 1–N, see docs/PHASES.md)
+  phase: ""        # Active development phase (link to PHASE-### note)
   feature: ""
   task: ""
   issue: ""
@@ -65,6 +66,7 @@ items:
   tasks: {}
   issues: {}
   requirements: {}
+  phases: {}
   risks: {}
   tests: {}
   releases: {}

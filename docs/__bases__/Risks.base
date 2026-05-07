@@ -17,12 +17,10 @@ properties:
     displayName: ID
   status:
     displayName: Status
-  likelihood:
-    displayName: Likelihood
   impact:
     displayName: Impact
-  owner:
-    displayName: Owner
+  likelihood:
+    displayName: Likelihood
   file.mtime:
     displayName: Updated
 views:
@@ -30,35 +28,24 @@ views:
     name: Active
     filters: 'status != "closed"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - likelihood
       - impact
-      - owner
+      - likelihood
       - file.mtime
+    sort:
+      - property: impact
+        direction: DESC
+      - property: likelihood
+        direction: DESC
   - type: table
     name: Closed
     filters: 'status == "closed"'
     order:
-      - file.name
       - formula.display_title
-      - id
-      - status
-      - likelihood
       - impact
-      - owner
+      - likelihood
       - file.mtime
-  - type: cards
-    name: Board
-    groupBy:
-      property: status
-      direction: ASC
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - likelihood
-      - impact
-
+    sort:
+      - property: file.mtime
+        direction: DESC

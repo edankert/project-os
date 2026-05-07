@@ -1,15 +1,17 @@
 ---
 type: "[[task]]"
 id: TASK-0000
+aliases: ["TASK-0000"]
 title: ""
 status: backlog
-phase:
+phase: []
 platform:
 owner: unassigned
 created: 2026-01-26
 updated: 2026-01-26
 source: []
-parent: ""
+implements: []
+fixes: []
 effort: ""
 due: ""
 depends: []

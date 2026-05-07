@@ -17,28 +17,12 @@ properties:
     displayName: ID
   status:
     displayName: Status
-  owner:
-    displayName: Owner
   file.mtime:
     displayName: Updated
 views:
   - type: table
     name: All
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - owner
       - file.mtime
-  - type: cards
-    name: Board
-    groupBy:
-      property: status
-      direction: ASC
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - owner
-

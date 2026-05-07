@@ -1,6 +1,7 @@
 ---
 type: "[[workflow]]"
 id: WF-0000
+aliases: ["WF-0000"]
 title: ""
 status: draft
 platform:

@@ -35,9 +35,9 @@ tags: [skills, issues]
    - set `phase` in frontmatter if applicable
    - include repro, expected vs actual, evidence paths
 5. If the fix requires implementation:
-   - ensure there is a parent `FEAT-*` (create if needed)
-   - create one or more `TASK-*` under the feature and link them in snapshot + notes
-   - tasks inherit phase from the issue or parent feature
+   - ensure there is an affected `FEAT-*` (create if needed); the issue uses `affects: [FEAT-xxxx]`
+   - create one or more `TASK-*` that use `fixes: [ISS-xxxx]` and link them in snapshot + notes
+   - tasks inherit phase from the issue or affected feature
 6. **Impact analysis (mandatory for issues affecting existing features):**
    - If the issue links to existing features: run `../impact-analysis/SKILL.md` to check whether the proposed fix or change may conflict with existing requirements on those features.
    - If conflicts are found: STOP and present resolution options to the user before proceeding.

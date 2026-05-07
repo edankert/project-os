@@ -33,15 +33,16 @@ tags: [skills, features]
 3. Allocate IDs (use `../../../SNAPSHOT.yaml -> counters`).
 4. Update `../../../SNAPSHOT.yaml`:
    - create `items.requirements` (if needed) and link them to the feature
-   - create `items.features.<FEAT-####>` with `goal`, `phase`, `requirements`, `tasks`, `workflows`
-   - create initial `items.tasks` entries with `parent: FEAT-####` and inherit `phase` from feature
+   - create `items.features.<FEAT-####>` with `goal`, `phase`, `workflows`
+   - create initial `items.tasks` entries with `implements: [FEAT-####]` and inherit `phase` from feature
+   - create `items.requirements` entries with `specifies: [FEAT-####]`
    - set `focus.feature` and `focus.task` (if starting immediately)
    - update `focus.phase` if this feature represents a new active phase
 5. Create the feature notes from templates:
-   - requirement note(s): `../../../docs/__templates__/requirement.md` (set `phase` if applicable)
+   - requirement note(s): `../../../docs/__templates__/requirement.md` (set `specifies` to the feature link, set `phase` if applicable)
    - feature note: `../../../docs/__templates__/feature.md` (set `phase` in frontmatter)
    - plan: concise sequence for delivery
-   - tasks: each with clear DoD and inherited `phase` from feature
+   - tasks: each with clear DoD, `implements` set to the feature link, and inherited `phase` from feature
 6. **Impact analysis (mandatory for features with requirements):**
    - Run `../impact-analysis/SKILL.md` against any new or linked requirements.
    - Identify which existing features share the same component or user-facing area.
@@ -53,4 +54,4 @@ tags: [skills, features]
    - Check for: new dependencies, new env vars, path changes, performance changes, security/credential exposure.
    - If ANY trigger applies: run `../risk-scan/SKILL.md` and create/update `RISK-*` notes.
    - If no triggers apply: note "No new risks identified" and proceed.
-8. If the feature requires verification, create `TST-*` notes (use `../test-authoring/SKILL.md`) and link them from the feature/requirements/tasks.
+8. If the feature requires verification, create `TST-*` notes (use `../test-authoring/SKILL.md`) with `validates` set to the feature link.

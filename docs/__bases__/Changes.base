@@ -28,21 +28,11 @@ views:
     name: Recent
     limit: 50
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
       - commit
       - pr
       - file.mtime
-  - type: cards
-    name: Board
-    groupBy:
-      property: status
-      direction: ASC
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - commit
-
+    sort:
+      - property: file.mtime
+        direction: DESC

@@ -17,16 +17,16 @@ properties:
     displayName: ID
   status:
     displayName: Status
-  phase:
-    displayName: Phase
-  owner:
-    displayName: Owner
-  parent:
-    displayName: Parent
-  effort:
-    displayName: Effort
+  implements:
+    displayName: Implements
+  fixes:
+    displayName: Fixes
   due:
     displayName: Due
+  depends:
+    displayName: Depends
+  blocks:
+    displayName: Blocks
   file.mtime:
     displayName: Updated
 views:
@@ -34,68 +34,42 @@ views:
     name: Active
     filters: 'status != "done"'
     order:
-      - file.name
       - formula.display_title
-      - id
       - status
-      - phase
-      - owner
-      - parent
-      - effort
+      - implements
+      - fixes
       - due
       - file.mtime
+    sort:
+      - property: status
+        direction: ASC
+      - property: due
+        direction: ASC
   - type: table
-    name: Done
+    name: Completed
     filters: 'status == "done"'
     order:
-      - file.name
       - formula.display_title
-      - id
-      - status
-      - phase
-      - owner
-      - parent
-      - effort
+      - implements
+      - fixes
       - due
       - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+  - type: table
+    name: Blocked
+    filters: 'status == "blocked"'
+    order:
+      - formula.display_title
+      - implements
+      - depends
+      - blocks
   - type: cards
     name: Board
     groupBy:
       property: status
       direction: ASC
     order:
-      - file.name
       - formula.display_title
-      - id
-      - phase
-      - owner
-      - parent
-      - effort
-  - type: cards
-    name: By Phase
-    groupBy:
-      property: phase
-      direction: ASC
-    order:
-      - file.name
-      - formula.display_title
-      - id
-      - status
-      - owner
-      - parent
-  - type: cards
-    name: Backlog
-    filters: 'status == "backlog"'
-  - type: cards
-    name: Next
-    filters: 'status == "next"'
-  - type: cards
-    name: Doing
-    filters: 'status == "doing"'
-  - type: cards
-    name: Blocked
-    filters: 'status == "blocked"'
-  - type: cards
-    name: Done cards
-    filters: 'status == "done"'
-
+      - implements

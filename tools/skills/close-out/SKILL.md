@@ -32,7 +32,7 @@ tags: [skills, closeout]
    - feature progress if milestones were reached
 3. Update `../../../SNAPSHOT.yaml`:
    - set the same statuses
-   - update relationships if new tasks/issues/risks were created
+   - update relationships (`implements`, `fixes`, `affects`, `validates`) if new tasks/issues/risks were created
    - clear or move `focus` to the next task
    - update `metrics`
 4. If user-facing behavior/paths/contracts changed:

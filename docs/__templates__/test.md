@@ -1,6 +1,7 @@
 ---
 type: "[[test]]"
 id: TST-0000
+aliases: ["TST-0000"]
 title: ""
 status: draft
 platform:
@@ -12,10 +13,7 @@ scope: feature
 kind: manual
 level: system
 entrypoint: ""
-requirements: []
-features: []
-issues: []
-tasks: []
+validates: []
 artifacts: []
 evidence: []
 last_run: ""

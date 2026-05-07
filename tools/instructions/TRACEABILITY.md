@@ -13,19 +13,22 @@ tags: [instructions, traceability]
 This documentation system relies on explicit link graphs so agents can follow relationships reliably.
 
 ## Required links (minimum)
+
+Child items link **upward** to their parent via named relationship fields. Features do not maintain child lists.
+
 - Task (`[[task]]`)
-  - Must have exactly one `parent` (feature or issue).
+  - Must have at least one of `implements` (feature links) or `fixes` (issue links).
 - Feature (`[[feature]]`)
-  - Should link its `requirements` and `tasks` (frontmatter lists).
+  - No child lists required — tasks link up via `implements`, requirements via `specifies`, tests via `validates`.
 - Issue (`[[issue]]`)
-  - Should link impacted `features` and/or planned `tasks` (frontmatter or `related`).
+  - Should have `affects` linking to the feature(s) where the issue was found.
 - Requirement (`[[requirement]]`)
   - Must have `acceptance` criteria.
-  - Should link implementing features and verifying scripts/workflows.
+  - Should have `specifies` linking to the feature(s) it constrains.
 - Test (`[[test]]`)
-  - Should link the requirements it verifies (`requirements`) and any relevant features/issues/tasks.
+  - Should have `validates` linking to the feature(s) or requirement(s) it verifies.
 - Risk (`[[risk]]`)
-  - Should link mitigation tasks or the items it impacts.
+  - Should link mitigation tasks or the items it impacts via `related`.
 - Change (`[[change]]`)
   - Should link `issues` and `features` impacted by the change.
 - Release (`[[release]]`)

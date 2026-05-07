@@ -22,13 +22,13 @@ tags: [skills, tasks]
 
 ## Checklist
 1. Read the feature goal + acceptance and decide the smallest set of deliverable tasks.
-2. **Inherit phase from parent feature**:
-   - Check the parent feature's `phase` in `../../../SNAPSHOT.yaml` or the feature note frontmatter.
-   - Tasks inherit the parent's phase by default; override only if the task belongs to a different milestone.
+2. **Inherit phase from the implemented feature**:
+   - Check the feature's `phase` in `../../../SNAPSHOT.yaml` or the feature note frontmatter.
+   - Tasks inherit the feature's phase by default; override only if the task belongs to a different milestone.
    - Consult `../../../docs/PHASES.md` if phase context is needed.
 3. For each task:
    - allocate a `TASK-####`
-   - define `title`, `status`, `phase` (inherited or explicit), `effort`, `parent`, `depends`, `blocks`
+   - define `title`, `status`, `phase` (inherited or explicit), `effort`, `implements` (for feature tasks, e.g. `implements: [FEAT-xxxx]`), `fixes` (for issue tasks, e.g. `fixes: [ISS-xxxx]`), `depends`, `blocks`
 4. Update `../../../SNAPSHOT.yaml`:
    - add `items.tasks.<TASK-####>` with `phase` field
    - append the task ID to `items.features.<FEAT-####>.tasks`
