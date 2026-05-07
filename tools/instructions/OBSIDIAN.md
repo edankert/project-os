@@ -10,6 +10,27 @@ tags: [instructions, obsidian]
 
 # Obsidian-enabled conventions (optional)
 
+## Cockpit Layout
+
+project-os provides a three-pane cockpit layout for Obsidian:
+
+| Pane | File | Purpose |
+|---|---|---|
+| Left sidebar | `docs/NAV.base` | Browse features, phases, and issues |
+| Center | Editor | View/edit the selected note |
+| Right sidebar | `docs/CONTEXT.base` | Shows tasks, requirements, issues, and tests related to the active note |
+
+### How it works
+- `NAV.base` shows tabbed views (Features, Phases, Issues) for navigation
+- `CONTEXT.base` uses `this.file` to dynamically filter items that reference the active editor note via `implements`, `fixes`, `affects`, `specifies`, `validates`, or `phase`
+- Switching notes in the center editor automatically updates the right sidebar
+
+### Workspace setup
+1. Open `docs/NAV.base` and drag it to the **left sidebar**
+2. Open `docs/CONTEXT.base` and drag it to the **right sidebar**
+3. Save the layout as a workspace: `Cmd/Ctrl+P` → "Manage workspaces" → Save as "Cockpit"
+4. Restore anytime via "Manage workspaces" → Load "Cockpit"
+
 ## Linking
 - Prefer Obsidian wiki links using the **filename without `.md`** (e.g. `[[TASK-0001-Foo]]`), not full paths.
 - This implies filenames should be unique across the docs set; if a filename is not unique, use a path-qualified link.
