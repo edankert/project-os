@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Bootstrap and run the synced docs-server against a docs path.
+# Bootstrap and run the synced project-os-cockpit against a docs path.
 #
-# Usage: tools/docs-server/run.sh <docs-path> [--bind 0.0.0.0] [--port 8765]
+# Usage: tools/cockpit/run.sh <docs-path> [--bind 0.0.0.0] [--port 8765]
 #
 # This wrapper is project-os-owned (NOT synced from the canonical
-# docs-server repo). It exists so downstream consumers have a stable
-# entry point; the docs-server source itself lives alongside this file
-# under tools/docs-server/{src,tests,pyproject.toml,...} and is refreshed
+# project-os-cockpit repo). It exists so downstream consumers have a
+# stable entry point; the cockpit source itself lives alongside this
+# file under tools/cockpit/{src,pyproject.toml,...} and is refreshed
 # by the canonical repo's release-to-project-os.sh script.
 
 set -euo pipefail
@@ -24,7 +24,7 @@ fi
 
 # Re-install if pyproject changed since last install (cheap heuristic:
 # pyproject.toml newer than the venv-stamp file).
-STAMP="$VENV/.docs-server-stamp"
+STAMP="$VENV/.cockpit-stamp"
 if [[ ! -f "$STAMP" || "$HERE/pyproject.toml" -nt "$STAMP" ]]; then
   "$VENV/bin/pip" install --quiet -e "$HERE"
   touch "$STAMP"
@@ -32,4 +32,4 @@ fi
 
 # -------- run -----------------------------------------------------------
 
-exec "$VENV/bin/python" -m docs_server "$@"
+exec "$VENV/bin/python" -m project_os_cockpit "$@"
