@@ -1,7 +1,6 @@
 ---
 type: "[[reference]]"
 id: REF-0000
-aliases: ["REF-0000"]
 title: ""
 status: active
 owner: unassigned

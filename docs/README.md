@@ -15,7 +15,7 @@ Without Obsidian, the Markdown remains usable; Obsidian wiki-links (`[[...]]`) a
 
 ## How to add new docs
 - Start from a template in `__templates__/`.
-- Use stable IDs (`PHASE-####`, `ISS-####`, `FEAT-####`, `TASK-####`, `ADR-####`, `REQ-####`, `RISK-####`, `TST-####`, `REL-####`, `CHG-YYYYMMDD-Short-Description`).
+- Use stable IDs (`PHASE-####`, `ISS-####`, `FEAT-####`, `TASK-####`, `ADR-####`, `REQ-####`, `RISK-####`, `TST-####`, `CHG-YYYYMMDD-Short-Description`).
 - Keep notes linked (issues → tasks → changes; requirements → features → verification).
 - If using Obsidian, follow the Obsidian-enabled conventions in `../tools/instructions/OBSIDIAN.md`.
 
@@ -29,9 +29,8 @@ Structured project-os lifecycle records use these conventional locations:
 - `tests/`: system-wide/cross-feature test notes describing verification (manual or automated) and linking coverage.
 - `decisions/`: ADRs for design and process decisions.
 - `changes/`: change notes for traceability after merges.
-- `releases/`: release notes and release verification records.
 - `risks/`: risks and mitigations.
-- `PHASES.md`: phase registry for milestone-based development (optional phase-gating).
+- `PHASES.md`: phase registry overview for milestone-based development (optional phase-gating).
 - `GLOSSARY.md`: shared terms.
 - `OWNERSHIP.md`: canonical registry of `owner:` identities (teams, groups, users, systems).
 - `__templates__/`: note templates (canonical front-matter keys and statuses).
@@ -44,4 +43,4 @@ Normal project documentation also belongs under `docs/`. Use purpose-specific su
 - `research/`: investigation notes, discovery material, source analysis, and exploratory findings that support later project-os records.
 - Project-specific directories such as `guides/`, `architecture/`, or `operations/` when the project needs them.
 
-If a document is part of planning, tracking, status, decisions, requirements, verification, release, or change history, use the structured lifecycle directories above and the appropriate template. If the material is durable supporting context, keep it under `docs/reference/`, `docs/research/`, or another clearly named project-documentation directory.
+If a document is part of planning, tracking, status, decisions, requirements, verification, or change history, use the structured lifecycle directories above and the appropriate template. If the material is durable supporting context, keep it under `docs/reference/`, `docs/research/`, or another clearly named project-documentation directory.

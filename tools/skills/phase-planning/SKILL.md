@@ -4,7 +4,7 @@ id: SKILL-PHASE-PLANNING
 status: active
 owner: group:maintainers
 created: 2026-05-05
-updated: 2026-05-08
+updated: 2026-05-05
 tags: [skills, phases, planning]
 ---
 
@@ -22,7 +22,7 @@ tags: [skills, phases, planning]
 - `../../../docs/PHASES.md`.
 
 ## Outputs
-- New or updated `../../../docs/phases/PHASE-###-Short-Name.md` notes.
+- New or updated `../../../docs/phases/PHASE-####-Short-Name.md` notes.
 - `../../../SNAPSHOT.yaml` updated (`counters.PHASE`, `items.phases`, `focus.phase` when active).
 - Phase links added to related notes and snapshot items.
 
@@ -30,20 +30,21 @@ tags: [skills, phases, planning]
 1. Decide whether a first-class phase note is needed:
    - Use a `PHASE-*` note when the milestone has scope, exit criteria, or linked work.
    - A simple integer phase in `phase:` is acceptable only for lightweight projects or migration.
-2. Allocate the next `PHASE-###` from `../../../SNAPSHOT.yaml -> counters.PHASE`.
+2. Allocate the next `PHASE-####` from `../../../SNAPSHOT.yaml -> counters.PHASE`.
 3. Create the phase note from `../../../docs/__templates__/phase.md`.
 4. Populate:
    - `order`
    - `goal`
    - scope and out-of-scope sections
    - exit criteria
+   - linked `features`, `requirements`, `tasks`, and `issues`
 5. Update `../../../SNAPSHOT.yaml`:
-   - add `items.phases.<PHASE-###>` with `file`, `title`, `status`, `order`, and `goal`
+   - add `items.phases.<PHASE-####>` with `file`, `title`, `status`, `order`, `goal`, and linked item IDs
    - increment `counters.PHASE`
    - set `focus.phase` if this is the active milestone
    - update `metrics.counts.phases_total` and `metrics.counts.phases_done`
 6. Update related notes/items:
-   - set `phase: ["[[PHASE-###-Short-Name]]"]` in note frontmatter where applicable
-   - set `phase: PHASE-###` or the matching phase note link in snapshot item entries
-   - rely on backlinks from those related notes rather than maintaining child lists on the phase note
+   - set `phase: "[[PHASE-####]]"` in note frontmatter where applicable
+   - set `phase: PHASE-####` in snapshot item entries
+   - maintain backlinks from phase note/snapshot to the related items
 7. Run `../snapshot-sync/SKILL.md` to verify phase links and metrics.

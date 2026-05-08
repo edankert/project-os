@@ -10,7 +10,7 @@ Three-pane web cockpit for project-os documentation. The centre pane renders any
 - YAML frontmatter renders as a metadata strip per page (status, owner, parent, links).
 - Auto-generated index pages by status, parent, or type, including rare/project-supporting types such as decisions, tests, workflows, plans, and references.
 - Backlinks panel showing which other notes link to the page you're viewing.
-- Project mode surfaces the `docs/` tree plus selected top-level human-facing docs.
+- Project mode surfaces a recursive untyped `docs/` tree, a typed `References` section, and selected top-level human-facing docs.
 - Optional embedded local-only terminal panel for running an AI coding assistant (Claude Code / Codex) alongside the docs while editing in real time.
 
 ## Stack
@@ -48,6 +48,11 @@ To consume this tool from another project-os repo, sync template-owned files wit
 ## Project Mode Docs
 
 The cockpit indexes Markdown from `docs/`. This includes structured lifecycle records plus non-lifecycle project documentation under areas such as `docs/reference/` or `docs/research/`.
+
+Project mode separates raw filesystem browsing from typed reference records:
+
+- `Docs tree` lists untyped Markdown under `docs/`, preserving the directory structure so generated pages and deeply nested project documentation remain browsable without promoting them into lifecycle/type views. Lifecycle-record directories such as `changes/`, `features/`, `issues/`, `requirements/`, `tests/`, and `workflows/` are excluded from this tree because they already have dedicated cockpit views.
+- `References` lists notes explicitly typed as `type: [[reference]]` or `type: reference`. It is a curated semantic section, not a second directory browser.
 
 The only Markdown files outside `docs/` surfaced by default are selected top-level human-facing docs: `README.md`, `ROADMAP.md`, and `SECURITY.md`. Operator/LLM materials such as `AGENTS.md`, `CONTEXT.md`, `LLM_BRIEF.md`, and `tools/**` remain outside the default stakeholder cockpit.
 

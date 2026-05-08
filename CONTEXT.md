@@ -25,7 +25,7 @@ Keep the content split explicit:
 - `tools/instructions/README.md` (authoring rules)
 - `tools/instructions/MARKDOWN.md` (Markdown formatting rules)
 - `tools/instructions/LIFECYCLE.md` (LLM lifecycle rules)
-- `tools/instructions/HOOKS.md` (hook and hook-equivalent contracts)
+- `tools/instructions/HOOKS.md` (Codex hook-equivalent contracts)
 - `tools/skills/README.md` (playbooks)
 - `tools/adapters/codex/ADAPTER.md` (Codex adapter model)
 - `tools/cockpit/README.md` (optional local docs cockpit)
@@ -51,8 +51,8 @@ Keep the content split explicit:
 1. `SNAPSHOT.yaml` is canonical for agents/LLMs: keep it current for active work state, focus, and relationships.
 2. Notes are the durable record for humans: keep note frontmatter (`id`, `status`, links) consistent with the snapshot so Bases views reflect reality.
 3. Notes are typed via `type: [[...]]` (e.g. `[[task]]`, `[[feature]]`, `[[issue]]`, `[[workflow]]`, `[[change]]`).
-4. Work links upward: tasks use `implements`/`fixes`, requirements use `specifies`, tests use `validates`, and issues use `affects`.
-5. Phase-aware work links to phase notes with `phase: ["[[PHASE-...]]"]`; keep `docs/PHASES.md` and any `docs/phases/PHASE-*` notes aligned.
+4. Every task note (`type: [[task]]`) has exactly one `parent` (link to a feature or issue note).
+5. Every feature note (`type: [[feature]]`) links to its `requirements` and `tasks`.
 6. Every meaningful repo change gets a change note (`type: [[change]]`) linked to the relevant issues/features.
 7. Prefer **links to real repo files** over paraphrase.
 8. Keep structured project-os lifecycle notes in their established `docs/` lifecycle directories, keep non-lifecycle project documentation under purpose-specific `docs/` subdirectories such as `docs/reference/` or `docs/research/`, and keep agent/tool operating detail under `tools/`.

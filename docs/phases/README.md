@@ -4,7 +4,7 @@ id: PHASES-README
 status: active
 owner: group:maintainers
 created: 2026-05-05
-updated: 2026-05-08
+updated: 2026-05-05
 tags: [phases]
 ---
 
@@ -12,10 +12,11 @@ tags: [phases]
 
 This directory contains `PHASE-*` milestone notes.
 
-Use phase notes when a project needs durable milestone definitions. The top-level `../PHASES.md` file is the phase registry and overview; individual `PHASE-*` notes hold detailed scope and exit criteria. Related lifecycle notes link upward with `phase: ["[[PHASE-...]]"]`.
+Use phase notes when a project needs durable milestone definitions with links to features, requirements, tasks, and issues. The top-level `../PHASES.md` file is the phase registry and overview; individual `PHASE-*` notes hold the detailed scope and exit criteria.
 
 ## Naming convention
-- `PHASE-###-Short-Name.md`
+- `PHASE-####-Short-Name.md`
 
 ## Status lifecycle
-- `draft` -> `active` -> `completed`
+- `planned` -> `active` -> `done`
+- `planned` -> `deferred`

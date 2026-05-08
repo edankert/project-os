@@ -18,8 +18,8 @@
   var PLATFORM_KEY = "project-os-cockpit.cockpit.platform";
   var PINNED_KEY = "project-os-cockpit.cockpit.pinned-paths";
 
-  // "Project" is first — the orienting mode (project handles + pinned +
-  // rare types). The mode id stays "library" for storage compatibility,
+  // "Project" is first — the orienting mode (directory trees + pinned +
+  // rare lifecycle/supporting types). The mode id stays "library" for storage compatibility,
   // but the user-facing label is "Project".
   var NAV_MODES = [
     { id: "library",  label: "Project" },
@@ -180,7 +180,7 @@
   // Generic collapsible group via <details>/<summary>. Native browser toggling;
   // persists open/closed state under `collapsed[key]` in localStorage.
   function collapsibleGroup(opts) {
-    // opts: { key, headerClass, headerChildren, bodyChildren, sectionClass }
+    // opts: { key, headerClass, headerStyle, headerChildren, bodyStyle, bodyChildren, sectionClass }
     var startCollapsed = isCollapsed(opts.key);
     var details = el("details", {
       class: opts.sectionClass || "",
@@ -188,9 +188,15 @@
     });
     var chevron = el("span", { class: "group-chevron", "aria-hidden": "true" });
     var headerInner = el("span", { class: "group-header-inner" }, opts.headerChildren || []);
-    var summary = el("summary", { class: opts.headerClass }, [chevron, headerInner]);
+    var summary = el("summary", {
+      class: opts.headerClass,
+      style: opts.headerStyle || null,
+    }, [chevron, headerInner]);
     details.appendChild(summary);
-    var body = el("div", { class: "group-body" }, opts.bodyChildren || []);
+    var body = el("div", {
+      class: "group-body",
+      style: opts.bodyStyle || null,
+    }, opts.bodyChildren || []);
     details.appendChild(body);
     details.addEventListener("toggle", function () {
       var nowCollapsed = !details.open;
@@ -403,7 +409,7 @@
   }
 
   // Compact layout: filename only, single line, tight padding.
-  // Used by Project mode's "Project handles" and per-subdir groups.
+  // Used by Project mode's docs/reference directory trees.
   function navItemCompact(item) {
     var titleSpan = el("span", {
       class: "nav-title-compact",
@@ -424,32 +430,40 @@
     return navItem;
   }
 
-  // Build collapsible-group nodes for a parent group's nested subgroups.
-  // One level deep — used by Project mode's "Project handles" parent so
-  // per-subdirectory groups (tests/, references/, etc.) live INSIDE the
-  // handles section rather than as siblings of rare-types groups.
-  function renderSubgroups(parent, mode) {
+  // Build collapsible-group nodes for nested directory-tree groups.
+  function renderSubgroups(parent, mode, depth) {
     var subs = (parent.subgroups || []);
     var nodes = [];
     subs.forEach(function (sg) {
-      var visible = (sg.items || []).filter(function (it) { return !isHidden(it.status); });
-      if (!visible.length) return;
-      var subRender = pickItemRenderer(sg.item_layout);
-      var subList = el("ul", { class: "nav-items" });
-      visible.forEach(function (i) { subList.appendChild(subRender(i)); });
-      var subKey = "nav:" + mode + ":" + (sg.key || "");
-      var sectionExtra = sg.item_layout ? " nav-group-" + sg.item_layout : "";
-      nodes.push(
-        collapsibleGroup({
-          key: subKey,
-          sectionClass: "nav-subgroup" + sectionExtra,
-          headerClass: "nav-subgroup-header",
-          headerChildren: [el("span", { text: sg.label || sg.key || "" })],
-          bodyChildren: [subList],
-        })
-      );
+      var node = renderSubgroup(sg, mode, depth || 0);
+      if (node) nodes.push(node);
     });
     return nodes;
+  }
+
+  function renderSubgroup(group, mode, depth) {
+    var visibleItems = (group.items || []).filter(function (it) { return !isHidden(it.status); });
+    var childNodes = renderSubgroups(group, mode, depth + 1);
+    if (!visibleItems.length && !childNodes.length) return null;
+
+    var renderItem = pickItemRenderer(group.item_layout);
+    var list = el("ul", { class: "nav-items" });
+    visibleItems.forEach(function (item) { list.appendChild(renderItem(item)); });
+
+    var bodyChildren = [list];
+    childNodes.forEach(function (node) { bodyChildren.push(node); });
+
+    var subKey = "nav:" + mode + ":" + (group.key || "");
+    var sectionExtra = group.item_layout ? " nav-group-" + group.item_layout : "";
+    return collapsibleGroup({
+      key: subKey,
+      sectionClass: "nav-subgroup" + sectionExtra,
+      headerClass: "nav-subgroup-header",
+      headerStyle: "--tree-indent:" + String((depth || 0) * 12) + "px",
+      bodyStyle: "--tree-indent:" + String((depth || 0) * 12) + "px",
+      headerChildren: [el("span", { text: group.label || group.key || "" })],
+      bodyChildren: bodyChildren,
+    });
   }
 
   function renderLeftPane(payload) {

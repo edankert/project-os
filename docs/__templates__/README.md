@@ -15,7 +15,7 @@ Canonical templates for note types and their front-matter keys.
 Field definitions: `[[SCHEMAS]]`.
 
 ## What goes here
-- One template per note type (`phase.md`, `issue.md`, `feature.md`, `task.md`, `adr.md`, `change.md`, `release.md`, `workflow.md`, etc.).
+- One template per note type (`phase.md`, `issue.md`, `feature.md`, `task.md`, `adr.md`, `change.md`, `workflow.md`, etc.).
   - Includes `test.md` for manual/automated verification notes.
   - Includes `reference.md` for durable explanatory or registry-style documents.
 

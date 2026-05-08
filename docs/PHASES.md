@@ -1,12 +1,13 @@
 # Phase Registry
 
-This document is the **semantic source of truth** for the project's development phases. It maps phase numbers to specific technical and business milestones, enabling machine-filtering, automated progress tracking, and phase grouping.
+This document is the **registry overview** for the project's development phases. It explains how phase-gated development works and can either list simple phase definitions directly or point to first-class `PHASE-*` notes under `docs/phases/`.
 
 ## How Phases Work
 
-- **Property**: `phase` (Integer 1–N, optional)
+- **Property**: `phase` (`[[PHASE-####]]` link preferred; integer 1–N accepted for simple projects or migration)
 - **Location**: YAML frontmatter of features, tasks, requirements, and issues
 - **Purpose**: Groups related work into cohesive delivery milestones
+- **Detailed notes**: `docs/phases/PHASE-####-Short-Name.md` when a phase needs scope, linked work, and exit criteria
 
 ## Phase Definitions
 
@@ -21,6 +22,9 @@ This document is the **semantic source of truth** for the project's development 
 | 5 | Intelligence | AI and automation features | LLM integration, smart features |
 | 6 | Launch | Production readiness | Store assets, deployment config, documentation |
 
+For durable phase tracking, create `[[phase]]` notes from `docs/__templates__/phase.md` and link to them from the `phase` field.
+Use `tools/skills/phase-planning/SKILL.md` when creating or migrating first-class phase notes.
+
 ## Usage
 
 ### In Frontmatter
@@ -29,7 +33,7 @@ This document is the **semantic source of truth** for the project's development 
 ---
 type: "[[task]]"
 id: TASK-0042
-phase: 2
+phase: "[[PHASE-0002]]"
 status: doing
 parent: "[[FEAT-0015]]"
 ---
@@ -41,6 +45,8 @@ Use the `phase` property in Obsidian bases or queries to:
 - Group items by delivery milestone
 - Track progress within a phase
 - Identify scope creep (items without phases)
+
+Use `order` on `[[phase]]` notes to preserve numeric roadmap sorting without overloading the `phase` relationship field.
 
 ### Phase Inheritance
 
@@ -65,7 +71,7 @@ Phases are generally sequential but may overlap:
 - **Maintenance phases**: Earlier phases may receive bug fixes
 - **Blocked phases**: Future phases awaiting dependencies
 
-Track the current active phase in `SNAPSHOT.yaml` under `focus.phase`.
+Track the current active phase in `SNAPSHOT.yaml` under `focus.phase` (`PHASE-*` ID preferred).
 
 ---
 
