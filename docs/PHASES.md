@@ -1,6 +1,6 @@
 # Phase Registry
 
-This document is the **semantic source of truth** for the project's development phases. It maps phase numbers to specific technical and business milestones, enabling machine-filtering, automated progress tracking, and dashboard grouping.
+This document is the **semantic source of truth** for the project's development phases. It maps phase numbers to specific technical and business milestones, enabling machine-filtering, automated progress tracking, and phase grouping.
 
 ## How Phases Work
 

@@ -4,7 +4,7 @@
  * by the existing markdown renderer; we swap its contents on in-pane
  * navigation so the left pane keeps its scroll position.
  *
- * Endpoints (TASK-0012, schema v1):
+ * Endpoints (TASK-0012, schema v2):
  *   GET /api/cockpit/nav                              -> features by phase
  *   GET /api/cockpit/context?this=<id-or-rel-path>    -> linked + backlinks
  */
@@ -259,8 +259,8 @@
     var slot = document.getElementById("cockpit-pin-slot");
     if (!slot) return;
     var path = activePath();
-    if (!path) {
-      // Synthetic landing or non-cockpit page → no pin button.
+    if (!path || !/^\/docs\//.test(active.url || "")) {
+      // Synthetic landing or project-support pages → no pin button.
       slot.replaceChildren();
       return;
     }
@@ -651,7 +651,8 @@
     feature: "features", task: "tasks", requirement: "requirements",
     issue: "issues", risk: "risks", adr: "decisions", decision: "decisions",
     change: "changes", release: "releases", workflow: "workflows",
-    test: "tests", phase: "phases", plan: "plans", dashboard: "dashboards",
+    test: "tests", phase: "phases", plan: "plans",
+    reference: "references",
   };
   function pluralizeType(t) {
     if (!t) return "";
@@ -697,20 +698,22 @@
   function isInternalNoteLink(href) {
     if (!href) return false;
     if (href.indexOf("#") === 0) return false;
-    if (!/^\/docs\//.test(href)) return false;
     var pathOnly = href.split(/[?#]/)[0];
-    return /\.md$/i.test(pathOnly);
+    if (!/\.md$/i.test(pathOnly)) return false;
+    if (/^\/docs\//.test(pathOnly)) return true;
+    return /^\/(README|ROADMAP|SECURITY)\.md$/.test(pathOnly);
   }
 
   function setActiveFromUrl(url) {
     var u = new URL(url, document.location.origin);
     active.url = u.pathname;
-    // Only docs URLs map to an active note path; everything else (including
-    // "/" — the synthetic landing) clears the path so headers like the pin
-    // button know there's nothing to act on.
-    active.path = /^\/docs\//.test(u.pathname)
-      ? u.pathname.replace(/^\/docs\//, "")
-      : "";
+    if (/^\/docs\//.test(u.pathname)) {
+      active.path = u.pathname.replace(/^\/docs\//, "");
+    } else if (isInternalNoteLink(u.pathname)) {
+      active.path = u.pathname.replace(/^\//, "");
+    } else {
+      active.path = "";
+    }
     active.id = null;
     active.title = null;
   }

@@ -4,7 +4,7 @@ id: TEMPLATES-SCHEMAS
 status: active
 owner: team:docs
 created: 2026-01-27
-updated: 2026-01-27
+updated: 2026-05-08
 tags: [templates, schema]
 ---
 
@@ -23,12 +23,12 @@ Conventions (naming, linking, property rules): `../../tools/instructions/OBSIDIA
 - (required) `aliases` (list of strings): Must contain the `id` value. Enables Obsidian to resolve `[[FEAT-0007]]` to `FEAT-0007-Relationship-Model.md`.
   - When creating a note, set `aliases: ["<id>"]` (e.g., `aliases: ["FEAT-0007"]`).
   - Agents and skills must set this when creating notes from templates.
-- (recommended) `title` (string): Human-friendly title for dashboards and summaries.
+- (recommended) `title` (string): Human-friendly title for views and summaries.
   - Keep short; no need to repeat the ID.
   - Keep it consistent with `SNAPSHOT.yaml` where possible.
 - (required) `status` (string): Lifecycle state; each note type has its own allowed values.
 - (optional) `phase` (list of links): Development phase(s) for milestone grouping. Link to phase notes, e.g. `phase: ["[[PHASE-001-Foundation]]"]`.
-  - Enables machine-filtering, automated progress tracking, and dashboard grouping.
+  - Enables machine-filtering, automated progress tracking, and phase grouping.
   - Leave as empty list for items not tied to a specific phase.
 - (optional) `platform` (string): Target platform for multi-platform projects.
   Allowed: `ios`, `android`, `shared`, `""` (empty = not platform-specific).
@@ -115,6 +115,19 @@ Fields:
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.requirements`) for agent context and linked from requirement notes.
 
+## `reference.md` (`type: [[reference]]`)
+
+Purpose: durable explanatory, registry, or background material that supports project understanding but is not itself a task, feature, workflow, decision, test, issue, requirement, phase, risk, release, or change.
+
+Fields:
+- (recommended) `scope` (string): Short scope label such as `project`, `docs`, `tooling`, or a domain-specific area.
+- (optional) `related` (list of links/strings): Related notes or repo paths.
+- (optional) `source` (list of strings/links): Provenance or upstream/source documents.
+
+Where used:
+- Surfaced by the cockpit library under References and by `/index/references`.
+- Not normally tracked in `SNAPSHOT.yaml` unless a downstream project deliberately promotes a reference collection into active state.
+
 ## `risk.md` (`type: [[risk]]`)
 
 Purpose: track hazards + mitigations.
@@ -192,7 +205,7 @@ Naming:
 - `id` should match the filename without `.md`.
 
 Fields:
-- (required) `order` (integer): Sort order for dashboards (1, 2, 3...).
+- (required) `order` (integer): Sort order for phase views (1, 2, 3...).
 - (required) `goal` (string): What this phase delivers.
 
 Statuses: `draft`, `active`, `completed`.
@@ -232,18 +245,3 @@ Statuses: `draft`, `active`, `done`.
 Where used:
 - Read alongside the feature note before any task starts.
 - Not tracked individually in `SNAPSHOT.yaml`; the parent feature's tasks carry the status the snapshot reports.
-
-## `dashboard.md` (`type: [[dashboard]]`)
-
-Purpose: a curated overview page — typically embedded `.base` views and narrative pointers — that a human uses as a landing page for a slice of the project.
-
-Naming:
-- No fixed filename pattern. Singletons (`DASHBOARD.md` at the repo's docs root) and per-area dashboards (`docs/dashboards/Features.md` etc.) are both fine.
-
-Fields:
-- Minimal frontmatter — `type` and `title` are typically the only required keys.
-- (optional) `id` / `aliases`: only when the dashboard needs to be wikilink-targetable beyond its filename.
-
-Where used:
-- Not tracked in `SNAPSHOT.yaml` — dashboards are presentation, not artefacts.
-- Bases dashboards (`docs/__bases__/*.base`) carry their own filter logic; a `dashboard.md` is the human-readable wrapper that embeds them.

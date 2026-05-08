@@ -15,7 +15,7 @@ tags: [instructions, snapshot]
 ## Goals
 - Enable another agent to resume work from **one file** (the snapshot) and jump to the right notes via `file`.
 - Make state transitions explicit (status changes, focus changes, relationships).
-- Avoid forcing humans to read the snapshot: human-facing views are the notes and Bases dashboards.
+- Avoid forcing humans to read the snapshot: human-facing views are the notes and Bases views.
 
 ## Required top-level keys
 - `version` (int): Schema version (bump only when breaking changes are made).

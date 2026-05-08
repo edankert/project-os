@@ -1,0 +1,12 @@
+project-os-overview.pptx
+
+# Python/runtime artifacts produced by local template tooling.
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+venv/
+tools/cockpit/.venv/

@@ -20,7 +20,7 @@ This repo contains project code and a documentation system under `docs/` (Obsidi
 - Release/build workflow(s): `REPLACE ME`
 
 ## Key directories (REPLACE ME)
-- `docs/`: documentation system (notes + frontmatter; dashboards query via Bases)
+- `docs/`: documentation system (notes + frontmatter; Bases provide optional human views)
 - `tools/`: instructions and playbooks for maintaining the docs system
 - `src/` (optional): compiled tools/libraries (if applicable)
 - `REPLACE ME`: project-specific code/data directories

@@ -5,7 +5,7 @@ This documentation system is designed to be maintained by an LLM across the full
 ## Source of truth
 - `../../SNAPSHOT.yaml` is the **canonical, machine-readable active context** for agents/LLMs.
 - Notes under `../../docs/` are the durable human-readable record; keep their frontmatter consistent with the snapshot.
-- Bases dashboards are for human consumption: they render views over note frontmatter and are not canonical for agents.
+- Bases views are for human consumption: they render views over note frontmatter and are not canonical for agents.
 
 ## Test storage (hybrid)
 - Feature-scoped tests belong under the feature they verify:
@@ -27,15 +27,16 @@ When a prompt implies work (bugfix, feature, refactor, behavior change):
    - create/update `items.*` entries and relationships
    - set `focus` to the active work
 4. **Create/update the relevant notes (from templates)**:
+   - Phase: `../../docs/phases/PHASE-###-*.md` when phase-gated work needs durable scope/exit criteria
    - Issue: `../../docs/issues/ISS-####-*.md`
    - Requirement: `../../docs/requirements/REQ-####-*.md`
    - Feature: `../../docs/features/<slug>/FEAT-####-*.md` plus `plan/PLAN.md`
-   - Task: `../../docs/features/<slug>/plan/tasks/TASK-####-*.md` (must have `parent`)
+   - Task: `../../docs/features/<slug>/plan/tasks/TASK-####-*.md` (must have `implements` and/or `fixes`)
    - Risk: `../../docs/risks/RISK-####-*.md`
 5. **Impact analysis** (when creating or modifying requirements):
    - Run `../skills/impact-analysis/SKILL.md` to check for tensions with existing requirements on overlapping features.
    - If conflicts are found: STOP and present resolution options to the user before proceeding with implementation.
-6. Ensure note frontmatter is consistent with the snapshot (IDs/statuses/links) so Bases dashboards reflect reality.
+6. Ensure note frontmatter is consistent with the snapshot (IDs/statuses/links) so Bases views reflect reality.
 7. For multi-platform projects: set `platform` in new notes when work is platform-specific.
    Infer from parent item, code paths, or tags. Leave empty if truly cross-cutting.
 
@@ -43,8 +44,8 @@ If the prompt is purely a question/explanation (no work requested), you may skip
 
 ## Phase alignment (optional gating)
 When the project uses phase-gated development (see `../../docs/PHASES.md`):
-1. **Verify phase**: Check the `phase` property in the task/feature frontmatter before starting work.
-2. **Consult registry**: Review `../../docs/PHASES.md` to understand the boundaries and context of that phase.
+1. **Verify phase**: Check the `phase` property in the task/feature frontmatter before starting work. Prefer `[[PHASE-###-...]]` links where first-class phase notes exist.
+2. **Consult registry**: Review `../../docs/PHASES.md` and the relevant `../../docs/phases/PHASE-*.md` note to understand the boundaries and context of that phase.
 3. **Prevent phase bleeding**: Do not introduce implementations from future phases prematurely.
    - Example: Don't build Phase 4 export logic while working on a Phase 2 core engine task.
 4. **Flag scope concerns**: If a task requires future-phase dependencies, document it and discuss before proceeding.

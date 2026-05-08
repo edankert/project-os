@@ -1,5 +1,5 @@
 version: 1
-updated: "REPLACE ME (ISO8601 UTC, e.g. 2026-01-27T14:10Z)"
+updated: "2026-05-08T16:06Z"
 
 template:
   replace_me: true
@@ -10,6 +10,13 @@ project:
   summary: "REPLACE ME"
   repo_root: "REPLACE ME"
 
+# Optional session metadata for recovery/multi-agent coordination.
+# session:
+#   agent_id: "agent-identifier"
+#   started: "2026-01-29T12:00Z"
+#   last_heartbeat: "2026-01-29T12:30Z"
+#   current_step: "Drafting feature notes for existing project import"
+#
 # Optional team model for multi-user/multi-agent projects.
 # Agent coordination is handled by your tool's native orchestration
 # (e.g., Claude Code Agent Teams, Codex parallel agents).
@@ -34,9 +41,14 @@ docs_system:
   source_of_truth: SNAPSHOT.yaml
   instructions:
     - tools/instructions/OBSIDIAN.md
+    - tools/instructions/MARKDOWN.md
     - tools/instructions/LIFECYCLE.md
   references:
     - docs/PHASES.md           # Phase registry (optional phase-gated development)
+    - docs/__bases__/NAVIGATION.base # Optional Obsidian navigation view
+    - docs/__bases__/CONTEXT.base    # Optional Obsidian active-note context view
+    - docs/reference/README.md # Optional non-lifecycle reference/source documentation area
+    - tools/cockpit/README.md  # Optional local docs cockpit browser
 
 # ID allocation helpers (highest allocated numbers).
 counters:
@@ -55,7 +67,7 @@ counters:
 
 # Current focus (set when something is actively being worked).
 focus:
-  phase: ""        # Active development phase (link to PHASE-### note)
+  phase: ""        # Active development phase (PHASE-### note link/ID preferred)
   feature: ""
   task: ""
   issue: ""
@@ -89,6 +101,8 @@ metrics:
   counts:
     features_total: 0
     features_done: 0
+    phases_total: 0
+    phases_done: 0
     tasks_total: 0
     tasks_done: 0
     tests_total: 0

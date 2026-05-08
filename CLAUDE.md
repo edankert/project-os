@@ -11,7 +11,7 @@ and tools/skills/ propagate to all downstream repos via the sync mechanism
 
 When editing instruction or skill files:
 - Ensure changes are broadly applicable (not project-specific)
-- Update any templates/dashboards that rely on changed rules
+- Update any templates or Bases views that rely on changed rules
 - Consider impact on all 6 downstream repos
 
 ## project-os documentation system (core rules -- always active)
@@ -29,6 +29,7 @@ These files contain detailed rules. Read them when performing the related operat
 - ADR conventions: tools/instructions/DECISIONS.md
 - Ownership rules: tools/instructions/OWNERSHIP.md
 - Obsidian conventions: tools/instructions/OBSIDIAN.md
+- Markdown authoring: tools/instructions/MARKDOWN.md
 - Handoff/recovery: tools/instructions/HANDOFF.md
 - Importing from existing projects: tools/instructions/IMPORTING.md
 - Acceptance test tiers and lifecycle: tools/instructions/TESTING.md
@@ -38,6 +39,7 @@ These files contain detailed rules. Read them when performing the related operat
 ## Skill playbooks (read before performing these operations)
 
 - Issue intake: tools/skills/issue-intake/SKILL.md
+- Phase planning: tools/skills/phase-planning/SKILL.md
 - Feature scaffold: tools/skills/feature-scaffold/SKILL.md
 - Task breakdown: tools/skills/task-breakdown/SKILL.md
 - Close-out: tools/skills/close-out/SKILL.md

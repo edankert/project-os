@@ -25,6 +25,7 @@ Reusable playbooks for an LLM (or other agents) to keep this documentation syste
 
 ## Skills index
 - Issue intake: `issue-intake/SKILL.md`
+- Phase planning: `phase-planning/SKILL.md`
 - Feature scaffold: `feature-scaffold/SKILL.md`
 - Task breakdown: `task-breakdown/SKILL.md`
 - Test authoring: `test-authoring/SKILL.md`

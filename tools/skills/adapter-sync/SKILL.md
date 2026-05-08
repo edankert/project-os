@@ -4,7 +4,7 @@ id: SKILL-ADAPTER-SYNC
 status: active
 owner: group:maintainers
 created: 2026-03-08
-updated: 2026-03-08
+updated: 2026-05-08
 tags: [skills, adapters]
 ---
 
@@ -19,10 +19,13 @@ tags: [skills, adapters]
 ## Inputs
 - Target adapter (claude-code, codex, cursor, or all)
 - Updated instruction/skill files
+- Root agent files: `../../../AGENTS.md`, `../../../LLM_BRIEF.md`, and tool-specific root files such as `../../../CLAUDE.md`
+- Agent helper scripts under `../../../tools/agents/`
 
 ## Outputs
 - Regenerated tool-specific instruction files (CLAUDE.md, AGENTS.md, .cursor/rules/)
 - Updated hook configurations if applicable
+- `../../../AGENTS.md` and `../../../LLM_BRIEF.md` aligned with current command/path expectations.
 
 ## Checklist
 
@@ -40,11 +43,12 @@ tags: [skills, adapters]
 
 ### For Codex adapter
 1. Read `tools/adapters/codex/ADAPTER.md` for the AGENTS.md structure.
-2. Regenerate `AGENTS.md` in the project root:
-   - Inline core rules (LIFECYCLE, STATUSES, QUALITY) — Codex does not support imports
-   - Condense reference instructions into summary sections
-   - List skill playbook paths for on-demand reading
-3. Preserve any project-specific sections.
+2. Update `AGENTS.md` in the project root:
+   - Include the mandatory read order and docs-first gate.
+   - Point to `tools/agents/bootstrap.sh`, `tools/agents/start-change.sh`, and `tools/agents/check-docs-first.sh`.
+   - Keep close-out and changed-file expectations explicit.
+3. Update `LLM_BRIEF.md` when project identity, paths, common commands, or helper scripts change.
+4. Preserve any project-specific sections.
 
 ### For Cursor adapter
 1. Read `tools/adapters/cursor/ADAPTER.md` for the .mdc structure.

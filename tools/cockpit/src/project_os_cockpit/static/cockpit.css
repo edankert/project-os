@@ -20,7 +20,7 @@
   --type-test:        hsl(100 35% 38%);
   --type-phase:       hsl(285 35% 48%);
   --type-plan:        hsl(225 25% 48%);
-  --type-dashboard:   hsl(0 0% 42%);
+  --type-reference:   hsl(205 20% 38%);
   --type-default:     hsl(0 0% 45%);
 }
 [data-theme="dark"] {
@@ -36,7 +36,7 @@
   --type-test:        hsl(100 35% 58%);
   --type-phase:       hsl(285 35% 68%);
   --type-plan:        hsl(225 25% 65%);
-  --type-dashboard:   hsl(0 0% 62%);
+  --type-reference:   hsl(205 20% 68%);
   --type-default:     hsl(0 0% 60%);
 }
 
@@ -545,7 +545,7 @@ details:not([open]) > summary .group-chevron {
 .ctx-type-label[data-type="test"]        { color: var(--type-test); }
 .ctx-type-label[data-type="phase"]       { color: var(--type-phase); }
 .ctx-type-label[data-type="plan"]        { color: var(--type-plan); }
-.ctx-type-label[data-type="dashboard"]   { color: var(--type-dashboard); }
+.ctx-type-label[data-type="reference"]   { color: var(--type-reference); }
 
 .ctx-items {
   list-style: none;
