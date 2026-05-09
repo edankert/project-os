@@ -83,6 +83,7 @@ if [[ -d "$SRC/tools/cockpit" ]]; then
   rsync -a $DRY_RUN --exclude '.venv' --exclude '*.egg-info' --exclude '__pycache__' "$SRC/tools/cockpit/" "$ROOT_DIR/tools/cockpit/"
 fi
 copy_dir "tools/scripts"
+copy_dir "tools/cockpit"
 copy_dir "docs/__templates__"
 copy_dir "docs/__bases__"
 if [[ -d "$SRC/docs/phases" ]]; then
