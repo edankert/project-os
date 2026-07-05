@@ -65,6 +65,9 @@ Fields:
 - (recommended) `impacts` (list of strings): Affected areas/paths/flows (keep short).
 - (optional) `issues` (list of links): Issues associated with the change.
 - (optional) `features` (list of links): Features associated with the change.
+- (optional) `reviewed_by` (string): Independent reviewer identity (`model:...` or `user:...`), per `tools/skills/independent-review/SKILL.md`.
+- (optional) `review_date` (string/date): Date of the independent review.
+- (optional) `review_verdict` (string): `approved | changes-requested`.
 
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.changes`) for agent context and linked from change notes.
@@ -186,6 +189,11 @@ Fields:
 - (optional) `artifacts` (list): Expected artifacts/logs.
 - (optional) `evidence` (list): Evidence from the last run (paths/log excerpts).
 - (optional) `last_run` (string): Timestamp/label for the last execution.
+- (optional) `adequacy` (string): Evidence the test actually guards (see `tools/instructions/TESTING.md`, "Test adequacy").
+- (optional) `mutation_score` (string): Mutation-testing score for the code this test guards, when measured.
+- (optional) `reviewed_by` (string): Independent reviewer identity (`model:...` or `user:...`), per `tools/skills/independent-review/SKILL.md`.
+- (optional) `review_date` (string/date): Date of the independent review.
+- (optional) `review_verdict` (string): `approved | changes-requested`.
 
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.tests`) for agent context and linked from test notes.

@@ -1,5 +1,5 @@
 version: 1
-updated: "2026-05-08T16:36Z"
+updated: "2026-07-05T00:00Z"
 
 template:
   replace_me: true
@@ -63,7 +63,7 @@ counters:
   REL: 0
   TASK: 0
   TST: 0
-  WF: 0
+  WF: 3 # WF-0001..0003 ship with the template under docs/workflows/
 
 # Current focus (set when something is actively being worked).
 focus:
