@@ -4,7 +4,7 @@ tool: claude-code
 status: active
 owner: group:maintainers
 created: 2026-03-08
-updated: 2026-03-08
+updated: 2026-07-17
 ---
 
 # Claude Code Adapter
@@ -19,6 +19,17 @@ Claude Code reads project instructions from `CLAUDE.md` in the repo root. It sup
 - **Syntax**: Markdown with `@path/to/file.md` import directives
 - **Overflow**: Additional rules in `.claude/rules/*.md` (auto-loaded, no import needed)
 - **Limit**: Keep `CLAUDE.md` concise; Claude Code reads it at every session start
+
+## Native skills, subagent, and one-step install (generated)
+
+`python3 tools/scripts/generate-adapters.py --install-hooks` derives the full native adapter surface from the canonical playbooks in one idempotent step:
+
+- `.claude/skills/<name>/SKILL.md` — one native skill per `tools/skills/*/SKILL.md` playbook, auto-discovered by Claude Code and invocable as `/<name>` (e.g. `/close-out`, `/issue-intake`). Each generated skill's `description` carries the playbook's "When to use" triggers so Claude invokes it unprompted; its body directs execution back to the canonical playbook, which stays the single source of truth.
+- `.claude/agents/independent-reviewer.md` — subagent implementing the QUALITY.md independent-review pass, pinned to a fixed Claude model so `reviewed_by` is deterministic. Subagents can only pin Claude models; when full cross-vendor independence is required, run the review in an external tool and record the frontmatter manually.
+- `.claude/settings.json` hooks — installed by `--install-hooks` (copies `hooks.json` when the file is absent; merges the `hooks` key when other settings exist; never overwrites an existing `hooks` key unless `--force-hooks`).
+- `.cursor/rules/*.mdc` — the Cursor adapter's rule files, generated from the same sources (see `../cursor/ADAPTER.md`).
+
+Generated files are marked with a do-not-edit header. `--check` verifies they are current without writing (usable at pre-commit/CI). Re-run the generator after any change to `tools/skills/` or `tools/instructions/` (`tools/skills/adapter-sync/SKILL.md` step 1).
 
 ## Import strategy
 
@@ -55,6 +66,7 @@ These files contain detailed rules. Read them when performing the related operat
 ## Skill playbooks (read before performing these operations)
 
 - Issue intake: tools/skills/issue-intake/SKILL.md
+- Phase planning: tools/skills/phase-planning/SKILL.md
 - Feature scaffold: tools/skills/feature-scaffold/SKILL.md
 - Task breakdown: tools/skills/task-breakdown/SKILL.md
 - Close-out: tools/skills/close-out/SKILL.md
@@ -71,6 +83,8 @@ These files contain detailed rules. Read them when performing the related operat
 - Backlog grooming: tools/skills/backlog-grooming/SKILL.md
 - Risk mitigation: tools/skills/risk-mitigation-planning/SKILL.md
 - Impact analysis: tools/skills/impact-analysis/SKILL.md
+- Release preparation: tools/skills/release-prep/SKILL.md
+- Release verification: tools/skills/release-verification/SKILL.md
 - Adapter sync: tools/skills/adapter-sync/SKILL.md
 - Project init: tools/skills/project-init/SKILL.md
 - Project derive: tools/skills/project-derive/SKILL.md
@@ -99,16 +113,14 @@ Claude Code supports shell hooks via project-level settings files. project-os ho
 
 ### Installation
 
-Copy the hooks configuration from `hooks.json` in this adapter directory into `.claude/settings.json` in the project root. Or copy the file directly:
+Preferred (installs hooks and regenerates the native skills/subagent/Cursor rules in one idempotent step):
 
 ```bash
-mkdir -p .claude
-cp tools/adapters/claude-code/hooks.json .claude/settings.json
+python3 tools/scripts/generate-adapters.py --install-hooks
+chmod +x tools/adapters/claude-code/hooks/*.sh
 ```
 
-If `.claude/settings.json` already exists with other settings, merge the `hooks` key manually.
-
-Ensure hook scripts are executable: `chmod +x tools/adapters/claude-code/hooks/*.sh`
+Manual fallback: copy `hooks.json` from this adapter directory into `.claude/settings.json` (merge the `hooks` key if the file already has other settings).
 
 > **Note:** Hook commands use `$CLAUDE_PROJECT_DIR` for reliable path resolution. Claude Code does not guarantee hooks run from the project root, so relative paths are unreliable.
 
