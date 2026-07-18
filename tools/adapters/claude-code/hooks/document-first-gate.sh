@@ -28,8 +28,20 @@ case "$FILE_PATH" in
     ;;
 esac
 
-# Check SNAPSHOT.yaml for active focus
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+# Check SNAPSHOT.yaml for active focus. The TARGET file's repo governs the edit
+# (cross-repo edits must gate against the target's snapshot, not the session repo's).
+PROJECT_DIR=""
+DIR=$(dirname "$FILE_PATH")
+while [ -n "$DIR" ] && [ "$DIR" != "/" ] && [ "$DIR" != "." ]; do
+  if [ -f "$DIR/SNAPSHOT.yaml" ]; then
+    PROJECT_DIR="$DIR"
+    break
+  fi
+  DIR=$(dirname "$DIR")
+done
+if [ -z "$PROJECT_DIR" ]; then
+  PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+fi
 SNAPSHOT="$PROJECT_DIR/SNAPSHOT.yaml"
 if [ ! -f "$SNAPSHOT" ]; then
   # No SNAPSHOT.yaml — not a project-os repo, allow
