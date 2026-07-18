@@ -4,7 +4,7 @@ id: TEMPLATES-SCHEMAS
 status: active
 owner: team:docs
 created: 2026-01-27
-updated: 2026-05-08
+updated: 2026-07-17
 tags: [templates, schema]
 ---
 
@@ -180,7 +180,7 @@ Purpose: describe how to verify behavior (manual or automated) and provide durab
 Fields:
 - (required) `scope` (string): `feature|system` (controls where the test note is stored).
 - (required) `kind` (string): `manual|automated`.
-- (recommended) `level` (string): `unit|integration|system|e2e`.
+- (recommended) `level` (string): `unit|integration|system|e2e|acceptance`.
 - (optional) `entrypoint` (string): Repo-relative command/script to run (or blank for purely manual tests).
 - (recommended) `requirements` (list of links): Requirements verified by this test (`[[REQ-...]]`).
 - (optional) `features` (list of links): Related features (`[[FEAT-...]]`).
@@ -197,6 +197,37 @@ Fields:
 
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.tests`) for agent context and linked from test notes.
+
+## `release.md` (`type: [[release]]`)
+
+Purpose: first-class release record with traceability to shipped features, changes, and verified tests.
+
+Naming:
+- Filename should be `REL-####-v<version>.md`; `id` should match the `REL-####` prefix.
+
+Fields:
+- (required) `version` (string): Human version string (e.g. `1.4.0`).
+- (required) `tag` (string): VCS tag for the release (e.g. `v1.4.0`).
+- (required) `date` (date string): Release (or planned release) date.
+- (optional) `platform` (string): Target platform/channel when the project ships more than one.
+- (recommended) `features` (list of links): `[[FEAT-...]]` shipped in this release.
+- (recommended) `changes` (list of links): `[[CHG-...]]` notes included in this release.
+- (recommended) `tests_verified` (list of links): `[[TST-...]]` verified for this release (see `../../tools/skills/release-verification/SKILL.md`).
+- (recommended) `previous_release` (string/link): The prior `REL-*` for rollback targeting.
+
+Where used:
+- Tracked in `SNAPSHOT.yaml` (`items.releases`) and summarized in the optional `releases.latest`/`releases.history` block.
+
+## `plan.md` (`type: [[plan]]`)
+
+Purpose: per-feature implementation plan living at `docs/features/<slug>/plan/PLAN.md`; the checklist of tasks that deliver the parent feature.
+
+Fields:
+- (required) `parent` (link): The `[[FEAT-...]]` this plan delivers. (Feature-scaffold generated plans may use `parent` only; the template's `id`/`implements` fields are optional for plans.)
+- (optional) `implements` (list of links): Requirements the plan addresses.
+
+Where used:
+- Not tracked in `SNAPSHOT.yaml`; discovered via its parent feature's directory.
 
 ## `workflow.md` (`type: [[workflow]]`)
 

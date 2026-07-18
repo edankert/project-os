@@ -57,6 +57,7 @@ ALLOWED_STATUS = {
     "change": {"merged", "reverted"},
     "adr": {"proposed", "accepted", "rejected", "superseded"},
     "test": {"draft", "ready", "passing", "failing", "blocked", "deprecated"},
+    "release": {"draft", "staged", "released", "rolled-back"},
 }
 
 def load_allowed_status(root):
@@ -101,6 +102,87 @@ RELATIONSHIP_FIELDS = (
     "parent", "features", "tasks", "issues", "requirements", "tests",
     "phases", "phase", "depends", "blocks", "mitigation_tasks", "workflows",
 )
+
+# metrics.counts definitions live in tools/instructions/SNAPSHOT.md ("Metrics")
+METRIC_PREFIXES = {"FEAT", "TASK", "ISS", "PHASE", "TST", "RISK", "REL", "ADR"}
+
+
+def compute_metric_counts(items, note_index):
+    """Counts over all notes in docs/ (the archive) plus snapshot items; snapshot status wins where both exist."""
+    statuses = {}
+    for coll in (items.values() if isinstance(items, dict) else []):
+        if not isinstance(coll, dict):
+            continue
+        for item_id, entry in coll.items():
+            if isinstance(entry, dict):
+                statuses[item_id] = str(entry.get("status", "") or "")
+    for nid, (_path, fm) in note_index.items():
+        statuses.setdefault(nid, str((fm or {}).get("status", "") or ""))
+    by_prefix = {}
+    for the_id, status in statuses.items():
+        m = ID_RE.match(the_id)
+        if m and m.group(1) in METRIC_PREFIXES:
+            by_prefix.setdefault(m.group(1), []).append(status)
+
+    def count(prefix, allowed=None):
+        vals = by_prefix.get(prefix, [])
+        return len(vals) if allowed is None else sum(1 for s in vals if s in allowed)
+
+    return {
+        "features_total": count("FEAT"),
+        "features_done": count("FEAT", {"done"}),
+        "phases_total": count("PHASE"),
+        "phases_done": count("PHASE", {"done"}),
+        "tasks_total": count("TASK"),
+        "tasks_done": count("TASK", {"done"}),
+        "tests_total": count("TST"),
+        "tests_passing": count("TST", {"passing"}),
+        "tests_failing": count("TST", {"failing"}),
+        "issues_open": count("ISS", {"open", "in-progress", "blocked", "reopened"}),
+        "issues_triage": count("ISS", {"triage"}),
+        "risks_open": count("RISK", {"open", "mitigating", "monitoring"}),
+        "releases_total": count("REL"),
+        "decisions_total": count("ADR"),
+    }
+
+
+def fix_metrics(root):
+    """Rewrite metrics.counts values in SNAPSHOT.yaml to the computed counts, preserving formatting."""
+    snap_path = root / "SNAPSHOT.yaml"
+    text = snap_path.read_text(encoding="utf-8")
+    snap = load_yaml(text)
+    if not isinstance(snap, dict):
+        return []
+    computed = compute_metric_counts(snap.get("items") or {}, build_note_index(root / "docs"))
+    lines = text.splitlines(keepends=True)
+    changes = []
+    in_metrics = in_counts = False
+    counts_indent = 0
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if re.match(r"^metrics:\s*(#.*)?$", line):
+            in_metrics = True
+            continue
+        if in_metrics and re.match(r"^\S", line):
+            break  # next top-level key
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if in_metrics and re.match(r"^\s+counts:\s*(#.*)?$", line):
+            in_counts, counts_indent = True, indent
+            continue
+        if in_counts:
+            if indent <= counts_indent:
+                in_counts = False
+                continue
+            m = re.match(r"^(\s*)([\w-]+):\s*(-?\d+)\s*(#.*)?$", line)
+            if m and m.group(2) in computed and int(m.group(3)) != computed[m.group(2)]:
+                trailing = (" " + m.group(4)) if m.group(4) else ""
+                lines[i] = "%s%s: %d%s\n" % (m.group(1), m.group(2), computed[m.group(2)], trailing)
+                changes.append("%s: %s -> %d" % (m.group(2), m.group(3), computed[m.group(2)]))
+    if changes:
+        snap_path.write_text("".join(lines), encoding="utf-8")
+    return changes
 
 
 # ---------------------------------------------------------------- YAML subset
@@ -394,6 +476,42 @@ def validate(root, report):
     for nid in sorted(note_index):
         check_counter(nid, str(note_index[nid][0].relative_to(root)))
 
+    # -- metrics counts (computed vs recorded; SNAPSHOT.md "Metrics")
+    metrics = snap.get("metrics") or {}
+    counts = metrics.get("counts") if isinstance(metrics, dict) else None
+    if isinstance(counts, dict):
+        computed = compute_metric_counts(items, note_index)
+        for key in sorted(counts):
+            if key not in computed:
+                continue
+            val = counts[key]
+            try:
+                recorded = int(val)
+            except (TypeError, ValueError):
+                report.error("METRICS", "metrics.counts.%s is not an integer: %r" % (key, val))
+                continue
+            if recorded != computed[key]:
+                report.error("METRICS", "metrics.counts.%s is %d but computed %d (run validate-docs.sh --fix-metrics)" % (key, recorded, computed[key]))
+
+    # -- independent-review fields (QUALITY.md "Independent review (different-model)")
+    for coll_name, settled in (("tests", {"passing"}), ("changes", {"merged"})):
+        coll = items.get(coll_name) or {}
+        if not isinstance(coll, dict):
+            continue
+        for item_id, entry in coll.items():
+            if not isinstance(entry, dict):
+                continue
+            status = str(entry.get("status", ""))
+            if status not in settled:
+                continue
+            file_rel = entry.get("file") or entry.get("path") or ""
+            fm = parse_frontmatter(root / file_rel) or {} if file_rel and (root / file_rel).is_file() else {}
+            verdict = str(fm.get("review_verdict", "") or entry.get("review_verdict", "") or "").strip()
+            if verdict == "changes-requested":
+                report.error("REVIEW", "%s is '%s' but review_verdict is changes-requested" % (item_id, status))
+            elif not verdict:
+                report.warn("REVIEW", "%s is '%s' without independent review (reviewed_by/review_verdict); see QUALITY.md" % (item_id, status))
+
     # -- focus resolution
     focus = snap.get("focus") or {}
     if isinstance(focus, dict):
@@ -419,6 +537,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Validate project-os SNAPSHOT.yaml <-> docs/ consistency.")
     ap.add_argument("--repo-root", default=None, help="Repo root (default: nearest ancestor with SNAPSHOT.yaml)")
     ap.add_argument("--quiet", action="store_true", help="Suppress warnings and the success line")
+    ap.add_argument("--fix-metrics", action="store_true", help="Rewrite metrics.counts to the computed counts before validating")
     args = ap.parse_args(argv)
 
     if args.repo_root:
@@ -430,6 +549,14 @@ def main(argv=None):
     if not (root / "SNAPSHOT.yaml").is_file():
         print("validate-docs: no SNAPSHOT.yaml found from %s upward" % Path.cwd(), file=sys.stderr)
         return 2
+
+    if args.fix_metrics:
+        try:
+            for change in fix_metrics(root):
+                print("validate-docs: fixed metrics.counts.%s" % change)
+        except Exception as exc:  # noqa: BLE001
+            print("validate-docs: --fix-metrics failed: %s" % exc, file=sys.stderr)
+            return 2
 
     report = Report()
     try:

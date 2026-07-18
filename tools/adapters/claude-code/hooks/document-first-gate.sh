@@ -23,7 +23,7 @@ fi
 
 # Allow edits to documentation and config files
 case "$FILE_PATH" in
-  */docs/*|*/tools/*|*SNAPSHOT.yaml|*CLAUDE.md|*CONTEXT.md|*README.md|*AGENTS.md|*.cursor/*)
+  */docs/*|*/tools/*|*SNAPSHOT.yaml|*CLAUDE.md|*CONTEXT.md|*README.md|*AGENTS.md|*LLM_BRIEF.md|*.cursor/*|*/.claude/*|*/.github/*|*.prettierrc|*.markdownlint*|*.yamllint*|*.gitignore|*.project-os-sync)
     exit 0
     ;;
 esac
@@ -36,8 +36,17 @@ if [ ! -f "$SNAPSHOT" ]; then
   exit 0
 fi
 
-FOCUS_TASK=$(grep -A1 '^focus:' "$SNAPSHOT" | grep 'task:' | sed 's/.*task:[[:space:]]*//' | tr -d '"' | tr -d "'")
-FOCUS_ISSUE=$(grep -A3 '^focus:' "$SNAPSHOT" | grep 'issue:' | sed 's/.*issue:[[:space:]]*//' | tr -d '"' | tr -d "'")
+# Template placeholder snapshot (template.replace_me: true) cannot carry focus; allow
+if grep -qE '^[[:space:]]*replace_me:[[:space:]]*true' "$SNAPSHOT"; then
+  exit 0
+fi
+
+# Extract task:/issue: from the focus block (from ^focus: to the next top-level key)
+focus_value() {
+  sed -n '/^focus:/,/^[^[:space:]]/p' "$SNAPSHOT" | grep -E "^[[:space:]]+$1:" | head -1 | sed -E "s/^[[:space:]]+$1:[[:space:]]*//" | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '[:space:]'
+}
+FOCUS_TASK=$(focus_value task)
+FOCUS_ISSUE=$(focus_value issue)
 
 if [ -z "$FOCUS_TASK" ] && [ -z "$FOCUS_ISSUE" ]; then
   cat <<'EOF'

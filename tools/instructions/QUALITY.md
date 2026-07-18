@@ -4,7 +4,7 @@ id: INSTR-QUALITY
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-01-27
+updated: 2026-07-17
 tags: [instructions, quality]
 ---
 
@@ -21,9 +21,9 @@ These rules define what “done” means for work tracked in this documentation 
 - If behavior/paths/contracts changed, create a `CHG-*` note and link it.
 
 ## Documentation Fidelity
-- Ensure `metrics` in `../../SNAPSHOT.yaml` accurately reflect the count of `done` features and tasks.
+- Ensure `metrics.counts` in `../../SNAPSHOT.yaml` matches the computed counts (definitions in `SNAPSHOT.md`); the validator checks this and `bash tools/scripts/validate-docs.sh --fix-metrics` rewrites the block when it drifts.
 - Verify that every item in the snapshot has a valid `file` path that exists on disk.
-- Discrepancies between the filesystem and the snapshot are considered a build failure — literally: `tools/scripts/validate-docs.sh` exits non-zero on them and runs at three mechanical layers (session Stop hook, git pre-commit via `tools/scripts/install-git-hooks.sh`, and CI via `.github/workflows/validate-docs.yml`).
+- Discrepancies between the filesystem and the snapshot are considered a build failure — literally: `tools/scripts/validate-docs.sh` exits non-zero on them (metric-count drift included) and runs at three mechanical layers (session Stop hook, git pre-commit via `tools/scripts/install-git-hooks.sh`, and CI via `.github/workflows/validate-docs.yml`).
 - **Mechanical enforcement:** run `bash tools/scripts/validate-docs.sh` to check snapshot↔filesystem agreement, frontmatter/status consistency, counter integrity, link-graph integrity, and the verification invariant. Convention-only rules get silently skipped under context pressure; the validator does not.
 - **Reconciliation:** Use the `snapshot-sync` skill (`../skills/snapshot-sync/SKILL.md`) to reconcile any drift the validator reports; use `../skills/docs-audit/SKILL.md` for the semantic (cross-document) consistency the validator cannot check mechanically.
 

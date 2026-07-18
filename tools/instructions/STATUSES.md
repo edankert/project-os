@@ -4,7 +4,7 @@ id: INSTR-STATUSES
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-01-27
+updated: 2026-07-17
 tags: [instructions, statuses]
 ---
 
@@ -76,3 +76,16 @@ If a project needs different states, update this file and the templates in `../.
   - `draft` → `ready` → `passing`
   - `ready` → `failing` → `ready`
   - `ready` → `blocked` → `ready`
+
+## `[[release]]`
+- Allowed: `draft`, `staged`, `released`, `rolled-back`
+- Typical transitions:
+  - `draft` → `staged` → `released` (`staged` = verified and ready to deploy, not yet live; see `../skills/release-verification/SKILL.md`)
+  - `released` → `rolled-back` (rollback occurred; keep the note and link the successor release when one ships)
+
+## `[[plan]]`
+- Allowed: `draft`, `active`, `done`, `superseded`
+- Plans follow their parent feature; most projects leave plans at `draft`/`active`.
+
+## `[[reference]]`
+- Allowed: `active`, `deprecated`

@@ -4,7 +4,7 @@ id: INSTR-SNAPSHOT
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-01-27
+updated: 2026-07-17
 tags: [instructions, snapshot]
 ---
 
@@ -40,6 +40,7 @@ The snapshot should contain (at least) these collections:
 - `items.workflows`
 - `items.changes`
 - `items.decisions` (ADRs)
+- `items.releases`
 
 Projects may add collections (e.g. `epics`, `milestones`) if rules are documented and applied consistently.
 
@@ -77,6 +78,7 @@ Then type-specific fields, for example:
 - Workflow: `entrypoints` (paths), optional `inputs`/`outputs`
 - Change: `commit`, `pr`, `issues` (ISS IDs), `features` (FEAT IDs)
 - Decision (ADR): `decision`, `context`, `supersedes`, `superseded`, `related` (IDs)
+- Release: `version`, `tag`, `date`, optional `platform`, `features` (FEAT IDs), `changes` (CHG IDs), `tests_verified` (TST IDs), `previous_release`
 
 ## Invariants
 - `file` must point to an existing note under `../../docs/`, and the note’s frontmatter `id` should match the snapshot key.
@@ -85,6 +87,18 @@ Then type-specific fields, for example:
   - If an item has `phase: PHASE-0001`, `items.phases.PHASE-0001` should list that item under the appropriate collection when phase notes are used.
   - If a task `parent: FEAT-0001`, that feature’s `tasks` must include the task ID.
   - If an issue lists `features: [FEAT-0001]`, the feature should list the issue under `issues` (unless intentionally omitted).
+
+## Metrics (`metrics.counts`)
+
+`metrics.counts` values are **computed, not hand-maintained**: `tools/scripts/validate-docs.py` recomputes them from all notes under `docs/` (the archive) plus snapshot items, reports discrepancies as errors, and rewrites them with `--fix-metrics`. Definitions (only keys present in the repo's `metrics.counts` are checked):
+
+- `features_total` / `features_done`: all `FEAT-*`; done = status `done`.
+- `phases_total` / `phases_done`: all `PHASE-*`; done = status `done`.
+- `tasks_total` / `tasks_done`: all `TASK-*`; done = status `done`.
+- `tests_total` / `tests_passing` / `tests_failing`: all `TST-*`; by status `passing` / `failing`.
+- `issues_open`: `ISS-*` with status `open`, `in-progress`, `blocked`, or `reopened`; `issues_triage`: status `triage`.
+- `risks_open`: `RISK-*` with status `open`, `mitigating`, or `monitoring`.
+- `releases_total`: all `REL-*`; `decisions_total`: all `ADR-*`.
 
 ## Session fields (optional)
 Use these to support recovery and multi-agent collaboration:
