@@ -159,6 +159,8 @@ Both pins default to the strongest available Claude model, because planning and 
 
 `HC-008` (`hooks/model-routing-hint.sh`) injects a per-prompt hint derived from the focus item's status so the delegation actually happens; a hook cannot change the session model, so the hint is advisory and the pins do the routing.
 
+Two Claude Code behaviours to know when relying on this. A **resumed** session keeps the model its transcript was saved with, regardless of the `model` key in `.claude/settings.json` — so the "keep the session model off `REVIEWER_MODEL`" advice above silently stops holding after a resume; check `/model`, or start a fresh session. And the agent-file watcher only covers directories that **existed at session start**: creating `.claude/agents/` for the first time needs a new session before the subagents resolve (edits to files in an already-present directory hot-reload within seconds).
+
 To retarget the pins, edit `PLANNER_MODEL`/`REVIEWER_MODEL` and re-run the generator. Downstream repos inherit both the hook and the pins through the template sync plus a generator run (`tools/skills/adapter-sync/SKILL.md`).
 
 ## Project-specific customization
