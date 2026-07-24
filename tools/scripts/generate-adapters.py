@@ -5,7 +5,8 @@ Single source of truth stays in tools/skills/*/SKILL.md and tools/instructions/*
 this script derives, deterministically:
 
   .claude/skills/<name>/SKILL.md   Claude Code native skills (auto-discovered, /name invocable)
-  .claude/agents/independent-reviewer.md   Claude Code subagent for QUALITY.md independent review
+  .claude/agents/planner.md                Claude Code subagent for LIFECYCLE.md preflight (model-pinned)
+  .claude/agents/independent-reviewer.md   Claude Code subagent for QUALITY.md independent review (model-pinned)
   .cursor/rules/*.mdc              Cursor rules (instructions inlined per the cursor adapter mapping)
 
 With --install-hooks it also installs the Claude Code hook set into .claude/settings.json
@@ -35,19 +36,50 @@ CURSOR_RULES = [
     ("MARKDOWN.md", "markdown", ["**/*.md"]),
 ]
 
+# Model routing (HC-008). The lifecycle phases that most reward capability —
+# planning and adversarial review — get the strongest pins. Full model IDs, not
+# aliases, so `reviewed_by` stays deterministic across releases.
+#
+# These pins do NOT satisfy the independence rule. QUALITY.md ("Independent
+# review") and independent-review/SKILL.md require a different model *family* or
+# a human, and Claude Code subagents can only pin Claude models. Pinning the
+# reviewer away from the likely authoring model reduces same-model self-review,
+# which is worth having, but a cross-vendor or human pass is still required
+# before a review counts as independent. Do not let the pin difference be
+# mistaken for the guarantee.
+PLANNER_MODEL = "claude-fable-5"
+REVIEWER_MODEL = "claude-fable-5"
+
+PLANNER_AGENT = """---
+name: planner
+description: project-os preflight — classify the prompt, allocate IDs, update SNAPSHOT.yaml and create the notes before any code is written. Use PROACTIVELY whenever a prompt implies work (bugfix, feature, refactor, behavior change) that has no snapshot item yet, and for scoping or re-planning questions.
+model: %s
+---
+
+You are the project-os planning agent. You own preflight (`tools/instructions/LIFECYCLE.md`, "Preflight (must happen before code changes)") and nothing else.
+
+1. Follow the canonical playbooks rather than improvising: `tools/skills/issue-intake/SKILL.md` (including its spec-ambiguity check before any ID is allocated), `tools/skills/feature-scaffold/SKILL.md`, `tools/skills/task-breakdown/SKILL.md`, `tools/skills/impact-analysis/SKILL.md`, and `tools/skills/backlog-grooming/SKILL.md` when the prompt is about ordering rather than new work.
+2. Update `SNAPSHOT.yaml` first (allocate IDs by incrementing `counters`, create `items.*` entries with relationships, set `focus`), then create the notes from `docs/__templates__/` with frontmatter consistent with the snapshot.
+3. Respect phase boundaries (`docs/PHASES.md`): flag future-phase dependencies instead of quietly planning around them.
+4. Do not write or edit implementation code. Planning artifacts only — the main loop implements what you plan.
+5. If the request is ambiguous, stop and return the ambiguities as questions instead of allocating IDs. Ambiguity is upstream of documentation and cannot be fixed by tracking.
+
+Return the allocated IDs with their paths, a short plan summary per item, any impact-analysis conflicts, and open questions.
+""" % PLANNER_MODEL
+
 REVIEWER_AGENT = """---
 name: independent-reviewer
 description: Independent review pass required by project-os QUALITY.md — any change that creates or updates a TST-* or CHG-* note, or transitions a requirement to verified / feature to done. Reviews adversarially and records reviewed_by/review_date/review_verdict in the note frontmatter.
-model: claude-opus-4-8
+model: %(model)s
 ---
 
 You are the project-os independent reviewer. Your review counts only if you genuinely try to refute the work, not confirm it.
 
 1. Read `tools/skills/independent-review/SKILL.md` in full and follow it exactly.
 2. Read the notes under review (TST-*/CHG-*/REQ-*/FEAT-*) and the code or docs they claim to cover; attempt to refute each claim (does the test fail when the fix is broken? does the change note match what actually changed?).
-3. Record the outcome in each reviewed note's frontmatter: `reviewed_by: model:claude-opus-4-8`, `review_date: <today>`, `review_verdict: approved` or `changes-requested` (with your findings in the note body).
-4. Independence caveat: you are a Claude-family model. If the work under review was authored by a Claude-family session, say so explicitly in your report and recommend a cross-vendor review (a different model family via an external tool, or a human) per QUALITY.md — record such reviews manually. Do not silently present same-family review as fully independent.
-"""
+3. Record the outcome in each reviewed note's frontmatter: `reviewed_by: model:%(model)s`, `review_date: <today>`, `review_verdict: approved` or `changes-requested` (with your findings in the note body).
+4. Independence caveat: you are a Claude-family model, and QUALITY.md requires a different model *family* or a human. Your pin differs from the model the implementation loop is expected to run, which reduces same-model self-review — but it does NOT make this pass independent. If the work under review was authored by any Claude-family session (it usually was), say so explicitly in your report and recommend a cross-vendor review (a different model family via an external tool, or a human) per QUALITY.md — record such reviews manually. Never present same-family review as fully independent, and never let a differing model pin stand in for that disclosure. If the work was authored by this same model, escalate: that is self-review and your verdict cannot settle it.
+""" % {"model": REVIEWER_MODEL}
 
 
 def fail(msg):
@@ -139,6 +171,7 @@ def generate(root):
         _fm, body = parse_frontmatter_body(skill_path.read_text(encoding="utf-8"))
         out[".claude/skills/%s/SKILL.md" % name] = build_skill(name, src_rel, body)
 
+    out[".claude/agents/planner.md"] = PLANNER_AGENT
     out[".claude/agents/independent-reviewer.md"] = REVIEWER_AGENT
 
     instr_dir = root / "tools" / "instructions"
