@@ -10,16 +10,9 @@ project:
   summary: "REPLACE ME"
   repo_root: "REPLACE ME"
 
-# Optional session metadata for recovery/multi-agent coordination.
-# session:
-#   agent_id: "agent-identifier"
-#   started: "2026-01-29T12:00Z"
-#   last_heartbeat: "2026-01-29T12:30Z"
-#   current_step: "Drafting feature notes for existing project import"
-#
-# Optional team model for multi-user/multi-agent projects.
-# Agent coordination is handled by your tool's native orchestration
-# (e.g., Claude Code Agent Teams, Codex parallel agents).
+# Optional team model for multi-user/multi-agent projects. Descriptive only:
+# project-os keeps no session/claim/heartbeat state — coordination is delegated
+# to the tool's native orchestration (see tools/instructions/SNAPSHOT.md).
 # team:
 #   members:
 #     - id: user:edwin

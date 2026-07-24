@@ -4,7 +4,7 @@ id: TEMPLATES-SCHEMAS
 status: active
 owner: team:docs
 created: 2026-01-27
-updated: 2026-07-17
+updated: 2026-07-21
 tags: [templates, schema]
 ---
 
@@ -35,6 +35,9 @@ Conventions (naming, linking, property rules): `../../tools/instructions/OBSIDIA
   - Prefer links (`[[...]]`) when pointing to other notes in this docs set.
 - (optional) `source` (list of strings/links): Provenance for imported/derived items.
   - Use for links to external trackers, changelogs, or source documents.
+- (optional) `origin` (link): The former parent an item was descoped from when it was `deferred`.
+  - Set by the deferral procedure (`tools/instructions/STATUSES.md`, "Deferral and re-adoption"); kept as history after re-adoption.
+  - Distinct from `source` (import provenance): `origin` records where work was originally scoped inside this project.
 
 ## `adr.md` (`type: [[adr]]`)
 
@@ -79,7 +82,8 @@ Purpose: a work package describing a capability, with traceability to requiremen
 Fields:
 - (required) `goal` (string): Short outcome statement.
 - (optional) `requirements` (list of links): `[[REQ-...]]` links implemented by this feature.
-- (optional) `tasks` (list of links): `[[TASK-...]]` links that deliver the feature.
+- (optional) `tasks` (list of links): `[[TASK-...]]` links that deliver the feature — the feature's **current scope**; the feature can only be `done` when every listed task is `done` or `cancelled`.
+- (optional) `deferred` (list of links): `[[TASK-...]]` links descoped out of the feature via the deferral procedure (each keeps `origin` pointing back here). Not part of completeness.
 - (optional) `tests` (list of links): `[[TST-...]]` links used to verify the feature.
 - (optional) `release` (string): Milestone/release label.
 
@@ -125,8 +129,10 @@ Purpose: acceptance criteria that features/tasks must satisfy.
 Fields:
 - (required) `priority` (string): e.g. `low|medium|high` (project-defined).
 - (optional) `scope` (string): Short scoping label (area/domain).
-- (required) `acceptance` (list): Acceptance criteria statements (strings).
-- (optional) `implements` (list of links): Notes implementing the requirement (usually features).
+- (required) `acceptance` (list): Acceptance criteria statements (strings). This list is the **criteria of record** — the machine-readable contract other notes and tooling refer to.
+  - The body `## Acceptance Criteria` checkboxes are the **verification record**: one box per criterion, ticked only with an evidence pointer (path, `path:line`, command, or note ID) at feature close-out.
+  - Both surfaces must describe the same criteria; where they diverge, frontmatter wins and the body is corrected. Departures from a criterion are amended/superseded with rationale (an `## Amendments` section), never ticked to fit — see `../../tools/skills/close-out/SKILL.md`, "Requirement advancement".
+- (optional) `implements` (list of links): Notes implementing the requirement (usually features). Direction note: this names the features that implement *this requirement*; the requirement advances to `implemented` only when **all** of them are `done`.
 - (optional) `verifies` (list of links/paths): Proof/verification pointers (workflows/tests/repo paths).
 - (optional) `tests` (list of links): `[[TST-...]]` links that verify this requirement.
 

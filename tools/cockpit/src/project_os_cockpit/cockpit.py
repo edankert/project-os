@@ -96,10 +96,12 @@ TYPE_ORDER: tuple[str, ...] = (
 _TYPE_RANK: dict[str, int] = {t: i for i, t in enumerate(TYPE_ORDER)}
 
 # Order for the "tasks by status" left-pane mode. Items the user is
-# actively touching first; archived states last.
+# actively touching first; archived states last. `deferred` sits in the
+# parked band with blocked — it is descoped-but-still-wanted work, not
+# archived history (project-os STATUSES.md, "Deferral and re-adoption").
 TASK_STATUS_ORDER: tuple[str, ...] = (
     "doing", "in-progress", "in-review", "next",
-    "blocked", "failing", "reopened",
+    "blocked", "failing", "reopened", "deferred",
     "ready", "active", "approved", "accepted",
     "planned", "triage",
     "todo", "open", "pending", "backlog",
@@ -107,7 +109,7 @@ TASK_STATUS_ORDER: tuple[str, ...] = (
     "done", "merged", "fixed", "fulfilled", "met", "complete",
     "verified", "passing", "published", "closed",
     "obsolete", "retired", "cancelled", "superseded", "wont-fix", "reverted",
-    "reference", "deferred",
+    "reference",
 )
 _TASK_STATUS_RANK: dict[str, int] = {s: i for i, s in enumerate(TASK_STATUS_ORDER)}
 
