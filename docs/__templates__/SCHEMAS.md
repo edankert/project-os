@@ -132,7 +132,7 @@ Fields:
 - (required) `acceptance` (list): Acceptance criteria statements (strings). This list is the **criteria of record** — the machine-readable contract other notes and tooling refer to.
   - The body `## Acceptance Criteria` checkboxes are the **verification record**: one box per criterion, ticked only with an evidence pointer (path, `path:line`, command, or note ID) at feature close-out.
   - Both surfaces must describe the same criteria; where they diverge, frontmatter wins and the body is corrected. Departures from a criterion are amended/superseded with rationale (an `## Amendments` section), never ticked to fit — see `../../tools/skills/close-out/SKILL.md`, "Requirement advancement".
-- (optional) `implements` (list of links): Notes implementing the requirement (usually features). Direction note: this names the features that implement *this requirement*; the requirement advances to `implemented` only when **all** of them are `done`.
+- (optional) `implements` (link): The feature implementing this requirement. Direction note: this names the feature that implements *this requirement* (the inverse-named back-reference), and it holds **at most one** feature — two or more is a validator error (ADR-0007). The requirement advances to `implemented` when that feature is `done` and its own acceptance criteria are ticked-with-evidence or reconciled. Empty is permitted: a requirement naming no feature gates no feature.
 - (optional) `verifies` (list of links/paths): Proof/verification pointers (workflows/tests/repo paths).
 - (optional) `tests` (list of links): `[[TST-...]]` links that verify this requirement.
 
