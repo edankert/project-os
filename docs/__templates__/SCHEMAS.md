@@ -188,6 +188,9 @@ Fields:
 - (required) `kind` (string): `manual|automated`.
 - (recommended) `level` (string): `unit|integration|system|e2e|acceptance`.
 - (optional) `entrypoint` (string): Repo-relative command/script to run (or blank for purely manual tests).
+- (optional) `command` (string): A runnable check. **When present, `status` is written only by `tools/scripts/run-tests.py` from the exit code, never by an author** (ADR-0010) — the party seeking a transition must not also certify that the transition is allowed. A hand-edited `status` on a note carrying a `command` is a validator error.
+- (required for manual tests) `last_verified` (date): When a human last performed the procedure. A manual test past the project's staleness window stops satisfying the verification gate — verification that was true a year ago is not evidence about today's system.
+- `status` (ADR-0008): `ready` (defined, not yet executed) → `passing` / `failing`. `draft`, `blocked` and `deprecated` were removed. `ready` is the state a new test note is created in, and `failing` became reachable for the first time when execution began writing the status.
 - (recommended) `requirements` (list of links): Requirements verified by this test (`[[REQ-...]]`).
 - (optional) `features` (list of links): Related features (`[[FEAT-...]]`).
 - (optional) `issues` (list of links): Related issues (`[[ISS-...]]`).
