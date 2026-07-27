@@ -48,6 +48,7 @@ counters:
   ADR: 0
   CHG:
     last_date: 0
+  DES: 0
   FEAT: 0
   ISS: 0
   PHASE: 0
@@ -78,6 +79,7 @@ items:
   workflows: {}
   changes: {}
   decisions: {}
+  designs: {}
 
 # Latest release context for agents (lightweight; full history in REL-* notes).
 # releases:
