@@ -37,3 +37,25 @@ It returns clean when git is unavailable or the directory is not a repository. A
 ## Note on the shape of the fix
 
 Steps 1 and 2 are mechanical; step 3 is a document. Only the first two would have caught this unaided — but the false sentence is what made the failure *reportable as a success* for days, so correcting it is not decoration. A check that fails in both places is a nuisance; one that passes locally and fails remotely for a structural reason actively manufactures false confidence.
+
+
+## Follow-up: divergence triage
+
+`DIVERGED` said only *that* a file differs, leaving the operator to hand-diff before they could act — and it covered two cases wanting opposite responses: a fix made downstream and never pushed up (forcing destroys it, silently and permanently) versus a merely older copy (forcing is correct and loses nothing).
+
+The sync now labels each one:
+
+| label | meaning |
+|---|---|
+| `SUBSET` | every downstream line exists upstream — `--force` is safe |
+| `LOCAL-CONTENT` | N lines exist only downstream — `--force` discards them |
+| `CONFLICT` | both sides moved since the baseline |
+| `UNKNOWN` | no baseline recorded, so no claim is made |
+
+### What it deliberately does not say
+
+The first draft called the second case `PUSH-UPSTREAM` and told the operator to upstream those lines. Run against a real repo it immediately proved that wrong: six repos carry an older `migrate-status-vocabulary.py` whose downstream-only lines are an **outdated docstring**, and instructing anyone to push those into the template would have been confidently incorrect.
+
+Whether downstream-only content is a valuable fix or stale prose is a judgement the tool cannot make. It now reports the fact and stops — `LOCAL-CONTENT` names what exists, and the operator reads the diff. `UNKNOWN` follows the same discipline: an inability to tell is not evidence either way.
+
+Only `SUBSET` is a safety claim, and it is the one the tool can actually prove.
