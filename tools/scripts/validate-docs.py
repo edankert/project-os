@@ -52,7 +52,17 @@ import re
 import sys
 from pathlib import Path
 
-ID_PREFIXES = ("ADR", "DES", "FEAT", "ISS", "PHASE", "REQ", "RISK", "REL",
+# REF belongs here because docs/__templates__/reference.md ships with the
+# template: REF-* is a first-class note type, and every other shipped type is
+# listed. ID_RE is built from this tuple and is what recognises an ID in a
+# filename, a frontmatter `id:`, or link text, so a prefix missing here is
+# outside the ID machinery entirely.
+#
+# Honest caveat: no failing case was found for the omission — a dangling
+# [[REF-9999]] in body prose and in a `related:` field both went unreported
+# either way, and `--report-unregistered` listed the note in neither. This is
+# a consistency fix, not a demonstrated bug fix.
+ID_PREFIXES = ("ADR", "DES", "FEAT", "ISS", "PHASE", "REF", "REQ", "RISK", "REL",
                "TASK", "TST", "WF")
 ID_RE = re.compile(r"\b(%s)-(\d{2,})\b" % "|".join(ID_PREFIXES))
 
@@ -1455,7 +1465,15 @@ def validate(root, report):
                     "%s declares a command: and is '%s' but has no last_run:; an executable test's status is "
                     "written by tools/scripts/run-tests.py, never by hand (ADR-0010) (%s)" % (the_id, status, rel))
         else:
-            if not has_value((fm or {}).get("last_verified")):
+            if status == "ready":
+                # `ready` means defined but not yet executed -- STATUSES.md calls it
+                # "the only honest state for a check that has never run". Demanding a
+                # last_verified: date here would force the author to assert a run that
+                # did not happen, which is the assertion problem ADR-0010 removed. A
+                # `ready` test satisfies no verification gate anyway, so nothing is
+                # weakened by letting it say so.
+                pass
+            elif not has_value((fm or {}).get("last_verified")):
                 emit_for("TEST-FIELDS", the_id)(
                     "TEST-FIELDS",
                     "%s is a manual test with no last_verified:; record when the procedure was last performed, "
