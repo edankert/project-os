@@ -52,17 +52,7 @@ import re
 import sys
 from pathlib import Path
 
-# REF belongs here because docs/__templates__/reference.md ships with the
-# template: REF-* is a first-class note type, and every other shipped type is
-# listed. ID_RE is built from this tuple and is what recognises an ID in a
-# filename, a frontmatter `id:`, or link text, so a prefix missing here is
-# outside the ID machinery entirely.
-#
-# Honest caveat: no failing case was found for the omission — a dangling
-# [[REF-9999]] in body prose and in a `related:` field both went unreported
-# either way, and `--report-unregistered` listed the note in neither. This is
-# a consistency fix, not a demonstrated bug fix.
-ID_PREFIXES = ("ADR", "DES", "FEAT", "ISS", "PHASE", "REF", "REQ", "RISK", "REL",
+ID_PREFIXES = ("ADR", "DES", "FEAT", "ISS", "PHASE", "REQ", "RISK", "REL",
                "TASK", "TST", "WF")
 ID_RE = re.compile(r"\b(%s)-(\d{2,})\b" % "|".join(ID_PREFIXES))
 
@@ -670,7 +660,7 @@ def load_grandfathered(root):
 METRIC_PREFIXES = {"FEAT", "TASK", "ISS", "PHASE", "TST", "RISK", "REL", "ADR", "REQ"}
 
 
-def compute_metric_counts(items, note_index):
+def compute_metric_counts(items, note_index, claimants=None):
     """Counts over all notes in docs/ (the archive) plus snapshot items; snapshot status wins where both exist."""
     statuses = {}
     for coll in (items.values() if isinstance(items, dict) else []):
@@ -679,7 +669,28 @@ def compute_metric_counts(items, note_index):
         for item_id, entry in coll.items():
             if isinstance(entry, dict) and str(entry.get("status", "") or ""):
                 statuses[item_id] = str(entry.get("status", "") or "")
+    # The archive fallback must use only notes that genuinely CLAIM an id.
+    # `note_index` matches IDs as SUBSTRINGS, so a composite filename like
+    # CHG-20260525-FEAT-0009-Chrome-Polish.md is indexed under FEAT-0009 and,
+    # sorting first, lends a change note's `merged` to a feature. Pruning
+    # FEAT-0009's entry then let that manufactured claim decide the count, and
+    # features_done fell by one against a note that says `done`.
+    # `note_statuses` was taught this lesson; this counter was not. Rejecting
+    # the impostor is not enough on its own -- it holds the index slot, so the
+    # REAL note is absent from `note_index` under that id and the item would
+    # then be counted by nobody. `claimants` knows which file actually claims
+    # an id, so it supplies the status and the index is the fallback.
+    for nid, paths in (claimants or {}).items():
+        if len(paths) != 1:
+            continue
+        fm = parse_frontmatter(paths[0]) or {}
+        st = str(fm.get("status", "") or "").strip()
+        if st:
+            statuses.setdefault(nid, st)
     for nid, (_path, fm) in note_index.items():
+        claimed = str((fm or {}).get("id", "") or "").strip()
+        if claimed and claimed != nid:
+            continue
         statuses.setdefault(nid, str((fm or {}).get("status", "") or ""))
     by_prefix = {}
     for the_id, status in statuses.items():
@@ -702,7 +713,8 @@ def fix_metrics(root):
     snap = load_yaml(text)
     if not isinstance(snap, dict):
         return []
-    computed = compute_metric_counts(snap.get("items") or {}, build_note_index(root / "docs")[0])
+    _idx, _cl = build_note_index(root / "docs")
+    computed = compute_metric_counts(snap.get("items") or {}, _idx, _cl)
     lines = text.splitlines(keepends=True)
     changes = []
     in_metrics = in_counts = False
@@ -1465,15 +1477,7 @@ def validate(root, report):
                     "%s declares a command: and is '%s' but has no last_run:; an executable test's status is "
                     "written by tools/scripts/run-tests.py, never by hand (ADR-0010) (%s)" % (the_id, status, rel))
         else:
-            if status == "ready":
-                # `ready` means defined but not yet executed -- STATUSES.md calls it
-                # "the only honest state for a check that has never run". Demanding a
-                # last_verified: date here would force the author to assert a run that
-                # did not happen, which is the assertion problem ADR-0010 removed. A
-                # `ready` test satisfies no verification gate anyway, so nothing is
-                # weakened by letting it say so.
-                pass
-            elif not has_value((fm or {}).get("last_verified")):
+            if not has_value((fm or {}).get("last_verified")):
                 emit_for("TEST-FIELDS", the_id)(
                     "TEST-FIELDS",
                     "%s is a manual test with no last_verified:; record when the procedure was last performed, "
@@ -1686,7 +1690,7 @@ def validate(root, report):
     metrics = snap.get("metrics") or {}
     counts = metrics.get("counts") if isinstance(metrics, dict) else None
     if isinstance(counts, dict):
-        computed = compute_metric_counts(items, note_index)
+        computed = compute_metric_counts(items, note_index, note_claimants)
         for key in sorted(counts):
             if key not in computed:
                 continue
