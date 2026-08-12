@@ -18,6 +18,21 @@ related: []
 
 # <Decision Title>
 
+<!-- Only when the decision states a quantified rule — "every member of DOMAIN satisfies P".
+Uncomment and fill all three sections; semantics: tools/instructions/DECISIONS.md,
+"A decision that states a rule". The `## Rule` heading's presence is the marker, so an
+ordinary decision leaves this block commented or deletes it.
+
+## Rule
+<one testable sentence>
+
+## Domain
+<the set the rule ranges over>
+
+## Conformance
+<the named discharge, and which side is authoritative on disagreement>
+-->
+
 ## Context
 <Why a decision is needed>
 

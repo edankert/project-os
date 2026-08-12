@@ -51,6 +51,9 @@ Fields:
 - (optional) `supersedes` (string/link): Link to the ADR replaced by this one (prefer `[[ADR-....]]`).
 - (optional) `superseded` (string/link): Link to the ADR that replaces this one (prefer `[[ADR-....]]`).
 
+Body sections:
+- A decision stating a quantified rule carries `## Rule`, `## Domain` and `## Conformance` in its body — the rule-ADR convention, normative in `tools/instructions/DECISIONS.md` ("A decision that states a rule") and enforced by `DECISION-RULE`.
+
 Where used:
 - Referenced from `../decisions/README.md` for organization.
 
