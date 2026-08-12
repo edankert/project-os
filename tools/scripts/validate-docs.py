@@ -189,9 +189,17 @@ PLAN_FOLLOWS_FEATURE = {
 #: `(("tests", {"passing"}), ("changes", {"merged"}))` until ISS-0014 -- the
 #: last inline status collection in the file, and the one that falsified
 #: ISS-0013's "no inline status literal remains" claim.
+#:
+#: **`changes` left this table on 2026-08-12 (ADR-0019).** ADR-0011 promoted
+#: REVIEW on a dated cutover and left its scope an open question in its own
+#: consequences -- *"it is either wired into close-out so it does run, or its
+#: scope narrows"*. Measured a year on: the fleet carried 206 REVIEW findings
+#: at that ADR's writing and project-os-cockpit alone carried 87, every one a
+#: change note, none reviewed by anyone in six months. A change note records
+#: what happened; the review that catches something happens against the diff
+#: while the work is live, which is what the remaining entry gates.
 REVIEW_SETTLED_STATUSES = {
     "tests": ("passing",),
-    "changes": ("merged",),
 }
 
 #: Test statuses that only the runner may write (TEST-FIELDS, ADR-0010).
