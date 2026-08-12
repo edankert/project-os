@@ -21,7 +21,15 @@ related: []
 ## Context
 <Why a decision is needed>
 
+## Options
+<Only when the decision is a choice between paths. Either form; both are read,
+and `DECISION-OPTIONS` checks that one of them was used.>
+
+1. **<Label.>** <what it costs and what it buys>
+2. **<Label.>** <…>
+
 ## Decision
+<Name the option you propose — "Option 2" — so a surface can default to it.>
 <What we decided>
 
 ## Alternatives

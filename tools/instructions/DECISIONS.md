@@ -62,3 +62,29 @@ Three properties, each deliberate:
 - **The prose is quoted line by line**, so a note containing `---`, a heading, or its own callout cannot alter the file it lands in.
 
 Without this a project can record *that* a human decided and never *why* — measured in one repo across six write paths, exactly one carried the person's own words, and only onto a checkbox.
+
+## A decision that offers options
+
+If the decision is a choice between paths, put them under `## Options` so a person can be offered them and their answer can be recorded. **Either form**, both readable:
+
+```markdown
+## Options
+
+1. **Deprecate mode 1.** Honest about where the effort goes; loses the tablet reader.
+2. **Full parity.** Requires the write endpoints on a LAN-reachable surface. Refused: …
+3. **Mode 1 is the reading surface.** Every view that answers a question without …
+```
+
+```markdown
+## Options
+
+### 1. The human publishes, on cadence (status quo)
+
+The worker commits; a person pushes when they look…
+```
+
+Then **name the one you propose in the `## Decision` section** — "Option 3" — so a surface can default to it rather than guessing.
+
+**This is checked.** `DECISION-OPTIONS` is an error when an `## Options` section yields fewer than two readable options, or when they do not number `1..N`. That is deliberate: a control can only offer what a document declares, and a convention nobody validates drifts per author until the control silently stops appearing. It is an error rather than a dated warning because the convention is new and there is no debt to grandfather (ADR-0011).
+
+Recording a choice writes `decided_option:` in the frontmatter and names it in the decision-record callout. **Accepting without choosing stays legal** — a decision may be taken as proposed, and demanding a choice would turn an offer into a gate.
