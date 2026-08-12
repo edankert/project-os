@@ -26,3 +26,39 @@ Use ADRs (`../../docs/decisions/ADR-####-*.md`) for durable decisions that affec
 - If ADR B replaces ADR A:
   - ADR B sets `supersedes: [[ADR-A]]`
   - ADR A sets `superseded: [[ADR-B]]` and status becomes `superseded`
+
+## A decision that is not a yes/no
+
+Some ADRs propose an option and leave threads open inside their own consequences. Accepting one of those stamps every thread at once, which is how a decision sits `proposed` for months: the reader can see what they cannot answer.
+
+**Give the note an `## Acceptance` section and put each open thread in it as a criterion.** They are then tickable one at a time, with evidence, through the same machinery a feature's criteria use — no new mechanism, and the unticked ones are the honest residue.
+
+```markdown
+## Acceptance
+
+- [ ] **The read-only digest:** decided, or deferred with a home and a reason.
+- [ ] **`Recent`:** kept in both surfaces or dropped from both. Say which.
+```
+
+**Accepting with a criterion still open is allowed.** A person may take a decision while a thread stands, and the record should show that rather than prevent it. Blocking the verb would trade an honest record for a tidy one.
+
+Most ADRs are a genuine yes/no and need none of this. The section is available, not required.
+
+## Recording why, not only what
+
+Every human verb — accept, approve, decline, supersede, triage — may carry a **note**, and it is appended to the note being decided under a single `## Decision record` heading:
+
+```markdown
+## Decision record
+
+> [!note] Accept — 2026-08-12 (user:edwin)
+> Option 3, but consequence 3 needs the digest question settled first.
+```
+
+Three properties, each deliberate:
+
+- **It is an Obsidian callout.** One syntax, two readers: Obsidian renders it natively and so does the cockpit. A tool-only marker would make the record legible in one place.
+- **It appends.** A second decision adds a second callout; the first is never edited. A decision record that can be rewritten is not one.
+- **The prose is quoted line by line**, so a note containing `---`, a heading, or its own callout cannot alter the file it lands in.
+
+Without this a project can record *that* a human decided and never *why* — measured in one repo across six write paths, exactly one carried the person's own words, and only onto a checkbox.
