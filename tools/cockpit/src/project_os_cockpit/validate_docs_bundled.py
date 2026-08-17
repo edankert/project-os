@@ -52,8 +52,8 @@ import re
 import sys
 from pathlib import Path
 
-ID_PREFIXES = ("ADR", "DES", "FEAT", "ISS", "PHASE", "REQ", "RISK", "REL",
-               "TASK", "TST", "WF")
+ID_PREFIXES = ("ADR", "CHK", "DES", "FEAT", "ISS", "PHASE", "REQ", "RISK",
+               "REL", "TASK", "TST", "WF")
 ID_RE = re.compile(r"\b(%s)-(\d{2,})\b" % "|".join(ID_PREFIXES))
 
 COLLECTION_TYPE = {
@@ -64,6 +64,7 @@ COLLECTION_TYPE = {
     "phases": {"phase"},
     "risks": {"risk"},
     "tests": {"test"},
+    "checks": {"check"},
     "workflows": {"workflow"},
     "changes": {"change"},
     "decisions": {"adr", "decision"},
@@ -104,6 +105,10 @@ ALLOWED_STATUS = {
     # ISS-0015 replaced that pick with a union check.
     "decision": {"proposed", "accepted", "superseded"},
     "test": {"ready", "passing", "failing"},
+    # ADR-0030: `status` is the LIFECYCLE and the verdict is `mark:`. The
+    # absence that matters is `passing` -- a check cannot hold it, so the
+    # runner-only rule and the review gate never engage.
+    "check": {"draft", "active", "retired"},
     "release": {"draft", "released", "reverted"},
     # `plan` is consumed by validate_plan_notes through load_allowed_status(). It
     # belongs in the defaults like every other type: without it, a repo whose
@@ -212,6 +217,7 @@ METRIC_PREFIX_TYPE = {
     # `decisions_total` is a total (`allowed is None`) and the check `continue`d
     # before reaching the prefix. Every total metric was unguarded the same way.
     "ADR": "adr",
+    "CHK": "check",
 }
 
 #: metric name -> (ID prefix, statuses counted). `None` means "count them all".
@@ -248,12 +254,14 @@ METRIC_STATUS_FILTERS = {
 #: to the note type its value must be legal for.
 TERMINAL = {
     "tasks": "done",
+    "checks": "retired",
     "issues": "fixed",   # ADR-0008: `closed` merged into `fixed`; 3% follow-through fleet-wide
     "requirements": "implemented",
     "features": "done",
 }
 TERMINAL_TYPES = {
     "tasks": "task",
+    "checks": "check",
     "issues": "issue",
     "requirements": "requirement",
     "features": "feature",
@@ -660,7 +668,7 @@ def load_grandfathered(root):
 METRIC_PREFIXES = {"FEAT", "TASK", "ISS", "PHASE", "TST", "RISK", "REL", "ADR", "REQ"}
 
 
-def compute_metric_counts(items, note_index):
+def compute_metric_counts(items, note_index, claimants=None):
     """Counts over all notes in docs/ (the archive) plus snapshot items; snapshot status wins where both exist."""
     statuses = {}
     for coll in (items.values() if isinstance(items, dict) else []):
@@ -669,7 +677,21 @@ def compute_metric_counts(items, note_index):
         for item_id, entry in coll.items():
             if isinstance(entry, dict) and str(entry.get("status", "") or ""):
                 statuses[item_id] = str(entry.get("status", "") or "")
+    # ADR-0018/FEAT-0022: the archive fallback must use only notes that
+    # genuinely CLAIM an id. `note_index` matches IDs as substrings, so a
+    # composite filename lends its status to an unrelated item once that
+    # item's snapshot entry is pruned.
+    for nid, paths in (claimants or {}).items():
+        if len(paths) != 1:
+            continue
+        fm = parse_frontmatter(paths[0]) or {}
+        st = str(fm.get("status", "") or "").strip()
+        if st:
+            statuses.setdefault(nid, st)
     for nid, (_path, fm) in note_index.items():
+        claimed = str((fm or {}).get("id", "") or "").strip()
+        if claimed and claimed != nid:
+            continue
         statuses.setdefault(nid, str((fm or {}).get("status", "") or ""))
     by_prefix = {}
     for the_id, status in statuses.items():
@@ -692,7 +714,8 @@ def fix_metrics(root):
     snap = load_yaml(text)
     if not isinstance(snap, dict):
         return []
-    computed = compute_metric_counts(snap.get("items") or {}, build_note_index(root / "docs")[0])
+    _idx, _cl = build_note_index(root / "docs")
+    computed = compute_metric_counts(snap.get("items") or {}, _idx, _cl)
     lines = text.splitlines(keepends=True)
     changes = []
     in_metrics = in_counts = False
@@ -1521,6 +1544,9 @@ def validate(root, report):
             # and features, where linked tests are the agreed instrument.
             if coll_name == "requirements":
                 terminal = None
+            # A check is verified BY BEING WALKED (ADR-0030).
+            if coll_name == "checks":
+                terminal = None
             if terminal and status == terminal:
                 waiver = str(fm.get("verification_waiver", "") or entry.get("verification_waiver", "")).strip()
                 linked_tests = set(extract_ids(entry.get("tests"))) | set(extract_ids(fm.get("tests")))
@@ -1816,7 +1842,7 @@ def validate(root, report):
     metrics = snap.get("metrics") or {}
     counts = metrics.get("counts") if isinstance(metrics, dict) else None
     if isinstance(counts, dict):
-        computed = compute_metric_counts(items, note_index)
+        computed = compute_metric_counts(items, note_index, note_claimants)
         for key in sorted(counts):
             if key not in computed:
                 continue
