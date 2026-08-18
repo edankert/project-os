@@ -190,7 +190,7 @@ Purpose: describe how to verify behavior (manual or automated) and provide durab
 
 Fields:
 - (required) `scope` (string): `feature|system` (controls where the test note is stored).
-- (required) `kind` (string): `manual|automated`.
+- ~~`kind`~~ — **removed (ADR-0034 decision 4).** `command:` answers who runs a test: present, the runner owns it; absent, a person does. Two fields answering one question is how the reader and the registry came to disagree about 8 of 788 notes.
 - (recommended) `level` (string): `unit|integration|system|e2e|acceptance`.
 - (optional) `entrypoint` (string): Repo-relative command/script to run (or blank for purely manual tests).
 - (optional) `command` (string): A runnable check. **When present, `status` is written only by `tools/scripts/run-tests.py` from the exit code, never by an author** (ADR-0010) — the party seeking a transition must not also certify that the transition is allowed. A hand-edited `status` on a note carrying a `command` is a validator error.

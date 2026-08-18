@@ -8,7 +8,6 @@ created: 2026-01-27
 updated: 2026-01-27
 source: []
 scope: feature
-kind: manual
 level: system       # unit | integration | system | e2e | acceptance
 entrypoint: ""
 command: ""          # runnable check; when set, `status` is written by the runner, never by hand (ADR-0010)
@@ -28,7 +27,7 @@ related: []
 # --- level: acceptance only (ADR-0031) ---------------------------------
 # Delete these on an executable test; they are meaningless there.
 tier: ""             # 1 feature check · 2 regression check · 3 verification check for one build
-mark: " "            # THE VERDICT: " " | x | / | - | ! | ?   — never `status`
+mark: todo           # todo | done | incomplete | canceled | important | question | rerun
 verdict_date: ""
 verdict_reason: ""   # required for / - ! ?
 invalidated_by: {}   # {change: TASK-0000, reason: "", date: ""} — TESTING.md rule 3, as a field
