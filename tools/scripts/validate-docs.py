@@ -58,7 +58,7 @@ import sys
 from pathlib import Path
 
 ID_PREFIXES = ("ADR", "CHK", "DES", "FEAT", "ISS", "PHASE", "REQ", "RISK",
-               "REL", "TASK", "TST", "WF")
+               "REL", "SUR", "TASK", "TST", "WF")
 ID_RE = re.compile(r"\b(%s)-(\d{2,})\b" % "|".join(ID_PREFIXES))
 
 COLLECTION_TYPE = {
@@ -73,6 +73,8 @@ COLLECTION_TYPE = {
     "changes": {"change"},
     "decisions": {"adr", "decision"},
     "designs": {"design"},
+    #: A place in the product a check's `area:` names ([[TASK-0514]]).
+    "surfaces": {"surface"},
     "releases": {"release"},
 }
 
@@ -100,6 +102,11 @@ ALLOWED_STATUS = {
     # that, and this one adds none.
     "design": {"draft", "proposed", "accepted", "implemented", "superseded",
                "cancelled"},
+    #: **A surface is not *done*** ([[TASK-0514]]): it exists until the product
+    #: stops having it. `retired` says the place is gone; `superseded` says
+    #: another surface took it over. No new vocabulary -- ADR-0008 collapsed 64
+    #: values to 53 and a new type is not a reason to reopen that.
+    "surface": {"active", "retired", "superseded"},
     # `decision` is an accepted alias for `adr` -- COLLECTION_TYPE has mapped
     # decisions to {"adr", "decision"} all along, but ALLOWED_STATUS never
     # carried the alias. Found by the type-table check added for ISS-0014; one
@@ -315,6 +322,46 @@ def _is_acceptance_test(note_id, note_index):
         return False
     fm = entry[1] or {}
     return str(fm.get("level", "") or "").strip().lower() == "acceptance"
+
+
+def _repo_has_an_acceptance_suite(note_index):
+    """Does this repo hold any acceptance check at all? ([[TASK-0523]])
+
+    The uncovered-feature rule is meaningless where there is nothing to cover
+    WITH. Measured across the twelve `SNAPSHOT.yaml`-bearing repos 2026-08-20:
+    **225** terminal features have no acceptance check under this rule, and
+    **only three repos hold a suite** -- so **86** of them sit in repos with
+    nothing to cover WITH, and firing there would scold them for not using a
+    mechanism they have never adopted. (86 is the stable figure: the fleet and
+    suite totals move under every commit, the nine no-suite repos do not.)
+    """
+    for _id, entry in (note_index or {}).items():
+        fm = (entry[1] if entry else None) or {}
+        if str(fm.get("level", "") or "").strip().lower() == "acceptance":
+            return True
+    return False
+
+
+def _features_covered_by_acceptance(note_index):
+    """Every `FEAT-*` named in the `covers:` of an acceptance check.
+
+    The reverse index, the direction [[ADR-0032]] settled on: the test names
+    what it covers, and nothing maintains a second copy on the feature.
+
+    **`level: acceptance` only, and that filter is load-bearing.** Dropping it
+    -- counting any note's `covers:` as coverage -- silences roughly a third of
+    the rule's findings by letting a unit test stand in for an acceptance
+    check, which is the reports-silence failure this rule exists to remove.
+    """
+    covered = set()
+    for _id, entry in (note_index or {}).items():
+        fm = (entry[1] if entry else None) or {}
+        if str(fm.get("level", "") or "").strip().lower() != "acceptance":
+            continue
+        for ref in (fm.get("covers") or []):
+            for match in re.finditer(r"FEAT-\d+", str(ref)):
+                covered.add(match.group(0))
+    return covered
 
 
 #: Test statuses that only the runner may write (TEST-FIELDS, ADR-0010).
@@ -1606,6 +1653,51 @@ def validate(root, report):
     validate_unregistered_notes(root, items, note_index, note_claimants, allowed_status, report)
     NOTE_INDEX_FOR_PLANS.clear()
     NOTE_INDEX_FOR_PLANS.update(note_index)
+    #: **A finished feature that nothing verifies** ([[TASK-0523]], REQ-0051).
+    #:
+    #: Walked over the NOTES, not the snapshot collections. The first cut sat
+    #: in the snapshot loop and fired **zero** times against a measured 88
+    #: findings, because retention prunes terminal features out of
+    #: `SNAPSHOT.yaml` -- a rule placed exactly where its subjects are not.
+    #:
+    #: One finding, on the FEATURE, at its terminal status -- not a per-check
+    #: obligation and not a badge that counts checks ([[ADR-0027]],
+    #: [[ADR-0030]]).
+    #:
+    #: **A warning, and deliberately undated.** [[ADR-0011]] clause 3 forbids
+    #: promoting over debt: **225** terminal features fleet-wide have no
+    #: acceptance check under the rule as it SHIPS (`done` alone), **139**
+    #: counting only the three repos that hold a suite (2026-08-20). The
+    #: totals move under every commit; the **86** in repos with no suite at
+    #: all does not, because those nine repos are not changing. A date would either
+    #: fail every build on arrival or be moved when it did, and a promotion
+    #: nobody intends to honour teaches people to ignore the table.
+    #:
+    #: **Only where there is something to cover WITH.** Nine of the twelve
+    #: fleet repos hold no acceptance suite at all; firing there would scold
+    #: them for not using a mechanism they never adopted.
+    #:
+    #: **The escape is `acceptance_exception:`**, and the rule is dishonest
+    #: without it: some features never can have a check -- an engine with no
+    #: user-facing surface, a phase of work, a repo that ships prose. Said
+    #: once, in the note, at scaffold time when the reason is known.
+    if _repo_has_an_acceptance_suite(note_index):
+        _covered = _features_covered_by_acceptance(note_index)
+        for _fid, (_fpath, _ffm) in sorted(note_index.items()):
+            _ffm = _ffm or {}
+            if note_type(_ffm) != "feature":
+                continue
+            if str(_ffm.get("status", "") or "").strip().lower() != TERMINAL.get("features"):
+                continue
+            if str(_ffm.get("acceptance_exception", "") or "").strip():
+                continue
+            if _fid in _covered:
+                continue
+            report.warn(
+                "FEATURE-UNCOVERED",
+                "%s is done and no acceptance check covers it; add one, or "
+                "record why it needs none in `acceptance_exception:`" % _fid)
+
     validate_brief(root, report)
     validate_decision_options(root, report)
     validate_design_notes(root, docs_dir, report)

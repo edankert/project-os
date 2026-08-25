@@ -14,6 +14,19 @@ This file defines default allowed values for common fields so multiple agents/LL
 
 Projects may override; if you do, update templates and any automation that assumes these values.
 
+## `kind` (surfaces)
+- `screen` — a place a person navigates to
+- `flow` — a sequence across screens, named because it is walked as one thing
+- `subsystem` — a behaviour with no single screen (sync, licensing, physics)
+- `surface-less` — the honest answer where a check is about the record, the build or the repo rather than the product
+
+A `SUR-*` names a place in the product; a check's `area:` names one of these. **The name is written once, in the surface note, instead of retyped on every check that touches it** — 94 distinct `area:` strings across one repo's 581 checks is what the type exists to end.
+
+## `status` (surfaces)
+- `active`, `retired`, `superseded`
+
+A surface is not *done*: it exists until the product stops having it. `retired` says the place is gone; `superseded` says another surface took it over and names which.
+
 ## `owner` (all notes)
 See `OWNERSHIP.md` for allowed formats and the canonical registry.
 
@@ -93,6 +106,8 @@ The mapping into the ledger is `done`→`pass`, `incomplete`→`partial`, **`can
 ## `burden` (tests at `level: acceptance`)
 Optional, project-defined free text naming what a walker must have to hand — `App`, `Trainer`, `Strava`, `hardware`. Its purpose is to avoid making somebody set the same thing up twice, so keep the labels stable and few.
 
-## `check` versus `level: acceptance` on a test
+## `check` — retired (ADR-0031)
 
-Both exist and they are not the same thing. `level: acceptance` on a `[[test]]` is a **specification** — usually one automated module, statuses written by the runner. A `[[check]]` is one line of a **manual walk** with a persistent human verdict. `TESTING.md` has always said the two coexist; the type boundary is what stops the release gate, the runner-status rule and the independent-review gate from being applied to the wrong population.
+**There is no `check` type.** An acceptance check is a `[[test]]` at `level: acceptance`; a note that carried `type: "[[check]]"` was migrated, keeping its old id as an alias.
+
+*(This heading read "`check` versus `level: acceptance` on a test — Both exist and they are not the same thing…" until 2026-08-19. It survived ADR-0031 by nobody reading past the mark table, and was then copied into two more repos by the very sync that was fixing [[ISS-0217]] — the drift travelling under its own fix. The ISS-0218 drift check reads the mark TABLE and cannot see prose, which is why this one needed a person.)*

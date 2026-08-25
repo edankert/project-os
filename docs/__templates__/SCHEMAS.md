@@ -91,6 +91,7 @@ Fields:
 
   *The same reverse encoding still exists on `task`, `issue` and `requirement` (330 live edges fleet-wide against the feature's 62). Normalising those is decided in principle and not yet done; until then `VERIFY` ignores any linked test at `level: acceptance` so the merged type cannot trip the gate from those three.*
 - (optional) `release` (string): Milestone/release label.
+- (optional) `acceptance_exception` (string): Why this feature can never have an acceptance check — an engine with no user-facing surface, a phase of work, a repo that ships prose. **Said once, at scaffold time, when the reason is known.** Non-empty silences `FEATURE-UNCOVERED` for this feature permanently; empty (the template's default) means the feature is expected to be covered by the time it is `done`. This is an escape, not a switch: a reason that is not true is worse than the warning it removes.
 
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.features`) for agent context and linked from feature notes.
@@ -218,12 +219,9 @@ An acceptance test is the thing a person walks. It carries the fields below and 
 **Seven fields were removed** and the validator refuses each of them, *in a repo that keeps ledgers*: `mark`, `verdict_date`, `verdict_reason`, `invalidated_by`, `automation`, `covered_by`, `evidence`. A repo with no ledger is untouched and keeps reading its scalar marks — a schema change that broke every repo that had not migrated yet would be a worse failure than the one it fixes.
 
 - (required) `tier` (int): `1` feature check, `2` regression check, `3` verification check for one build. Tiers 1 and 2 gate a release (`tools/instructions/TESTING.md`).
+- ~~`burden`~~, ~~`migrated_from`~~, ~~`merged_from`~~ — **removed (ISS-0233).** Provenance of migrations that are finished, plus a field empty on every check in the fleet. Git holds the first two, with the shas ADR-0030 and ADR-0031 name; a field is the wrong place for a fact already immutable somewhere better.
 - (required) `area` (string): the human grouping — "The navigator", "Agents and sessions". One walk's worth of related checks.
-- (optional) `section` (string): the legacy `1.3`-style section number, kept for addressing continuity.
-- (optional) `ordinal` (int): display order within the area. Sparse, so an insert shifts nothing.
-- (optional) `burden` (list): what the walker must have to hand (`TAXONOMY.md`).
-- (optional) `migrated_from` (string): the pre-migration address (`#section.ordinal`) plus the sha the file held at the cut, for repos that migrated from a single `ACCEPTANCE_TESTS.md`.
-- (optional) `merged_from` (string): the `CHK-*` id this note carried before ADR-0031, plus the sha at the merge.
+- ~~`section`~~, ~~`ordinal`~~ — **removed (ISS-0224).** They were a check's position in `ACCEPTANCE_TESTS.md`, a document that exists in no migrated repo. Order is `(tier, id)` and grouping is `area` alone; measured before removing them, `(tier, id)` reproduces the old order byte-for-byte in every repo, and no area spans two sections anywhere. `migrated_from:` keeps the old address **and the sha** — a record of the past, not a claim about the present.
 
 Where NOT used:
 - The obligation registry: an acceptance test is never owed. Acceptance rows are the most self-re-arming population in a corpus, and per-check obligations are the one use of this granularity that is forbidden outright. Held by construction — the `Run` obligation is keyed on `ready` and these rest at `active`.
