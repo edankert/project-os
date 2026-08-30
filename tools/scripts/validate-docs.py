@@ -1439,6 +1439,74 @@ def validate_brief(root, report):
         )
 
 
+def validate_release_contents(note_index, report):
+    """RELEASE-FEATURES — a release must name features that exist, by the name
+    they actually have.
+
+    **A release note's `features:` is the record of what shipped, and nothing
+    read it.** Three mutants planted in that field on `your-trainer` all passed
+    a clean validator run, so a task closing with *"validate-docs.sh passes, so
+    every backfilled wikilink resolves to a real note"* had confirmed nothing.
+
+    Two distinct defects, and they are NOT equally severe — measured rather than
+    assumed, because the first draft of this rule repeated a severity it had not
+    tested:
+
+    * **An unresolvable id** (`[[FEAT-9999]]`) is load-bearing. `shipped` in the
+      cockpit's `unreleased_payload` is built from this field, so the feature is
+      silently unreleased forever and re-enters every future release's contents.
+    * **A wrong slug on a real id** (`[[FEAT-0085-BleHardening]]` where the note
+      is `FEAT-0085-BleReliabilityLayer`) is **not**. Every consumer extracts the
+      id by regex and the slug is display, so the tooling is unaffected —
+      verified by running `unreleased_payload` both ways and getting the same
+      answer. What it breaks is the **Obsidian link**, which resolves by
+      filename: a human reader clicks it and lands nowhere.
+
+    Both are errors here because the corpus is clean, not because they weigh the
+    same. Across the twelve snapshot-bearing repos: 13 release notes, 87 feature
+    refs, **zero** unresolvable ids and **zero** wrong slugs. A rule that fires
+    nowhere on arrival costs no repo a red build ([[ADR-0011]] asks for that
+    count before a rule lands, not after).
+
+    **What this rule does NOT catch, and a reader should not assume it does:** a
+    release naming a feature that resolves perfectly but did not ship in it —
+    the mutant that pointed a released v2.1.5 note at a `doing` feature belonging
+    to a later unreleased version. That is a semantic claim about history and
+    needs a different check; saying so here is cheaper than a reader trusting
+    this one to cover it.
+    """
+    for note_id, (path, fm) in sorted(note_index.items()):
+        fm = fm or {}
+        if note_type(fm) != "release":
+            continue
+        for raw in (fm.get("features") or []):
+            targets = re.findall(r"\[\[([^\]]+)\]\]", str(raw)) or [str(raw).strip()]
+            for target in targets:
+                m = re.match(r"(FEAT-\d+)", target)
+                if not m:
+                    continue
+                fid = m.group(1)
+                if fid not in note_index:
+                    report.error(
+                        "RELEASE-FEATURES",
+                        "%s names %s in features:, which resolves to no note (%s); "
+                        "the unreleased set is built from this field, so a dangling "
+                        "id makes that feature unreleased forever" % (note_id, fid, path))
+                    continue
+                if target == fid:
+                    continue
+                target_path, target_fm = note_index[fid]
+                known = {target_path.stem}
+                known.update(str(a).strip() for a in ((target_fm or {}).get("aliases") or []))
+                if target not in known:
+                    report.error(
+                        "RELEASE-FEATURES",
+                        "%s names [[%s]] in features:, but %s is %s (%s); the id "
+                        "resolves so the tooling is unaffected, and the Obsidian "
+                        "link is broken -- a reader clicking it lands nowhere"
+                        % (note_id, target, fid, target_path.stem, path))
+
+
 def validate_design_notes(root, docs_dir, report):
     """DESIGN-ASSET — a design must point at an artifact that exists.
 
@@ -1701,6 +1769,7 @@ def validate(root, report):
     validate_brief(root, report)
     validate_decision_options(root, report)
     validate_design_notes(root, docs_dir, report)
+    validate_release_contents(note_index, report)
     validate_plan_notes(root, docs_dir, allowed_status, grandfathered, report)
 
     def resolves(ref_id):
