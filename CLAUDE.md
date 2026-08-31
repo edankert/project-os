@@ -29,6 +29,7 @@ These files contain detailed rules. Read them when performing the related operat
 - ADR conventions: tools/instructions/DECISIONS.md
 - Ownership rules: tools/instructions/OWNERSHIP.md
 - Obsidian conventions: tools/instructions/OBSIDIAN.md
+- Writing clearly (prose, commit messages, replies): tools/instructions/WRITING.md
 - Markdown authoring: tools/instructions/MARKDOWN.md
 - Handoff/recovery: tools/instructions/HANDOFF.md
 - Importing from existing projects: tools/instructions/IMPORTING.md
