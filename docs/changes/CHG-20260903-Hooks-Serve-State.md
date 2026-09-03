@@ -7,7 +7,7 @@ owner: user:edwin
 created: 2026-09-03
 updated: 2026-09-03
 source: ["project-os-dev FEAT-0027, TASK-0102 to TASK-0105, ISS-0003", "project-os-dev docs/reference/Prompting-Guide-Review-2026-09-03.md, findings 2.2, 2.4, 3.1, 3.2, 7.3"]
-commit: "80a4a85, 7b6890f, 3e5c1b3, f6ac538, 8d35297"
+commit: "80a4a85, 7b6890f, 3e5c1b3, f6ac538, 8d35297, f264cb7"
 pr: ""
 impacts: ["tools/adapters/claude-code/hooks/close-out-check.sh", "tools/adapters/claude-code/hooks/model-routing-hint.sh", "tools/adapters/claude-code/hooks/document-first-gate.sh", "tools/instructions/HOOKS.md", "tools/adapters/claude-code/ADAPTER.md", "tools/scripts/generate-adapters.py", "tools/scripts/test-hooks.sh", "docs/__templates__/issue.md", "tools/skills/ad-hoc-intake/SKILL.md", "tools/skills/issue-intake/SKILL.md", ".claude/agents/planner.md"]
 issues: []
