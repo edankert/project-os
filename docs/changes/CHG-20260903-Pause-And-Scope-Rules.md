@@ -7,7 +7,7 @@ owner: user:edwin
 created: 2026-09-03
 updated: 2026-09-03
 source: ["project-os-dev FEAT-0024, TASK-0090 to TASK-0095", "project-os-dev docs/reference/Prompting-Guide-Review-2026-09-03.md, findings 2.1, 2.3, 5.3, 6.1, 6.2, 7.1, 7.2, 7.4, 8.1"]
-commit: "0154e9d, bb6eb70, 7ae32ed, f5bf4f5, 1760161, 9b53acb, 08c0238"
+commit: "0154e9d, bb6eb70, 7ae32ed, f5bf4f5, 1760161, 9b53acb, 79e0332"
 pr: ""
 impacts: ["tools/instructions/LIFECYCLE.md", "tools/instructions/HOOKS.md", "tools/instructions/QUALITY.md", "tools/instructions/HANDOFF.md", "tools/instructions/MARKDOWN.md", "tools/skills/README.md", "tools/skills/status-transition/SKILL.md", "tools/skills/issue-intake/SKILL.md", "tools/skills/feature-scaffold/SKILL.md", "tools/skills/release-prep/SKILL.md", "tools/skills/close-out/SKILL.md", "tools/skills/test-authoring/SKILL.md", "tools/skills/independent-review/SKILL.md", "tools/scripts/generate-adapters.py", "tools/scripts/test-pause-rule.sh", "docs/PHASES.md", ".claude/agents/planner.md", ".cursor/rules/lifecycle.mdc", ".cursor/rules/quality.mdc", ".cursor/rules/markdown.mdc"]
 issues: []
