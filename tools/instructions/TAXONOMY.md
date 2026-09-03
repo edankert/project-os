@@ -4,7 +4,7 @@ id: INSTR-TAXONOMY
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-07-17
+updated: 2026-09-03
 tags: [instructions, taxonomy]
 ---
 
@@ -110,4 +110,4 @@ Optional, project-defined free text naming what a walker must have to hand — `
 
 **There is no `check` type.** An acceptance check is a `[[test]]` at `level: acceptance`; a note that carried `type: "[[check]]"` was migrated, keeping its old id as an alias.
 
-*(This heading read "`check` versus `level: acceptance` on a test — Both exist and they are not the same thing…" until 2026-08-19. It survived ADR-0031 by nobody reading past the mark table, and was then copied into two more repos by the very sync that was fixing [[ISS-0217]] — the drift travelling under its own fix. The ISS-0218 drift check reads the mark TABLE and cannot see prose, which is why this one needed a person.)*
+*(This heading read "`check` versus `level: acceptance` on a test — Both exist and they are not the same thing…" until 2026-08-19. It survived ADR-0031 by nobody reading past the mark table, and was then copied into two more repos by the same sync that was fixing [[ISS-0217]]. The ISS-0218 drift check reads the mark TABLE and cannot see prose, which is why this one needed a person.)*
