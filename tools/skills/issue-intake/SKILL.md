@@ -44,6 +44,7 @@ tags: [skills, issues]
 6. Create/update the issue note from `../../../docs/__templates__/issue.md`:
    - set `phase` in frontmatter if applicable
    - include repro, expected vs actual, evidence paths
+   - put the reporter's words verbatim in the "As reported" callout under Problem, and keep your paraphrase outside it; a fix is judged against the sentence the reporter wrote
 7. If the fix requires implementation:
    - ensure there is a parent `FEAT-*` (create if needed)
    - create one or more `TASK-*` under the feature and link them in snapshot + notes
