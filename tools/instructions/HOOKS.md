@@ -23,6 +23,7 @@ Contract IDs are `HC-001`..`HC-008`. (Earlier revisions of this file used `CHC-0
   - Code changes have a `docs/changes/CHG-*.md` note when required.
   - Change notes have no pending documentation-coverage entries.
 - Implementations: Claude Code `hooks/document-first-gate.sh` (blocking PreToolUse); Codex/generic `bash tools/agents/start-change.sh "<short title>"` + `bash tools/agents/check-docs-first.sh`.
+- The target file's repo governs the edit. A file outside every project-os repo is not gated: when the walk up from the target finds no `SNAPSHOT.yaml`, only a relative path or a path under the session repo falls back to the session repo's focus; any other path is allowed (project-os-dev ISS-0003).
 - On failure: block the code edit (or close-out) until the documentation state is explicit.
 
 ## HC-002: Startup preflight / snapshot freshness

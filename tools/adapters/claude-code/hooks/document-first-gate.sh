@@ -40,7 +40,20 @@ while [ -n "$DIR" ] && [ "$DIR" != "/" ] && [ "$DIR" != "." ]; do
   DIR=$(dirname "$DIR")
 done
 if [ -z "$PROJECT_DIR" ]; then
-  PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+  # The walk found no SNAPSHOT.yaml. Fall back to the session repo only for a
+  # relative path (src/main.py resolves there) or a path under it; an absolute
+  # path outside every project-os repo, such as a scratchpad or another repo,
+  # is not gated (project-os-dev ISS-0003, point 3).
+  SESSION_DIR="${CLAUDE_PROJECT_DIR:-.}"
+  case "$FILE_PATH" in
+    /*)
+      case "$FILE_PATH" in
+        "$SESSION_DIR"/*) PROJECT_DIR="$SESSION_DIR" ;;
+        *) exit 0 ;;
+      esac
+      ;;
+    *) PROJECT_DIR="$SESSION_DIR" ;;
+  esac
 fi
 SNAPSHOT="$PROJECT_DIR/SNAPSHOT.yaml"
 if [ ! -f "$SNAPSHOT" ]; then
