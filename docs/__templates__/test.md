@@ -31,7 +31,7 @@ area: ""             # the human grouping, one walk's worth of related checks; t
 ## Purpose
 <What does this test verify?>
 
-> **Status is evidence, not intent** (`tools/instructions/STATUSES.md` `[[test]]`). A test with a `command:` records no verdict: it rests at `active`, CI runs it on every push, and `python3 tools/scripts/run-tests.py` reproduces the run locally without writing anything (ADR-0025). A test without one is manual: it carries a hand-written `passing` or `failing`, `ready` means defined and not yet run, and `last_verified:` must stay current or the verification gate stops accepting it.
+> **Status is evidence, not intent.** Who writes a test's status, and what a `command:` changes, is stated once in `tools/instructions/STATUSES.md` `[[test]]`; `python3 tools/scripts/run-tests.py --filter TST-####` reproduces an executable test's run locally without writing anything.
 
 ## Procedure
 - <step-by-step>
