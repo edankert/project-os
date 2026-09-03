@@ -4,7 +4,7 @@ id: SKILL-CLOSE-OUT
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-07-21
+updated: 2026-09-03
 tags: [skills, closeout]
 ---
 
@@ -23,7 +23,7 @@ tags: [skills, closeout]
 1. **Verification gating (mandatory first):**
    - List all `TST-*` IDs linked to the task/issue/requirement/feature being closed.
    - Verify each linked test is `status: passing` in the snapshot and note.
-   - If any linked test is not passing, stop before applying terminal statuses and report the blocker.
+   - If any linked test is not passing, the terminal status waits and the blocker is reported. Complete every other part of the close-out in full, then say exactly what was left out and why (`../../instructions/LIFECYCLE.md`, "When to pause for the user").
    - If no tests are linked and the work is a functional code change, flag that verification may be missing and create test notes when appropriate.
 2. Update notes:
    - task `status: done` (and `updated`)

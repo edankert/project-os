@@ -4,7 +4,7 @@ id: SKILL-ISSUE-INTAKE
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-08-12
+updated: 2026-09-03
 tags: [skills, issues]
 ---
 
@@ -22,7 +22,7 @@ tags: [skills, issues]
 - Optional: new `TASK-*` entries/notes if work can be immediately planned.
 
 ## Checklist
-1. **Spec-ambiguity check (before allocating any ID)** — ambiguity is upstream of documentation and no amount of tracking fixes an unclear ask. Treat these as unit tests for the request; if any fails, ask the user (or record the open question in the note and set `status: triage`) instead of guessing:
+1. **Spec-ambiguity check (before allocating any ID)** — ambiguity is upstream of documentation and no amount of tracking fixes an unclear ask. Treat these as unit tests for the request. If one fails, the reading is the user's decision: ask, or record the open question in the note and set `status: triage` (`../../instructions/LIFECYCLE.md`, "When to pause for the user"):
    - Every term in the request has one meaning in this project (no undefined nouns like "the importer" when two importers exist).
    - Expected vs actual behavior is stated observably (a command, input, and output — not "works properly").
    - Scope is bounded: it is clear what is explicitly NOT included.
@@ -50,7 +50,7 @@ tags: [skills, issues]
    - tasks inherit phase from the issue or parent feature
 8. **Impact analysis:**
    - If the issue links to existing features, run `../impact-analysis/SKILL.md` to check whether the proposed fix may conflict with existing requirements.
-   - If conflicts are found, stop and present resolution options before implementation.
+   - If conflicts are found, how to resolve them is the user's decision; present the options and continue with what does not depend on them (`../../instructions/LIFECYCLE.md`, "When to pause for the user").
 9. **Risk scan:**
    - Review the issue against risk scan triggers in `../../instructions/LIFECYCLE.md`.
    - If any trigger applies, run `../risk-scan/SKILL.md` and create/update `RISK-*` notes.

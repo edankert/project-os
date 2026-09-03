@@ -4,7 +4,7 @@ id: SKILL-RELEASE-PREP
 status: active
 owner: group:maintainers
 created: 2026-03-16
-updated: 2026-03-16
+updated: 2026-09-03
 tags: [skills, release]
 ---
 
@@ -31,12 +31,12 @@ tags: [skills, release]
 ### 1. Audit open issues
 - List all `ISS-*` in SNAPSHOT with status `triage` or `open`.
 - For each: recommend **fix before release** (if severity ≥ medium) or **ship as known issue** (if low).
-- Present the list to the user for decision.
+- Which of them block the release is the user's decision (`../../instructions/LIFECYCLE.md`, "When to pause for the user"); present the list with the recommendations and carry on with the steps below that do not depend on it.
 
 ### 2. Check acceptance tests
 - Read the acceptance suite — `TST-*` notes at `level: acceptance` under `docs/tests/acceptance/`, or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated. Sections and gating are stated once, in `../../instructions/TESTING.md`; this step applies them.
 - List every manual check (no `command:`) that is not settled for this release and platform. Each one is a **release blocker**.
-- If a check cannot be run, ask the user to record a **release exception** with justification (`TESTING.md`, "Release gating").
+- If a check cannot be run, recording a **release exception** with justification is the user's decision (`TESTING.md`, "Release gating"; pause rule: `../../instructions/LIFECYCLE.md`, "When to pause for the user").
 - A check carrying a `command:` is settled by CI and does not enter this list.
 
 ### 2b. Docs consistency audit

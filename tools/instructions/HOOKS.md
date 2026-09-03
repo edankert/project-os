@@ -4,7 +4,7 @@ id: INSTR-HOOKS
 status: active
 owner: group:maintainers
 created: 2026-03-08
-updated: 2026-07-21
+updated: 2026-09-03
 tags: [instructions, hooks]
 ---
 
@@ -53,7 +53,7 @@ Contract IDs are `HC-001`..`HC-008`. (Earlier revisions of this file used `CHC-0
   - Read `focus.phase` from `SNAPSHOT.yaml` and the task or parent feature `phase`.
   - If both phases are set and the task belongs to a future phase, flag the mismatch.
 - Implementations: Claude Code `hooks/phase-alignment.sh` (PostToolUse advisory).
-- On failure: warn and require explicit user confirmation before proceeding.
+- On failure: warn. Whether the task runs ahead of its phase is the user's decision (`LIFECYCLE.md`, "When to pause for the user").
 
 ## HC-005: Risk-scan trigger
 
