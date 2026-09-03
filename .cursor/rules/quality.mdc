@@ -54,3 +54,4 @@ These rules define what “done” means for work tracked in this documentation 
 - Prefer a reproducible command, test, or check that demonstrates the change.
 - If verification is manual, record exact steps and expected outputs in the task/workflow note.
 - For tests guarding fixes, record adequacy evidence (does the test fail when the fix is broken?) — see `TESTING.md`, "Test adequacy".
+- The message the user reads is held to the same rule as the notes: before reporting progress, audit each claim against a tool result from this session, and report only work you can point to evidence for. If a test fails, say so with its output; if a step was skipped, say that; if something is not yet verified, say so. Reason: an evidence-free claim in chat is the fake `done` that ticked-with-evidence criteria keep out of notes.
