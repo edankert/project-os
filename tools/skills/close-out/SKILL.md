@@ -47,6 +47,7 @@ tags: [skills, closeout]
 5. If user-facing behavior/paths/contracts changed:
    - create `../../../docs/changes/CHG-YYYYMMDD-Short-Description.md`
    - link it to `issues`/`features` in note + snapshot
+   - A document written for a person (a review, a report, a design) is filed as a `reference` note under `docs/reference/` in Markdown, from `../../../docs/__templates__/reference.md`; a page published outside the repo is a copy, and its URL goes in the note's `source:`. Reason: the cockpit lists reference notes and nothing lists a page on another host, so a deliverable that lives only there is invisible to the next session (project-os-dev ISS-0045).
 6. **Risk scan:**
    - Review the completed work against risk scan triggers in `../../instructions/LIFECYCLE.md`.
    - If any trigger applies, run `../risk-scan/SKILL.md` and create/update `RISK-*` notes.
