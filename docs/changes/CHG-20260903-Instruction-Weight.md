@@ -22,9 +22,9 @@ related: ["[[INSTR-LIFECYCLE]]", "[[INSTR-STATUSES]]", "[[INSTR-TESTING]]", "[[I
 
 ## Summary
 
-Five instruction files now state their rules without the history behind them: LIFECYCLE.md, STATUSES.md, TESTING.md, QUALITY.md and DECISIONS.md are between 30 and 40 percent shorter, and every rule they held is still there. Every Claude Code session imports LIFECYCLE.md and every Cursor session inlines four of the five, so the cut is paid back on every session. What left was the fleet count that retired a status, the anecdote behind a gate and the story of a check type that no longer exists; the moved text is listed below. The independent review found seven rules the first trim had dropped, restored in the review-round commit.
+Five instruction files now state their rules without the history behind them. LIFECYCLE.md, STATUSES.md, TESTING.md, QUALITY.md and DECISIONS.md are between 30 and 40 percent shorter, and every rule they held is still there. Every Claude Code session imports LIFECYCLE.md and every Cursor session inlines four of the five, so the cut is paid back on every session. What left was the fleet count that retired a status, the anecdote behind a gate and the story of a check type that no longer exists. The moved text is listed below. The independent review found seven rules the first trim had dropped; the review-round commit restored them.
 
-Two smaller changes in the same feature: the template frontmatter comments on `feature.md` and `test.md` are one line per field plus a pointer to SCHEMAS.md, so a scaffolded note no longer inherits a paragraph of rule text; and the 25 generated `.claude/skills/*/SKILL.md` bodies are the pointer to the playbook and its when-to-use bullets, with the three close-out steps in the close-out skill only and "execute exactly" replaced by "follow its checklist; where it and the repo disagree, say so and file an ISS-*".
+Two smaller changes land in the same feature. The template frontmatter comments on `feature.md` and `test.md` are one line per field plus a pointer to SCHEMAS.md, so a scaffolded note no longer inherits a paragraph of rule text. The 25 generated `.claude/skills/*/SKILL.md` bodies are now the pointer to the playbook and its when-to-use bullets. The three close-out steps appear in the close-out skill only. "Execute exactly" is replaced by "follow its checklist; where it and the repo disagree, say so and file an ISS-*".
 
 ## Counts
 
@@ -40,7 +40,7 @@ Two smaller changes in the same feature: the template frontmatter comments on `f
 
 Measured with `wc -w`, frontmatter included. The commit messages for QUALITY.md and DECISIONS.md quote 895 and 860; the measured values at those commits were 884 and 954. This table is the record.
 
-The budgets in project-os-dev REQ-0026 were 60% of each file's count on the morning of the review. LIFECYCLE.md lands at 59% of its post-FEAT-0024 size; the other four land at 60%, 60%, 63% and 69%. Each was trimmed until the next cut would remove a reason, and the requirement is reconciled to the measured numbers rather than met by cutting one.
+The budgets in project-os-dev REQ-0026 were 60% of each file's count on the morning of the review. LIFECYCLE.md lands at 59% of its post-FEAT-0024 size; the other four land at 60%, 60%, 63% and 69%. Each was trimmed until the next cut would remove a reason. The requirement is reconciled to the measured numbers rather than met by cutting one.
 
 ## Moved text
 
@@ -67,13 +67,21 @@ Every passage removed either already lives in the decision the rule cites, or is
 
 ## Review round 1
 
-The independent review read all five files in full before and after and found seven rules the trim had dropped, none of them in the table above. All seven are restored in the review-round commit: STATUSES.md "not `ready`" in the no-verdict rule and the list of non-parked statuses on re-adoption; LIFECYCLE.md "Bases views are not canonical for agents" and the six note paths in preflight step 4; TESTING.md the below-80% half of the cadence rule; DECISIONS.md the three ADR-0011 clauses (encoded in code, no more than 90 days out, no promotion over unpaid debt); QUALITY.md the validator's five-item coverage list and the two enforcement file paths. The same review found that the bare `ADR-00NN` citations these files carry resolve to nothing in the template, whose `docs/decisions/` holds only a README, and to unrelated decisions downstream; that predates this change and is a follow-up below.
+The independent review read all five files in full, before and after. It found seven rules the trim had dropped, none of them in the table above. All seven are restored in the review-round commit:
+
+- STATUSES.md: "not `ready`" in the no-verdict rule, and the list of non-parked statuses on re-adoption.
+- LIFECYCLE.md: "Bases views are not canonical for agents", and the six note paths in preflight step 4.
+- TESTING.md: the below-80% half of the cadence rule.
+- DECISIONS.md: the three ADR-0011 clauses (encoded in code, no more than 90 days out, no promotion over unpaid debt), and "with reasons" on the grandfather list after the second round.
+- QUALITY.md: the validator's five checks and the two enforcement file paths.
+
+The same review found that the bare `ADR-00NN` citations in these files resolve to nothing in the template, whose `docs/decisions/` holds only a README. Downstream they resolve to unrelated decisions. That predates this change and is a follow-up below.
 
 ## Impact
 
 - A session loads about half the words it did, and what it loads is rules with reasons. Whether the shorter files still steer as well is judged by the review of the first sessions that run on them.
-- Every section heading other files link to is unchanged; test-pause-rule.sh and test-decision-rule.py pass against the trimmed files, and the fourteen `Allowed:` lines the validator parses are byte-identical.
-- Downstream repos that edited their own copy of any of these files lose that edit at the next sync, which was true before this change.
+- Every section heading other files link to is unchanged. test-pause-rule.sh and test-decision-rule.py pass against the trimmed files. The fourteen `Allowed:` lines the validator parses are byte-identical.
+- A downstream repo that edited its own copy of any of these files loses that edit at the next sync. That was true before this change.
 - Downstream repos pick everything up at the next template sync plus a generator run.
 
 ## Documentation Coverage (All Types Considered)

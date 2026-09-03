@@ -22,9 +22,9 @@ related: ["[[INSTR-WRITING]]", "[[INSTR-SNAPSHOT]]", "[[CHG-20260831-Writing-Rul
 
 ## Summary
 
-WRITING.md now has rules for the message a person reads after a long run, not only for note prose. Four rules are added as 7 to 10: say what you mean instead of reaching for a metaphor; write the final message for a reader who did not watch the work, with no arrow chains or invented labels; keep it short by leaving things out, not by compressing them; and open with one line on what you are about to do, close with a recap that stands alone. A short section says how a line between tool calls differs from the final message. AGENTS.md links these rules instead of asking for a fixed preamble.
+WRITING.md now has rules for the message a person reads after a long run, not only for note prose. Four rules are added as 7 to 10. Say what you mean instead of reaching for a metaphor. Write the final message for a reader who did not watch the work, with no arrow chains or invented labels. Keep it short by leaving things out, not by compressing them. Open with one line on what you are about to do, and close with a recap that stands alone. A short section says how a line between tool calls differs from the final message. AGENTS.md links these rules instead of asking for a fixed preamble.
 
-The second half is length. A snapshot title is at most twelve words, and because the sync script derives it from the note that is a limit on note titles. The goal and note prose on any snapshot item, and the focus note, are at most two sentences each, with the longer text sent to the note's own sections. The change, issue and feature templates ask for a two-or-three-sentence, point-first summary.
+The second half is length. A snapshot title is at most twelve words, and because the sync script derives it from the note that is a limit on note titles. The goal and note prose on any snapshot item, and the focus note, are at most two sentences each. The longer text goes to the note's own sections. The change, issue and feature templates ask for a two-or-three-sentence, point-first summary.
 
 ## Impact
 

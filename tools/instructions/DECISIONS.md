@@ -80,7 +80,7 @@ The named discharge, and which side is authoritative on disagreement.
 
 **Provenance.** A harvested rule cites the nominating issue family in its `## Context`. The trigger is the second issue of a kind, not the first: one instance is a bug, two is a domain (the sibling search in `../skills/issue-intake/SKILL.md` is where the second gets noticed). A rule from principle says so and lands its conformance the same day.
 
-**Landing a rule over an existing corpus.** The rule's check lands warning-first with a dated promotion (`PROMOTIONS` in `../scripts/validate-docs.py`) and the instances already violating are listed in `../GRANDFATHERED.yaml`. ADR-0011 applies unweakened: the cutover is encoded in code, no more than 90 days out, and promotion over unpaid debt is forbidden. A corpus with zero violations skips the warning and errors from day one.
+**Landing a rule over an existing corpus.** The rule's check lands warning-first with a dated promotion (`PROMOTIONS` in `../scripts/validate-docs.py`) and the instances already violating are listed by ID, with reasons, in `../GRANDFATHERED.yaml`. ADR-0011 applies unweakened: the cutover is encoded in code, no more than 90 days out, and promotion over unpaid debt is forbidden. A corpus with zero violations skips the warning and errors from day one.
 
 **Options.** A rule-ADR carries `## Options` under the rule above whenever it rejected something specific: a threshold, a default, a type deferred in favour of the check.
 
