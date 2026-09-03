@@ -4,7 +4,7 @@ id: SKILL-INDEPENDENT-REVIEW
 status: active
 owner: group:maintainers
 created: 2026-07-05
-updated: 2026-07-21
+updated: 2026-09-03
 tags: [skills, review, verification]
 ---
 
@@ -47,10 +47,12 @@ Two kinds of correlation were being conflated. Shared **weights** correlate capa
    - **Correctness**: does the change do what the task/issue note says, and is there a concrete input/state where it fails?
    - **Guarding**: would each linked `TST-*` actually fail if the change were reverted or subtly broken? (If tooling is available, run mutation testing — see `../../instructions/TESTING.md`, "Test adequacy".)
    - **Consistency**: do the notes (status, links, CHG impact list) match what the diff actually does?
+   - Ask for **every finding**, each labelled **reproduced** (a command the reviewer ran and what it printed) or **not reproduced**. Do not tell the reviewer to be conservative, to report only high severity, or to omit what it could not reproduce: a reviewer told that an unreproduced finding is not a finding drops the plausible ones itself, and nobody downstream ever sees them. The filter belongs in step 5.
 4. Record the verdict in the reviewed note frontmatter (`reviewed_by`, `review_date`, `review_verdict`).
-5. If `changes-requested`: file `ISS-*` notes for the findings, keep the item out of terminal status, and loop.
+5. If `changes-requested`: file `ISS-*` notes for the findings, keep the item out of terminal status, and loop. The repro filter applies here, at transcription, which is a separate pass by construction: a reproduced finding becomes an `ISS-*` at `triage` carrying its command and output; a finding the reviewer could not reproduce is recorded in the reviewed note's review section as a lead, and becomes an issue only once someone reproduces it.
 6. If `approved`: proceed with close-out per `../close-out/SKILL.md`.
 
 ## What NOT to do
 - Do not satisfy this skill by having the authoring model re-read its own diff — that is self-review wearing a badge.
 - Do not skip the review because tests pass: the review exists precisely because author-written tests share the author's blind spots.
+- Do not filter findings in the reviewer's prompt or output schema. Ask for everything; filter when transcribing.
