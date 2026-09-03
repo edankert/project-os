@@ -13,7 +13,7 @@ tags: [instructions, lifecycle]
 An LLM maintains this system across the whole lifecycle: intake, plan, implement, verify, close. Each rule is stated once, with its reason and a link; history lives in the decision it links (project-os-dev REQ-0026).
 
 ## Source of truth
-- `../../SNAPSHOT.yaml` is the canonical, machine-readable active context for agents. Notes under `../../docs/` are the durable human record, and their frontmatter must agree with it.
+- `../../SNAPSHOT.yaml` is the canonical, machine-readable active context for agents. Notes under `../../docs/` are the durable human record, and their frontmatter must agree with it. Bases views are for people and are not canonical for agents.
 
 ## Test storage (hybrid)
 - Feature-scoped: `docs/features/<feature-slug>/plan/tests/TST-####-*.md`; system-wide: `docs/tests/TST-####-*.md`.
@@ -29,7 +29,7 @@ When a prompt implies work (bugfix, feature, refactor, behaviour change):
 1. **Classify** it as issue, feature, requirement, risk, or chore/docs-only, and run the spec-ambiguity check in `../skills/issue-intake/SKILL.md` step 1 before allocating any ID.
 2. **Orchestration check**: an assigned task must be in the snapshot at a status that allows work (`backlog`, `doing`); otherwise pick work from `focus` and item statuses.
 3. **Update `../../SNAPSHOT.yaml` first**: allocate IDs, create or update `items.*` entries and relationships, set `focus`.
-4. **Create or update the notes** from `../../docs/__templates__/`: phase, issue, requirement, feature with its `plan/PLAN.md`, task (must have `parent`), risk.
+4. **Create or update the notes** from `../../docs/__templates__/`: `docs/phases/PHASE-####-*.md`, `docs/issues/ISS-####-*.md`, `docs/requirements/REQ-####-*.md`, `docs/features/<slug>/FEAT-####-*.md` with `plan/PLAN.md`, `docs/features/<slug>/plan/tasks/TASK-####-*.md` (must have `parent`), `docs/risks/RISK-####-*.md`.
 5. **Impact analysis**: run `../skills/impact-analysis/SKILL.md` for a new or materially changed requirement, and for work touching a constrained area. A conflict is the user's decision; present the options and continue with what does not depend on them ("When to pause for the user" below).
 6. Keep note frontmatter consistent with the snapshot.
 

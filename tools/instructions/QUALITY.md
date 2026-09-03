@@ -22,7 +22,7 @@ These rules define what "done" means for work tracked in this documentation syst
 ## Documentation Fidelity
 - `metrics.counts` in `../../SNAPSHOT.yaml` must match the computed counts (definitions in `SNAPSHOT.md`); `bash tools/scripts/validate-docs.sh --fix-metrics` rewrites the block when it drifts.
 - Every snapshot item's `file` path must exist on disk.
-- A discrepancy between the filesystem and the snapshot is a build failure: `tools/scripts/validate-docs.sh` exits non-zero on it at the session Stop hook, at pre-commit and in CI. Reason: convention-only rules get skipped under context pressure; the validator does not. Reconcile drift with `../skills/snapshot-sync/SKILL.md`; `../skills/docs-audit/SKILL.md` covers what the validator cannot.
+- A discrepancy between the filesystem and the snapshot is a build failure: `tools/scripts/validate-docs.sh` exits non-zero on it at the session Stop hook, at pre-commit (`tools/scripts/install-git-hooks.sh`) and in CI (`.github/workflows/validate-docs.yml`). It checks snapshot-to-filesystem agreement, frontmatter and status consistency, counter integrity, link-graph integrity and the verification invariant. Reason: convention-only rules get skipped under context pressure; the validator does not. Reconcile drift with `../skills/snapshot-sync/SKILL.md`; `../skills/docs-audit/SKILL.md` covers what the validator cannot.
 
 ## Verification gating (tests)
 - Do not mark an implementation task `done` until verification is complete: an automated test linked and `passing`, or a manual `[[test]]` note with a clear procedure that a human has run and whose result the note records.

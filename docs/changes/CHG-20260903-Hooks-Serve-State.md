@@ -15,7 +15,7 @@ features: []
 related: ["[[INSTR-HOOKS]]", "[[CHG-20260903-Pause-And-Scope-Rules]]", "[[CHG-20260718-Cross-Repo-Hook-Root]]"]
 reviewed_by: model:claude-opus-5[1m]
 review_date: 2026-09-03
-review_verdict: changes-requested
+review_verdict: approved
 ---
 
 # The hooks serve state and name actions

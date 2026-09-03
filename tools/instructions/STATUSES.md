@@ -130,7 +130,7 @@ If a project needs different states, update this file and the templates in `../.
   - `draft` → `active` → `retired` (the acceptance lifecycle, below)
   - anything → `retired` (the subject is gone, or the test was folded into another)
 - `ready` means defined but not yet executed: the state a test note is created in.
-- **`passing`/`failing` belong to manual tests only.** A test with no `command:` records a verdict, carries `last_verified:` and goes stale; a stale test does not satisfy the verification gate. **A test with a `command:` records no verdict**, `last_run:` or `exit_code:` (ADR-0038): CI is the verdict. See `command:` in `SCHEMAS.md`.
+- **`passing`/`failing` belong to manual tests only.** A test with no `command:` records a verdict, carries `last_verified:` and goes stale; a stale test does not satisfy the verification gate. **A test with a `command:` records no verdict**: not `ready`, not `passing`, not `failing`, and no `last_run:` or `exit_code:` (ADR-0038). CI is the verdict. See `command:` in `SCHEMAS.md`.
 - **`retired` is the only removal** (`TESTING.md`); deleting a test is forbidden by `LIFECYCLE.md`.
 
 ### `level: acceptance` — the acceptance half of the type
@@ -152,7 +152,7 @@ The retired `check` type was merged into `[[test]]` so a check could be automate
 3. Set `phase:` to a real future phase, else `PHASE-999` (create `docs/phases/PHASE-999-Parking-Lot.md` once; all-9s IDs are counter-exempt).
 4. Mirror it in `SNAPSHOT.yaml`; deferred items are never pruned.
 
-Re-adoption reverses it: a parent, the ID back in its scope list, the non-parked status, `origin:` kept as history. Backlog grooming reviews every parked item.
+Re-adoption reverses it: a parent, the ID back in its scope list, the non-parked status (`backlog`/`open`/`draft`/`planned`), `origin:` kept as history. Backlog grooming reviews every parked item.
 
 ## `[[release]]`
 - Allowed: `draft`, `released`, `reverted`

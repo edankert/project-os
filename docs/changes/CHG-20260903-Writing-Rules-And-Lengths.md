@@ -1,7 +1,7 @@
 ---
 type: "[[change]]"
 id: CHG-20260903-Writing-Rules-And-Lengths
-title: "WRITING.md covers the message a person reads, and snapshot fields have a length"
+title: "WRITING.md covers the final message; snapshot fields get a length"
 status: merged
 owner: user:edwin
 created: 2026-09-03
@@ -12,6 +12,9 @@ pr: ""
 impacts: ["tools/instructions/WRITING.md", "AGENTS.md", "tools/instructions/SNAPSHOT.md", "docs/__templates__/change.md", "docs/__templates__/issue.md", "docs/__templates__/feature.md", ".cursor/rules/snapshot.mdc"]
 issues: []
 features: []
+reviewed_by: model:claude-opus-5[1m]
+review_date: 2026-09-03
+review_verdict: changes-requested
 related: ["[[INSTR-WRITING]]", "[[INSTR-SNAPSHOT]]", "[[CHG-20260831-Writing-Rules]]", "[[CHG-20260903-Pause-And-Scope-Rules]]"]
 ---
 

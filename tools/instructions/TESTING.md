@@ -37,7 +37,7 @@ A check is not filed into a section. Its section is computed from two fields it 
 
 ### When to invalidate (mark for re-check)
 - Feature tests only, and only those whose scope the change overlaps: a change to `WorkoutViewModel` invalidates workout checks, not Bluetooth checks.
-- **Say which change did it, in the same action**: `invalidated_by:` carries the change id, the reason and the date, and is refused without a change id. Reason: clearing a tick otherwise destroys the only record the check ever passed, and the re-check never happens (measured in project-os-dev CHG-20260903-Instruction-Weight).
+- **Say which change did it, in the same action**: `invalidated_by:` carries the change id, the reason and the date, and is refused without a change id. Reason: clearing a tick otherwise destroys the only record the check ever passed, and the re-check never happens (measured in project-os CHG-20260903-Instruction-Weight).
 - Best done at the close-out of the work that caused it, as one sweep over the areas touched.
 - A regression test is not invalidated by a later change; a returned defect files a new issue.
 
@@ -62,7 +62,7 @@ A guarding test that cannot fail does not guard, and LLM-authored tests share th
 - **Minimum bar:** show the test fails when the fix is reverted or broken, in the note's Adequacy section or `adequacy:` field.
 - **Stronger bar (when tooling exists):** mutation testing over the guarded code, score in `mutation_score:`, tool and command in the evidence (`mutmut`, Stryker, `cargo-mutants`, PIT, `muter` by stack).
 - **Independence:** a test created alongside the fix it guards gets an independent review (`../skills/independent-review/SKILL.md`).
-- **Cadence:** mutation scores consistently above about 80% justify checking less often.
+- **Cadence:** mutation scores consistently above about 80% justify checking less often; below that, check every guarded fix.
 
 ## Release gating
 
