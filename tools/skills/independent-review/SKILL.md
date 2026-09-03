@@ -42,7 +42,7 @@ Two kinds of correlation were being conflated. Shared **weights** correlate capa
 
 ## Checklist
 1. Identify the review scope: changed files + the `TST-*`/`CHG-*` notes involved.
-2. Launch the review with a different model (examples: a Claude Code subagent with a different-family model override, a Codex/Cursor session, or a human reviewer). Provide: the diff, the linked notes, and the acceptance criteria from any linked `REQ-*`.
+2. Launch the review in a clean context that is not the authoring session (examples: a fresh Claude Code subagent such as `independent-reviewer`, a separate Codex or Cursor session, or a human reviewer). The rule is stated once, in `../../instructions/QUALITY.md` "Independent review (clean-context)". Provide: the diff, the linked notes, and the acceptance criteria from any linked `REQ-*`.
 3. Ask the reviewer for three explicit judgments:
    - **Correctness**: does the change do what the task/issue note says, and is there a concrete input/state where it fails?
    - **Guarding**: would each linked `TST-*` actually fail if the change were reverted or subtly broken? (If tooling is available, run mutation testing — see `../../instructions/TESTING.md`, "Test adequacy".)

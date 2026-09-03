@@ -43,4 +43,4 @@ Documentation-as-database systems accumulate cross-document defects — stale re
 5. Record the audit in a `CHG-*` note if anything changed (rounds run, defects found/fixed per round).
 
 ## Independence recommendation
-Run the audit with a different model than the one maintaining the docs (see `../independent-review/SKILL.md` for why). The maintainer model normalized its own drift into the graph; a fresh model family reads the notes as they are, not as they were intended.
+Run the audit in a clean context: a session that has not been maintaining these docs. The rule is stated once, in `../../instructions/QUALITY.md` "Independent review (clean-context)", and `../independent-review/SKILL.md` explains why. The maintaining session normalised its own drift into the graph; a fresh context reads the notes as they are, not as they were intended.

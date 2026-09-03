@@ -1,5 +1,5 @@
 #!/bin/bash
-# HC-008: Model Routing Hint
+# HC-008: Delegation Hint
 # Claude Code UserPromptSubmit hook
 #
 # Emits an advisory hint that routes the prompt to the lifecycle-appropriate
@@ -53,13 +53,13 @@ STATUS=$(status_of "$ACTIVE")
 # Status vocabulary per STATUSES.md (tasks, issues, features, requirements).
 # `deferred` is deliberately NOT terminal there — it is a parked state.
 case "$STATUS" in
-  backlog|next|triage|open|planned|draft|approved|proposed|reopened)
+  backlog|triage|open|planned|draft|approved|proposed)
     HINT="focus item $ACTIVE is '$STATUS' (planning) — delegate preflight (intake / scaffold / task breakdown / impact analysis) to the 'planner' subagent before writing code."
     ;;
-  doing|in-progress|active)
+  doing|active)
     HINT="focus item $ACTIVE is '$STATUS' (execution) — implement in the main loop. If this prompt starts unrelated NEW work, delegate its preflight to the 'planner' subagent first."
     ;;
-  in-review|implemented)
+  review)
     HINT="focus item $ACTIVE is '$STATUS' (review) — delegate verification to the 'independent-reviewer' subagent."
     ;;
   blocked)
@@ -68,7 +68,7 @@ case "$STATUS" in
   deferred)
     HINT="focus item $ACTIVE is 'deferred' (parked, not terminal) — re-adopt it per STATUSES.md before working it, or pick different work."
     ;;
-  done|fixed|closed|cancelled|superseded|wont-fix|implemented|retired)
+  done|fixed|declined|cancelled|superseded|implemented|retired)
     HINT="focus item $ACTIVE is '$STATUS' (terminal) — no active work in focus. If this prompt implies new work, delegate preflight to the 'planner' subagent before coding."
     ;;
   *)
@@ -76,5 +76,5 @@ case "$STATUS" in
     ;;
 esac
 
-echo "project-os model routing: $HINT Independent review goes to 'independent-reviewer'. Advisory, not a gate."
+echo "project-os delegation hint: $HINT Independent review goes to 'independent-reviewer'. Advisory, not a gate."
 exit 0
