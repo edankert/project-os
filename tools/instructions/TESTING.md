@@ -51,7 +51,7 @@ A check is not filed into a section. Its section is computed from two fields it 
 
 A repo stores its suite one of two ways, never both.
 
-**Notes (current).** One check per note: `type: [[test]]`, `level: acceptance`, id `TST-*`, at `docs/tests/acceptance/TST-####-Slug.md`, from `../../docs/__templates__/test.md`. `status:` is the lifecycle (`draft`/`active`/`retired`) and `mark:` is the verdict; ticking never touches status, which keeps the note outside the verdict rules and the review gate. The section is derived and never written down. See `SCHEMAS.md` `test.md` ("Acceptance fields") and `STATUSES.md` `[[test]]`.
+**Notes (current).** One check per note: `type: [[test]]`, `level: acceptance`, id `TST-*`, stored per `LIFECYCLE.md` "Test storage", from `../../docs/__templates__/test.md`. `status:` is the lifecycle (`draft`/`active`/`retired`) and `mark:` is the verdict; ticking never touches status, which keeps the note outside the verdict rules and the review gate. The section is derived and never written down. See `SCHEMAS.md` `test.md` ("Acceptance fields") and `STATUSES.md` `[[test]]`.
 
 **One document (older).** `docs/tests/ACCEPTANCE_TESTS.md`, from `../../docs/__templates__/acceptance-tests.md`: `# Feature tests`, `# Regression tests` and `# Automated tests`, grouped by area, one `- [x] **Test Name:** procedure and expected result` row per check (automated rows have no checkbox). Everything in this file applies to it. A repo that migrates to notes deletes the document in the migration commit, because two records of one thing drift and git holds the old one.
 

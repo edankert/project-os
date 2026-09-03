@@ -12,7 +12,7 @@ tags: [instructions, handoff]
 
 Use this when work may stop unexpectedly or another agent/session picks it up.
 
-Agent coordination is delegated to the native tool (Agent Teams, Codex parallel runs, and similar) — project-os does not track `session`, `claimed_by`, or heartbeat state in `SNAPSHOT.yaml`. The durable handoff surface is the snapshot plus the notes; anything a successor needs must be written there.
+The durable handoff surface is the snapshot plus the notes; anything a successor needs must be written there. The snapshot holds no coordination state (`SNAPSHOT.md`, "Team model").
 
 ## Before stopping work (handoff checklist)
 1. Update `SNAPSHOT.yaml` (items, statuses, relationships).

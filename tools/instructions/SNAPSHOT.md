@@ -21,7 +21,7 @@ tags: [instructions, snapshot]
 - `version` (int): Schema version (bump only when breaking changes are made).
 - `updated` (timestamp string): Last update time.
 - `project` (object): Project metadata (name/summary/repo root).
-- `team` (object, optional): Team model listing members and the tool adapter each uses. Descriptive only — agent coordination is delegated to the tool's native orchestration, so the snapshot holds no session, claim, or heartbeat state.
+- `team` (object, optional): Team model listing members and the tool adapter each uses ("Team model" below).
 - `retention` (object): Retention policy for keeping the snapshot small (optional but recommended).
 - `counters` (object): Highest allocated IDs per type (used for new ID allocation).
 - `focus` (object): Current in-flight IDs and active phase (empty strings if none).
@@ -73,7 +73,7 @@ Then type-specific fields, for example:
 - Issue: `severity`, `component`, `phase` (optional), `features` (FEAT IDs), optional `tasks` (TASK IDs), optional `tests` (TST IDs)
 - Requirement: `priority`, `scope`, `phase` (optional), `features` (FEAT IDs), `verifies` (paths/links), optional `tests` (TST IDs)
 - Risk: `likelihood`, `impact`, `related` (IDs), optional `mitigation_tasks` (TASK IDs)
-- Test: `scope`, `kind`, `level`, `entrypoint`, `requirements` (REQ IDs), optional `features`/`issues`/`tasks` (IDs), optional `artifacts`, optional `last_run`
+- Test: `scope`, `level`, `entrypoint`, `requirements` (REQ IDs), optional `features`/`issues`/`tasks` (IDs), optional `artifacts`, optional `last_run`
 - Workflow: `entrypoints` (paths), optional `inputs`/`outputs`
 - Change: `commit`, `pr`, `issues` (ISS IDs), `features` (FEAT IDs)
 - Decision (ADR): `decision`, `context`, `supersedes`, `superseded`, `related` (IDs)
@@ -106,9 +106,7 @@ The `goal` and `note` prose on any item is at most two sentences each. It is the
 `team.members` lists each participant with the tool adapter they use (`id`, `tool`, `adapter`). It is descriptive context for agents, not coordination state: project-os deliberately holds no `session`, `claimed_by`, `claim_started`, or heartbeat fields — multi-agent coordination belongs to the tool's native orchestration (Agent Teams, Codex parallel runs). Handoff and recovery run off the snapshot, notes, and git instead; see `HANDOFF.md`.
 
 ## Update rules (agent behavior)
-- Agents/LLMs must update the snapshot **before** starting implementation work (create/modify issues/features/tasks/risks as needed).
-- After finishing work, agents/LLMs must update snapshot statuses and relationships and clear/move `focus`.
-- Keep `counters` up to date when allocating new IDs.
+- When the snapshot is updated in the lifecycle is stated once in `LIFECYCLE.md` ("Preflight" and "Close-out"); which fields are derived and which are curated is in its "Mandatory Automated Documentation".
 - Record handoff context in the item notes (`HANDOFF.md`), not in snapshot claim fields.
 
 ## Retention policy (active + recent)

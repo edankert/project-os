@@ -18,7 +18,7 @@ tags: [skills, release]
 - Target version number (e.g., "1.1.0")
 - Platform (e.g., "android", "ios", "web")
 - `../../../SNAPSHOT.yaml`
-- the acceptance suite — `TST-*` notes at `level: acceptance` under `docs/tests/acceptance/`, or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated (`../../instructions/TESTING.md`)
+- the acceptance suite — `TST-*` notes at `level: acceptance`, stored per `../../instructions/LIFECYCLE.md` "Test storage", or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated (`../../instructions/TESTING.md`)
 
 ## Outputs
 - `../../../docs/releases/REL-####-v<version>.md` (release note from template)
@@ -58,8 +58,7 @@ tags: [skills, release]
 ### 4. Update SNAPSHOT
 - Add `items.releases.<REL-ID>` with `status: draft`, `version`, `file`.
 - Set `focus.release` to the new REL-ID.
-- Increment `counters.REL`.
-- Update `metrics.releases_total`.
+- `counters.REL` and `metrics` are derived by the sync script (`../../instructions/LIFECYCLE.md`, "Mandatory Automated Documentation").
 
 ### 5. Bump version
 - Update the application version in the build configuration:

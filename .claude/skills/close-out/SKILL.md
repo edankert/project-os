@@ -14,6 +14,4 @@ Use when:
 
 - At the end of an implementation task or when an issue is resolved.
 
-3. Before finishing, run `bash tools/scripts/validate-docs.sh` and fix anything it reports.
-4. Before pushing, run `bash tools/scripts/validate-docs.sh --as-committed`; it checks `HEAD` as a fresh clone would see it, against the full CI step set.
-5. After pushing, confirm the run went green (`gh run list --limit 1`). A change is not landed until you have seen that.
+3. Then follow `tools/instructions/LIFECYCLE.md` close-out steps 7 to 9: run the validator, run `--as-committed` before pushing, and confirm the CI run went green.

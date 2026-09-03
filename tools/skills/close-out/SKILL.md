@@ -52,11 +52,7 @@ tags: [skills, closeout]
    - If no trigger applies, record that no new risks were identified in the relevant task/issue note or final summary.
 7. **Mechanical validation:**
    - Run `bash tools/scripts/validate-docs.sh` and fix every reported error before finishing.
-   - Before pushing, run `bash tools/scripts/validate-docs.sh --as-committed`. It checks `HEAD` as a fresh clone would see it, against the full CI step set — a local pass proves neither, because local checks run one command against the working tree while CI runs three against the commit.
-   - After pushing, confirm the run went green (`gh run list --limit 1`). A change is not landed until you have seen that.
+   - Before pushing and after, follow `../../instructions/LIFECYCLE.md` close-out steps 8 and 9 (`--as-committed`, then confirm the CI run went green).
 8. **Independent review:**
    - At the review gates stated once in `../../instructions/QUALITY.md` ("Independent review (clean-context)"), run `../independent-review/SKILL.md` before applying the terminal status.
-9. **Retention enforcement** (still manual — the sync script does not prune, because which completed work stays in active context is a judgement no count-based rule reproduced):
-   - Apply `retention` settings from `../../../SNAPSHOT.yaml`.
-   - Preserve notes under `../../../docs/`; prune only snapshot entries when policy says to keep the snapshot active/recent.
-   - Update `metrics` after pruning.
+9. **Retention enforcement**: apply the policy in `../../instructions/SNAPSHOT.md` "Retention policy"; membership is curation the sync script leaves alone.

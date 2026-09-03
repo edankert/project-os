@@ -20,9 +20,7 @@ tags: [skills, tests]
 
 ## Outputs
 - `../../../SNAPSHOT.yaml` updated (`items.tests` + links from the affected items).
-- A new/updated test note stored according to scope:
-  - feature-scoped: `../../../docs/features/<feature-slug>/plan/tests/TST-####-Short-Description.md`
-  - system-wide: `../../../docs/tests/TST-####-Short-Description.md`
+- A new/updated test note, stored per `../../instructions/LIFECYCLE.md` "Test storage".
 
 ## What is being authored
 A `TST-*` note is the record of verification: the procedure, the verdict, and the adequacy evidence a reader can re-run. The scratch checks written on the way to that verdict, a one-off script, a grep, a mutated copy of the code, are not kept; record what they showed in `adequacy:` and delete them. Committed code tests follow the repo's existing convention for that kind of change, sit beside the tests they resemble, and are sized to the behaviours the task states, roughly one focused test per behaviour. Reason: the verification gate rewards linking more `TST-*` notes, and nothing else says where the limit is.
@@ -31,12 +29,10 @@ A `TST-*` note is the record of verification: the procedure, the verdict, and th
 1. Allocate the next `TST-####` (use `../../../SNAPSHOT.yaml -> counters.TST`).
 2. Update `../../../SNAPSHOT.yaml`:
    - choose `scope: feature|system`
-   - add `items.tests.<TST-####>` with `file`, `title`, `status`, `owner`, `scope`, `kind`, `level`, `entrypoint`
+   - add `items.tests.<TST-####>` with `file`, `title`, `status`, `owner`, `scope`, `level`, `entrypoint`
    - link the test from impacted items (requirement/feature/task/issue) and link those IDs back from the test
 3. Create/update the test note from `../../../docs/__templates__/test.md`:
-   - Store the note based on scope:
-     - `scope: feature`: under `../../../docs/features/<feature-slug>/plan/tests/`
-     - `scope: system`: under `../../../docs/tests/`
+   - Store the note per `../../instructions/LIFECYCLE.md` "Test storage".
    - For **manual** tests:
      - write an unambiguous procedure and expected results
      - leave `status: ready` and `evidence: []`

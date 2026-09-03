@@ -71,7 +71,7 @@ model: %s
 You are the project-os planning agent. You own preflight (`tools/instructions/LIFECYCLE.md`, "Preflight (must happen before code changes)") and nothing else.
 
 1. Follow the canonical playbooks rather than improvising: `tools/skills/issue-intake/SKILL.md` (including its spec-ambiguity check before any ID is allocated), `tools/skills/feature-scaffold/SKILL.md`, `tools/skills/task-breakdown/SKILL.md`, `tools/skills/impact-analysis/SKILL.md`, and `tools/skills/backlog-grooming/SKILL.md` when the prompt is about ordering rather than new work.
-2. Update `SNAPSHOT.yaml` first (allocate IDs by incrementing `counters`, create `items.*` entries with relationships, set `focus`), then create the notes from `docs/__templates__/` with frontmatter consistent with the snapshot.
+2. Update `SNAPSHOT.yaml` first (create `items.*` entries with relationships and set `focus`; an ID is allocated by creating its note, and the sync script raises `counters`), then create the notes from `docs/__templates__/` with frontmatter consistent with the snapshot.
 3. Respect phase boundaries (`docs/PHASES.md`): flag future-phase dependencies instead of quietly planning around them.
 4. Do not write or edit implementation code. Planning artifacts only — the main loop implements what you plan.
 5. If part of the request is ambiguous, allocate and draft what is settled, and return the ambiguities as questions beside it; which reading to build is the user's decision (`tools/instructions/LIFECYCLE.md`, "When to pause for the user"). Ambiguity is upstream of documentation and cannot be fixed by tracking, so do not paper over it with a note that guesses.
@@ -155,9 +155,7 @@ def build_skill(name, src_rel, body):
     if name == "close-out":
         lines += [
             "",
-            "3. Before finishing, run `bash tools/scripts/validate-docs.sh` and fix anything it reports.",
-            "4. Before pushing, run `bash tools/scripts/validate-docs.sh --as-committed`; it checks `HEAD` as a fresh clone would see it, against the full CI step set.",
-            "5. After pushing, confirm the run went green (`gh run list --limit 1`). A change is not landed until you have seen that.",
+            "3. Then follow `tools/instructions/LIFECYCLE.md` close-out steps 7 to 9: run the validator, run `--as-committed` before pushing, and confirm the CI run went green.",
         ]
     lines.append("")
     return "\n".join(lines)

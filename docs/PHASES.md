@@ -56,13 +56,7 @@ Use `order` on `[[phase]]` notes to preserve numeric roadmap sorting without ove
 
 ## Operational Rules for LLMs
 
-When executing work, the LLM must:
-
-1. **Verify phase alignment**: Check the `phase` property in the task/feature frontmatter before starting work.
-2. **Consult this registry**: Understand the broader context and boundaries of the current phase.
-3. **Prevent phase bleeding**: Do not introduce implementations from future phases prematurely.
-   - Example: Don't build Phase 4 export logic while working on a Phase 2 core engine task.
-4. **Flag scope concerns**: a task that needs a future-phase dependency is a scope change the user decides; document it and ask (`tools/instructions/LIFECYCLE.md`, "When to pause for the user").
+The phase-alignment rules are stated once in `tools/instructions/LIFECYCLE.md`, "Phase alignment (optional gating)": verify the phase before starting, consult this registry, do not build a later phase's work early, and a task that needs a future-phase dependency is the user's decision (`tools/instructions/LIFECYCLE.md`, "When to pause for the user").
 
 ## Phase Progression
 

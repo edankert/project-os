@@ -4,7 +4,7 @@ id: SKILL-RELEASE-VERIFICATION
 status: active
 owner: group:maintainers
 created: 2026-03-08
-updated: 2026-03-08
+updated: 2026-09-03
 tags: [skills, testing, release]
 ---
 
@@ -88,7 +88,7 @@ For each test that needs re-running:
    - `last_run: <today's date>`
    - `updated: <today's date>`
    - Add evidence to the Evidence section
-5. Update `../../../SNAPSHOT.yaml` with the new test status.
+5. The snapshot follows the note (`../../instructions/LIFECYCLE.md`, "Mandatory Automated Documentation"); do not re-type the status.
 
 ### 8. Final release gate
 - Re-check the matrix: all tests must now be **CURRENT** and `status: passing`.

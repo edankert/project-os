@@ -10,13 +10,13 @@ tags: [instructions, lifecycle]
 
 # Lifecycle rules (LLM-maintained documentation system)
 
-An LLM maintains this system across the whole lifecycle: intake, plan, implement, verify, close. Each rule is stated once, with its reason and a link; history lives in the decision it links (project-os-dev REQ-0026).
+Rules for the lifecycle of work: intake, plan, implement, verify, close. Each is stated once here, with a reason and a link (project-os-dev REQ-0026).
 
 ## Source of truth
 - `../../SNAPSHOT.yaml` is the canonical, machine-readable active context for agents. Notes under `../../docs/` are the durable human record, and their frontmatter must agree with it. Bases views are for people and are not canonical for agents.
 
 ## Test storage (hybrid)
-- Feature-scoped: `docs/features/<feature-slug>/plan/tests/TST-####-*.md`; system-wide: `docs/tests/TST-####-*.md`.
+- Feature-scoped: `docs/features/<feature-slug>/plan/tests/TST-####-*.md`, an acceptance check for the feature included; system-wide: `docs/tests/TST-####-*.md`, with a system-wide acceptance suite under `docs/tests/acceptance/`.
 
 ## Statuses
 - Statuses and transitions are stated once, in `STATUSES.md`.
@@ -55,7 +55,7 @@ When the project uses phases (`../../docs/PHASES.md`):
 Pause for the user only when the work genuinely requires them: a destructive or irreversible action, a real scope change, or input that only they can provide. Everything else is your judgment call. First do everything that does not depend on the answer; then put the question at the end of a turn that also delivers that progress. Reason: an early question hands the task back unfinished. Every other file that names a pause links here and says only which decision the user owns (project-os-dev ADR-0024).
 
 ### Scope of a change
-A bug, a cleanup or a missing abstraction the task did not ask for is an `ISS-*` at `triage` or a follow-up in your summary, not a change in this diff, unless the requested behaviour cannot work without it. Reason: the document-first gate blocks an edit with no focus item, and widening the task is the bypass. When the wording admits two readings, implement the one it most directly supports and state the assumption in the task note; ask only when the readings lead to materially different work.
+A bug, a cleanup or a missing abstraction the task did not ask for is an `ISS-*` at `triage` or a follow-up in your summary, not a change in this diff, unless the requested behaviour cannot work without it. Reason: the document-first gate blocks an edit with no focus item, and widening the task is the bypass. When the wording admits two readings, implement the one it most directly supports and state the assumption; the threshold for asking is `../skills/issue-intake/SKILL.md` step 1.
 
 ## Close-out (must happen after work)
 1. Set the note status: task `done`, issue `fixed`, requirement `implemented`, feature `done` (`STATUSES.md`).
