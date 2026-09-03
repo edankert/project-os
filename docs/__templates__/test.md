@@ -23,12 +23,8 @@ reviewed_by: ""
 review_date: ""
 review_verdict: ""
 related: []
-# --- level: acceptance only (ADR-0031) ---------------------------------
-# Delete these on an executable test; they are meaningless there.
-# THE VERDICT IS NOT HERE (ADR-0037). It is a dated event in
-# docs/releases/ledgers/<release>-<platform>.json — a verdict is a fact
-# about (check x platform x release) and a field cannot hold three.
-area: ""             # the human grouping — one walk's worth of related checks
+# level: acceptance only; delete on an executable test. Fields explained in SCHEMAS.md, test.md ("Acceptance fields").
+area: ""             # the human grouping, one walk's worth of related checks; the verdict lives in the release ledger, not here (ADR-0037)
 ---
 
 # <Test>
