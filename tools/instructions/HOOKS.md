@@ -67,6 +67,7 @@ Contract IDs are `HC-001`..`HC-008`. (Earlier revisions of this file used `CHC-0
 
 - Trigger: before final response after implementation work.
 - Rule: `LIFECYCLE.md` — "Close-out (must happen after work)"; `QUALITY.md` — "Minimum close-out for any implemented task".
+- The block names two actions: if the work is complete, set the status and clear focus now; if stopping mid-flight for the user, write the handoff into the task note (`HANDOFF.md`, "Before stopping work") and stop. The loop guard lets that second stop through.
 - Check logic:
   - Snapshot and note statuses agree.
   - `focus` is cleared or moved to the next active item.
