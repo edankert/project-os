@@ -135,7 +135,7 @@ Manual fallback: copy `hooks.json` from this adapter directory into `.claude/set
 | `PostToolUse` | HC-005 Risk Scan Trigger | `command` | Detects package/env/CI file changes |
 | `Stop` | HC-006 Close-out Check + HC-007 Docs Validation | `command` | Runs `tools/scripts/validate-docs.sh` and blocks stop on violations; checks focus is cleared, forces close-out if not |
 | `SessionStart` | HC-002 Snapshot Freshness | `command` | Reminds agent to read SNAPSHOT.yaml |
-| `UserPromptSubmit` | HC-008 Delegation Hint | `command` | Advisory: maps the focus item's status to the agent that should do the work (planner / main loop / independent-reviewer) |
+| `UserPromptSubmit` | HC-008 Delegation Hint | `command` | Advisory: states the focus item, its status and its phase, and who writes the note for new work; names the planner only for a multi-item scaffold or an ambiguous ask, the reviewer only in review states |
 
 **All hooks are `command` type** (fast shell scripts, no API calls). This avoids LLM cost/latency and 529 overload errors. Stop hooks use `{decision: "block", reason: "..."}` to force continuation. All scripts use `$CLAUDE_PROJECT_DIR` for path resolution. HC-003 and HC-007 need `python3` on PATH (stdlib only); they fail open with a note if it is missing, so a broken runtime never bricks edits — but treat that note as a setup error.
 

@@ -9,10 +9,13 @@ updated: 2026-09-03
 source: ["project-os-dev FEAT-0027, TASK-0102 to TASK-0105, ISS-0003", "project-os-dev docs/reference/Prompting-Guide-Review-2026-09-03.md, findings 2.2, 2.4, 3.1, 3.2, 7.3"]
 commit: "80a4a85, 7b6890f, 3e5c1b3, f6ac538, 8d35297"
 pr: ""
-impacts: ["tools/adapters/claude-code/hooks/close-out-check.sh", "tools/adapters/claude-code/hooks/model-routing-hint.sh", "tools/adapters/claude-code/hooks/document-first-gate.sh", "tools/instructions/HOOKS.md", "tools/adapters/claude-code/ADAPTER.md", "tools/scripts/generate-adapters.py", "tools/scripts/test-hooks.sh", "docs/__templates__/issue.md", "tools/skills/ad-hoc-intake/SKILL.md", "tools/skills/issue-intake/SKILL.md", ".claude/agents/planner.md", ".claude/skills/ad-hoc-intake/SKILL.md", ".claude/skills/issue-intake/SKILL.md"]
+impacts: ["tools/adapters/claude-code/hooks/close-out-check.sh", "tools/adapters/claude-code/hooks/model-routing-hint.sh", "tools/adapters/claude-code/hooks/document-first-gate.sh", "tools/instructions/HOOKS.md", "tools/adapters/claude-code/ADAPTER.md", "tools/scripts/generate-adapters.py", "tools/scripts/test-hooks.sh", "docs/__templates__/issue.md", "tools/skills/ad-hoc-intake/SKILL.md", "tools/skills/issue-intake/SKILL.md", ".claude/agents/planner.md"]
 issues: []
 features: []
 related: ["[[INSTR-HOOKS]]", "[[CHG-20260903-Pause-And-Scope-Rules]]", "[[CHG-20260718-Cross-Repo-Hook-Root]]"]
+reviewed_by: model:claude-opus-5[1m]
+review_date: 2026-09-03
+review_verdict: changes-requested
 ---
 
 # The hooks serve state and name actions
