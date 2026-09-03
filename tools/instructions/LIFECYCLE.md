@@ -10,16 +10,16 @@ tags: [instructions, lifecycle]
 
 # Lifecycle rules (LLM-maintained documentation system)
 
-An LLM maintains this system across the lifecycle of work: intake, plan, implement, verify, close. Each rule is stated once, with its reason and a link; the history lives in the linked decision (project-os-dev REQ-0026).
+An LLM maintains this system across the whole lifecycle: intake, plan, implement, verify, close. Each rule is stated once, with its reason and a link; history lives in the decision it links (project-os-dev REQ-0026).
 
 ## Source of truth
 - `../../SNAPSHOT.yaml` is the canonical, machine-readable active context for agents. Notes under `../../docs/` are the durable human record, and their frontmatter must agree with it.
 
 ## Test storage (hybrid)
-- A feature-scoped test lives at `docs/features/<feature-slug>/plan/tests/TST-####-*.md`; a system-wide one at `docs/tests/TST-####-*.md`.
+- Feature-scoped: `docs/features/<feature-slug>/plan/tests/TST-####-*.md`; system-wide: `docs/tests/TST-####-*.md`.
 
 ## Statuses
-- Allowed statuses and transitions are stated once, in `STATUSES.md`.
+- Statuses and transitions are stated once, in `STATUSES.md`.
 
 ## The inbox
 - `inbox/` at the repo root is gitignored staging for external material nobody has decided about. An item there is an unmade decision, not a record; triage it with `../skills/inbox-triage/SKILL.md` whenever the directory is not empty. Reason: `docs/` is the curated record the validator walks.
@@ -70,7 +70,7 @@ A bug, a cleanup or a missing abstraction the task did not ask for is an `ISS-*`
 10. If the work touched a `TST-*` or `CHG-*` note, or moves a requirement to `implemented` or a feature to `done`, run `../skills/independent-review/SKILL.md`.
 
 ## Snapshot retention (active + recent)
-- Keep the snapshot to active and recent items; the notes are the archive (`SNAPSHOT.md`).
+- Keep the snapshot to active and recent items (`SNAPSHOT.md`); the notes are the archive.
 
 ## Risk scan triggers (create/update a `RISK-*`)
 - A new external dependency or version constraint; a new required env var or configuration surface; a directory layout or artifact path change; a runtime increase or new long-running step; a security, credential or licence exposure.
