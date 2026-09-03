@@ -34,7 +34,7 @@ ID="$(basename "$FILE" .md)"
 # The note is scaffolded from the one template the repo carries, never from a
 # copy embedded here: an embedded copy drifts (it shipped `status: draft`, a
 # value STATUSES.md does not allow for a change note; project-os-dev ISS-0048).
-TEMPLATE="$ROOT/docs/__templates__/change.md"
+TEMPLATE="$REPO_ROOT/docs/__templates__/change.md"
 if [[ ! -f "$TEMPLATE" ]]; then
   echo "start-change: $TEMPLATE not found; cannot scaffold a change note." >&2
   exit 1
