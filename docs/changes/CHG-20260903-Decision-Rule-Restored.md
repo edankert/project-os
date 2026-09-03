@@ -7,7 +7,7 @@ owner: user:edwin
 created: 2026-09-03
 updated: 2026-09-03
 source: ["project-os-dev ISS-0047", "project-os-dev TST-0004"]
-commit: "8faea70"
+commit: "66cd2a4"
 pr: ""
 impacts: ["tools/scripts/validate-docs.py"]
 issues: []
