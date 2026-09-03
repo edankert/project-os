@@ -194,7 +194,7 @@ Fields:
 - ~~`kind`~~ — **removed (ADR-0034 decision 4).** `command:` answers who runs a test: present, the runner owns it; absent, a person does. Two fields answering one question is how the reader and the registry came to disagree about 8 of 788 notes.
 - (recommended) `level` (string): `unit|integration|system|e2e|acceptance`.
 - (optional) `entrypoint` (string): Repo-relative command/script to run (or blank for purely manual tests).
-- (optional) `command` (string): A runnable check. **When present, `status` is written only by `tools/scripts/run-tests.py` from the exit code, never by an author** (ADR-0010) — the party seeking a transition must not also certify that the transition is allowed. A hand-edited `status` on a note carrying a `command` is a validator error.
+- (optional) `command` (string): A runnable check. **When present the note records no verdict** (project-os-dev ADR-0025; `tools/instructions/STATUSES.md` `[[test]]`): it rests at `active`, CI runs it, and the validator's COMMAND-VERDICT reports a `ready`/`passing`/`failing` or a `last_run`/`exit_code` written on it. The reason ADR-0010 gave still holds, the party seeking a transition must not certify it; this closes it by leaving nothing on the note to certify. A hand-edited `status` on a note carrying a `command` was a validator error.
 - (required for manual tests) `last_verified` (date): When a human last performed the procedure. A manual test past the project's staleness window stops satisfying the verification gate — verification that was true a year ago is not evidence about today's system.
 - `status` (ADR-0008, extended by ADR-0031): `ready` (defined, not yet executed) → `passing` / `failing`, plus `draft`, `active` and `retired` for the acceptance half of the type. `blocked` and `deprecated` were removed. `ready` is the state a new executable test note is created in; an acceptance test rests at `active`; `retired` is terminal and is the only removal.
 - (recommended) `requirements` (list of links): Requirements verified by this test (`[[REQ-...]]`).
@@ -203,7 +203,7 @@ Fields:
 - (optional) `tasks` (list of links): Related tasks (`[[TASK-...]]`).
 - (optional) `artifacts` (list): Expected artifacts/logs.
 - (optional) `evidence` (list): Evidence from the last run (paths/log excerpts).
-- (optional) `last_run` (string): Timestamp/label for the last execution.
+- ~~`last_run`~~, ~~`exit_code`~~ — **removed (ADR-0025).** The runner wrote them; it no longer writes to a note.
 - (optional) `adequacy` (string): Evidence the test actually guards (see `tools/instructions/TESTING.md`, "Test adequacy").
 - (optional) `mutation_score` (string): Mutation-testing score for the code this test guards, when measured.
 - (optional) `reviewed_by` (string): Independent reviewer identity (`model:...` or `user:...`), per `tools/skills/independent-review/SKILL.md`.

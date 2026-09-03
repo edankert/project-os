@@ -40,24 +40,21 @@ For each in-scope feature:
 
 Also include any `TST-*` with `level: acceptance` and `scope: system` — these are cross-feature acceptance tests that should always be verified before release.
 
-### 3. Check staleness for each test
-For each test in the collected list:
-1. Read the test's `last_run` date.
-2. Find the latest `updated` date among all tasks under the linked feature(s).
-3. Determine the verdict:
-   - **CURRENT**: `last_run` exists AND is after the latest task update AND `status: passing` → no re-run needed.
-   - **STALE**: `last_run` exists but is before the latest task update → feature changed since test last ran, needs re-run.
-   - **UNTESTED**: `last_run` is empty or test is `status: draft`/`ready` → never been run, needs first run.
-   - **FAILING**: `status: failing` regardless of dates → known failure, must be fixed.
+### 3. Settle each test by its kind
+The verdict model is stated once, in `../../instructions/STATUSES.md` `[[test]]` and `../../instructions/TESTING.md` "Release gating"; this step applies it to each collected test:
+- **A test with a `command:`** is settled by CI on every push and carries no verdict on the note (ADR-0025). Its verdict here is **CI**; nothing is re-run by hand, and `python3 tools/scripts/run-tests.py` reproduces the run locally without writing.
+- **An acceptance check** (`level: acceptance`, no `command:`) is settled per release and platform in the ledger. Unsettled for this release and platform is **BLOCKED**.
+- **A manual test** (no `command:`, any other level) carries a hand-written verdict and `last_verified:`. **CURRENT**: `status: passing` and `last_verified` inside the staleness window and after the latest `updated` among the tasks under its features. **STALE**: `last_verified` older than that. **UNTESTED**: `status: ready` or `draft`. **FAILING**: `status: failing`.
 
 ### 4. Produce the release test matrix
 Present the results as a table:
 
 ```
-| Test | Level | Status | Last Run | Linked Feature | Latest Change | Verdict |
-|------|-------|--------|----------|----------------|---------------|---------|
-| TST-0005 | acceptance | passing | 2026-03-01 | FEAT-0008 | 2026-03-07 | STALE |
-| TST-0012 | e2e | passing | 2026-03-08 | FEAT-0008 | 2026-03-07 | CURRENT |
+| Test | Level | Kind | Status | Last verified | Linked Feature | Latest Change | Verdict |
+|------|-------|------|--------|---------------|----------------|---------------|---------|
+| TST-0005 | acceptance | walked | active | (ledger) | FEAT-0008 | 2026-03-07 | BLOCKED |
+| TST-0012 | e2e | command: | active | (CI) | FEAT-0008 | 2026-03-07 | CI |
+| TST-0014 | system | manual | passing | 2026-03-01 | FEAT-0008 | 2026-03-07 | STALE |
 | TST-0018 | acceptance | ready | — | FEAT-0015 | 2026-03-06 | UNTESTED |
 | TST-0020 | acceptance | failing | 2026-03-05 | FEAT-0003 | 2026-03-04 | FAILING |
 ```
@@ -70,25 +67,25 @@ Sections and gating are stated once, in `../../instructions/TESTING.md` ("The th
 - If any manual acceptance check is unsettled, or any `TST-*` note has verdict **STALE**, **UNTESTED**, or **FAILING**: **STOP.**
 - Report: "Release blocked. N tests need attention before release can proceed."
 - List each blocking test with its verdict and what action is needed:
-  - STALE → re-run the test procedure
-  - UNTESTED → run the test procedure for the first time
-  - FAILING → fix the regression, then re-run
-- Reset STALE and UNTESTED tests to `status: ready` to signal they need re-running.
+  - STALE or UNTESTED → run the manual procedure (step 7)
+  - FAILING → fix the regression, then run it again
+  - BLOCKED → walk the acceptance check and record it in the ledger
+- Do not reset a status by hand: a manual test's status is written when it is run (step 7), and a `command:` test has none.
 
 ### 7. Re-run tests
 For each test that needs re-running:
 1. Read the test note's Preconditions and Procedure sections.
 2. If the test has no `command:` (a manual test): present the procedure to the user for execution. The user runs through the steps and reports PASS or FAIL.
-3. If the test carries a `command:`: run it and capture the result. Its status is written by the runner, never by hand (`../../instructions/STATUSES.md` `[[test]]`).
+3. If the test carries a `command:`: there is nothing to record. CI ran it; `python3 tools/scripts/run-tests.py --filter TST-####` reproduces the run locally and writes nothing (ADR-0025).
 4. For a manual test, update the test note:
    - `status: passing` or `status: failing`
-   - `last_run: <today's date>`
+   - `last_verified: <today's date>`
    - `updated: <today's date>`
    - Add evidence to the Evidence section
 5. The snapshot follows the note (`../../instructions/LIFECYCLE.md`, "Mandatory Automated Documentation"); do not re-type the status.
 
 ### 8. Final release gate
-- Re-check the matrix: all tests must now be **CURRENT** and `status: passing`.
+- Re-check the matrix: every manual test **CURRENT**, every acceptance check settled in the ledger, and the CI run green.
 - If all pass: "Release verification complete. All N acceptance tests passing."
 
 ### 9. Create/update release note
@@ -114,7 +111,7 @@ After deployment/merge to production:
 3. Create a `CHG-*` note documenting the release if appropriate.
 
 ### 11. Post-release
-- The `last_run` dates on all re-run tests now reflect the release verification date.
+- The `last_verified` dates on all re-run manual tests now reflect the release verification date.
 - On the next release, only tests linked to features that changed after this date will be flagged as STALE.
 - This creates a natural cycle: change → stale → re-verify → current → change → stale → ...
 

@@ -16,7 +16,6 @@ covers: []           # THE verification link (ADR-0032): [[FEAT-...]] / [[ISS-..
 issues: []           # context only — what this test VERIFIES goes in covers:
 tasks: []
 artifacts: []
-last_run: ""
 adequacy: ""
 mutation_score: ""
 reviewed_by: ""
@@ -32,7 +31,7 @@ area: ""             # the human grouping, one walk's worth of related checks; t
 ## Purpose
 <What does this test verify?>
 
-> **Status is evidence, not intent.** `ready` means defined but not yet executed — that is the state a new test note is created in. A test with a `command:` has its `status` written by `tools/scripts/run-tests.py` from the exit code; hand-editing it is a validator error. A test without one is manual: keep `last_verified:` current, because a stale manual test stops satisfying the verification gate.
+> **Status is evidence, not intent** (`tools/instructions/STATUSES.md` `[[test]]`). A test with a `command:` records no verdict: it rests at `active`, CI runs it on every push, and `python3 tools/scripts/run-tests.py` reproduces the run locally without writing anything (ADR-0025). A test without one is manual: it carries a hand-written `passing` or `failing`, `ready` means defined and not yet run, and `last_verified:` must stay current or the verification gate stops accepting it.
 
 ## Procedure
 - <step-by-step>
