@@ -15,7 +15,7 @@ features: []
 related: ["[[INSTR-LIFECYCLE]]", "[[INSTR-QUALITY]]", "[[INSTR-HANDOFF]]", "[[INSTR-MARKDOWN]]", "[[CHG-20260903-Prompting-Guide-Contradictions]]"]
 reviewed_by: "model:claude-opus-5[1m]"
 review_date: 2026-09-03
-review_verdict: changes-requested
+review_verdict: approved
 ---
 
 # One pause rule, and the scope rules the guides state
