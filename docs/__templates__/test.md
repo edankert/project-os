@@ -8,7 +8,7 @@ created: 2026-01-27
 updated: 2026-01-27
 source: []
 scope: feature
-level: system       # unit | integration | system | e2e | acceptance
+level: system       # values: tools/instructions/TAXONOMY.md, `level` (tests)
 entrypoint: ""
 command: ""         # a runnable check; when set, the note records no verdict (tools/instructions/STATUSES.md, [[test]]; ADR-0025)
 last_verified: ""    # manual tests only (no `command:`) — date the procedure was last performed; goes stale

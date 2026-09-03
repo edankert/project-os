@@ -190,13 +190,13 @@ Where used:
 Purpose: describe how to verify behavior (manual or automated) and provide durable coverage mapping.
 
 Fields:
-- (required) `scope` (string): `feature|system` (controls where the test note is stored).
+- (required) `scope` (string): values in `tools/instructions/TAXONOMY.md`, "`scope` (tests)"; it decides where the note is stored (`tools/instructions/LIFECYCLE.md`, "Test storage").
 - ~~`kind`~~ — **removed (ADR-0034 decision 4).** `command:` answers who runs a test: present, the runner owns it; absent, a person does. Two fields answering one question is how the reader and the registry came to disagree about 8 of 788 notes.
-- (recommended) `level` (string): `unit|integration|system|e2e|acceptance`.
+- (recommended) `level` (string): values in `tools/instructions/TAXONOMY.md`, "`level` (tests)".
 - (optional) `entrypoint` (string): Repo-relative command/script to run (or blank for purely manual tests).
 - (optional) `command` (string): A runnable check. **When present the note records no verdict** (project-os-dev ADR-0025; `tools/instructions/STATUSES.md` `[[test]]`): it rests at `active`, CI runs it, and the validator's COMMAND-VERDICT reports a `ready`/`passing`/`failing` or a `last_run`/`exit_code` written on it. The reason ADR-0010 gave still holds, the party seeking a transition must not certify it; this closes it by leaving nothing on the note to certify. A hand-edited `status` on a note carrying a `command` was a validator error.
 - (required for manual tests) `last_verified` (date): When a human last performed the procedure. A manual test past the project's staleness window stops satisfying the verification gate — verification that was true a year ago is not evidence about today's system.
-- `status` (ADR-0008, extended by ADR-0031): `ready` (defined, not yet executed) → `passing` / `failing`, plus `draft`, `active` and `retired` for the acceptance half of the type. `blocked` and `deprecated` were removed. `ready` is the state a new manual test is created in; a test with a `command:` and an acceptance test rest at `active` (`tools/instructions/STATUSES.md` `[[test]]`); `retired` is terminal and is the only removal.
+- `status`: the values, who writes them and what a `command:` changes are `tools/instructions/STATUSES.md` `[[test]]`.
 - (recommended) `requirements` (list of links): Requirements verified by this test (`[[REQ-...]]`).
 - (required where the test verifies anything in particular) `covers` (list of links): **the single encoding of what this test verifies** — `[[FEAT-...]]`, `[[ISS-...]]`, `[[REQ-...]]` (ADR-0032). Resolvable through the index. A system-wide test that verifies nothing in particular leaves it empty, deliberately.
 - (optional) `issues` (list of links): Related issues (`[[ISS-...]]`) — context, not verification. What the test *verifies* goes in `covers`.
@@ -214,7 +214,7 @@ Fields:
 
 An acceptance test is the thing a person walks. It carries the fields below and rests at `status: active` (`tools/instructions/STATUSES.md` `[[test]]`); every one of them is meaningless on an executable test and the validator does not require them there.
 
-**The note holds intent. The verdict is not on it** (ADR-0037): a verdict is a fact about *(check × platform × release)* and a scalar field cannot hold a three-tuple. It lives as a dated, attributed event in `docs/releases/ledgers/`, a directory the release skills create at the first release.
+**The note holds intent. The verdict is not on it** (ADR-0037; why is `tools/instructions/TAXONOMY.md`, "Acceptance outcomes (the ledger's vocabulary)"). It lives as a dated, attributed event in `docs/releases/ledgers/`, a directory the release skills create at the first release.
 
 **Seven fields were removed** and the validator refuses each of them, *in a repo that keeps ledgers*: `mark`, `verdict_date`, `verdict_reason`, `invalidated_by`, `automation`, `covered_by`, `evidence`. A repo with no ledger is untouched and keeps reading its scalar marks — a schema change that broke every repo that had not migrated yet would be a worse failure than the one it fixes.
 
