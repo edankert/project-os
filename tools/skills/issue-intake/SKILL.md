@@ -22,7 +22,7 @@ tags: [skills, issues]
 - Optional: new `TASK-*` entries/notes if work can be immediately planned.
 
 ## Checklist
-1. **Spec-ambiguity check (before allocating any ID)** — ambiguity is upstream of documentation and no amount of tracking fixes an unclear ask. Treat these as unit tests for the request. If one fails, the reading is the user's decision: ask, or record the open question in the note and set `status: triage` (`../../instructions/LIFECYCLE.md`, "When to pause for the user"):
+1. **Spec-ambiguity check (before allocating any ID)** — ambiguity is upstream of documentation and no amount of tracking fixes an unclear ask. Treat these as unit tests for the request and run all five on every intake; the check is not conditional (ADR-0004), only the action on a failure is. The threshold is the same for all five: if the readings lead to materially different work, the reading is the user's decision, so ask, or record the open question in the note and set `status: triage` (`../../instructions/LIFECYCLE.md`, "When to pause for the user"). Otherwise implement the reading the wording most directly supports and record the assumption in the note, where the next reader can see it and dispute it:
    - Every term in the request has one meaning in this project (no undefined nouns like "the importer" when two importers exist).
    - Expected vs actual behavior is stated observably (a command, input, and output — not "works properly").
    - Scope is bounded: it is clear what is explicitly NOT included.
