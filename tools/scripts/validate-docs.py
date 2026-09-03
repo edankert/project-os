@@ -777,6 +777,13 @@ PROMOTIONS = {
     # chance to satisfy -- ADR-0011 clause 3, and the reason TEST-ENTRYPOINT
     # shipped the same way.
     "VERIFY-ACCEPTANCE": "2026-11-20",
+    # ADR-0025 (project-os-dev): a test that carries a command: records no
+    # verdict; CI is the verdict. Measured the day it shipped, 2026-09-03: 33
+    # command: tests across the fleet still carried passing/failing (7 here,
+    # 19 your-health, 4 your-sudoku, 2 your-trainer, 1 project-os-cockpit)
+    # and 5 sat at ready. Erroring on day one would take five repos red for a
+    # rule their notes were written before -- ADR-0011 clause 3.
+    "COMMAND-VERDICT": "2026-12-02",
     "REVIEW": "2026-10-23",
     # Plans went unvalidated entirely until PLAN-STATE existed, so the
     # debt is pre-existing rather than newly introduced: 19 of 33 plans
@@ -2108,6 +2115,12 @@ def validate(root, report):
                         else:
                             emit_for("VERIFY", item_id)("VERIFY", "%s is %s but linked test %s was not found" % (item_id, terminal, tst))
                             continue
+                        # ADR-0025 (project-os-dev): a test that carries a command: is
+                        # settled by CI, which runs it on every push; the note holds
+                        # no verdict for this gate to read, so it asks nothing of it.
+                        # A manual test is still held to `passing` and freshness.
+                        if tst in note_index and has_value((note_index[tst][1] or {}).get("command")):
+                            continue
                         if tst_status != "passing":
                             emit_for("VERIFY", item_id)("VERIFY", "%s is %s but linked test %s is '%s', not passing" % (item_id, terminal, tst, tst_status))
                         elif tst in note_index and is_stale(note_index[tst][1], staleness_days):
@@ -2247,14 +2260,20 @@ def validate(root, report):
                 "Run obligation counts (%s)" % (the_id, status, status, rel))
 
         if command:
-            # An executable test's status is the runner's output, so it must carry
-            # the run that produced it. A stamped status with no `last_run` means
-            # somebody typed it -- the exact thing ADR-0010 removes.
-            if status in TEST_RUNNER_STATUSES and not has_value((fm or {}).get("last_run")):
-                emit_for("TEST-FIELDS", the_id)(
-                    "TEST-FIELDS",
-                    "%s declares a command: and is '%s' but has no last_run:; an executable test's status is "
-                    "written by tools/scripts/run-tests.py, never by hand (ADR-0010) (%s)" % (the_id, status, rel))
+            # ADR-0025 (project-os-dev) replaces ADR-0010 here: a test that carries
+            # a command: records no verdict at all. CI runs it and a red run is a
+            # red build, so `ready`, `passing`, `failing`, `last_run:` and
+            # `exit_code:` on such a note are a verdict written where none belongs.
+            # A warning until the PROMOTIONS cutover, because 33 notes carried one
+            # the day this landed.
+            verdict_fields = [k for k in ("last_run", "exit_code") if has_value((fm or {}).get(k))]
+            if status in TEST_RUNNER_STATUSES or status == "ready" or verdict_fields:
+                promotion_emit(report, "COMMAND-VERDICT", grandfathered, the_id)(
+                    "COMMAND-VERDICT",
+                    "%s declares a command: and carries a verdict (%s); an executable test records no "
+                    "verdict, CI is the verdict (ADR-0025; STATUSES.md [[test]]). Set status: active and "
+                    "drop last_run:/exit_code: (%s)" % (
+                        the_id, ", ".join((['status: %s' % status] if (status in TEST_RUNNER_STATUSES or status == "ready") else []) + verdict_fields), rel))
         else:
             # A test the corpus treats as automated but that declares no way to run
             # is a status no machine can refresh. Release verification re-runs a
