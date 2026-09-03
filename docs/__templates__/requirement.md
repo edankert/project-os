@@ -27,5 +27,5 @@ tests: []
 - [ ] <criterion> — evidence: <path, path:line, command, or note ID>
 
 ## Traceability
-- Implements: a single `[[FEAT-####-...]]` link (at most one feature owns a requirement)
+- Implements: a single `[[FEAT-####-...]]` link
 - Verified by: repo paths (e.g. `tests/run_regressions.sh`) or workflow links

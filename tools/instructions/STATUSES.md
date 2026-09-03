@@ -22,7 +22,7 @@ tags: [instructions, statuses]
 | `requirement` | `implemented` | every acceptance criterion ticked-with-evidence or reconciled; never gated on tests (ADR-0007) | agent, at feature close-out |
 | `phase` | `done` | every exit criterion ticked-with-evidence or reconciled (PHASE-BOXES); every note naming it in `phase:` scope-resolved (PHASE-CHILDREN) | agent |
 | `test` | `passing` / `failing`, or `retired` | — | the author, and only for a manual test, which carries `last_verified:` and goes stale. A test carrying a `command:` holds no verdict (ADR-0038) |
-| `test` at `level: acceptance` | `retired` | — | agent or human; it rests at `active` and the verdict is `mark:` (see `[[test]]`) |
+| `test` at `level: acceptance` | `retired` | — | agent or human; it rests at `active` and the verdict is in the release ledger, not on the note (see `[[test]]`) |
 | `risk` | `closed` | — | agent |
 | `release` | `released` | release verification | agent |
 | `change` | `merged` | — | agent |
@@ -68,7 +68,7 @@ If a project needs different states, update this file and the templates in `../.
   - `deferred` → `planned` (re-adopted)
   - `done` → `superseded` (replaced by a newer feature; link the successor)
 - **A feature may not reach `done` while a requirement naming it in `implements:` has an unresolved acceptance criterion** (ADR-0007, validator FEATURE-REQ), unless that requirement is descoped.
-- **A feature may not move to `doing` while a requirement it implements is still `draft`**; approve the requirement first (`../skills/feature-scaffold/SKILL.md`, "Requirement approval gate"). Reason: implementation works against agreed criteria, not against a draft.
+- **A feature may not move to `doing` while a requirement it implements is still `draft`**; approve the requirement first (`../skills/feature-scaffold/SKILL.md`, step 7 "Requirement approval gate"). Reason: implementation works against agreed criteria, not against a draft.
 
 ## `[[phase]]`
 - Allowed: `planned`, `active`, `done`, `deferred`, `superseded`
@@ -84,7 +84,7 @@ If a project needs different states, update this file and the templates in `../.
 - **`implemented` is terminal** (ADR-0007), gated on acceptance criteria alone and never on linked tests. There is no `verified` status; verification lives in `[[test]]` notes and the per-criterion evidence.
 - Typical transitions:
   - `draft` → `approved` → `implemented`
-  - `approved` → `implemented` is set at **feature close-out** (`../skills/close-out/SKILL.md`, "Requirement advancement"). A requirement left at `draft`/`approved` after its feature is terminal is a validator error (REQ-STALE); a cancelled or superseded feature supersedes or cancels its requirement instead.
+  - `approved` → `implemented` is set at **feature close-out** (`../skills/close-out/SKILL.md`, step 3 "Requirement advancement"). A requirement left at `draft`/`approved` after its feature is terminal is a validator error (REQ-STALE); a cancelled or superseded feature supersedes or cancels its requirement instead.
   - `implemented` requires every acceptance criterion **ticked with evidence or reconciled** (validator REQ-BOXES).
   - `implemented` → `retired`
   - `draft`/`approved` → `deferred` (descoped and parked) or `cancelled`
@@ -138,8 +138,8 @@ If a project needs different states, update this file and the templates in `../.
 
 An acceptance test is a `[[test]]` at `level: acceptance`: the thing a person walks. Three rules apply to it and nothing else:
 
-- **It rests at `active`, and the verdict is `mark:`, never status** (`TAXONOMY.md`). Walking one writes `mark:`, `verdict_date:` and `verdict_reason:`. Reason: the verdict rules, the review gate and the `Run` obligation are keyed on `passing` and `ready`, so they never engage for a suite of hundreds of self-re-arming rows.
-- **Adding a `command:` makes it automated**: CI settles it, it leaves the manual list, and the note records no verdict (ADR-0038).
+- **It rests at `active`, and its verdict is not on the note**: a walk records a dated event in the release ledger, per check, platform and release (`TAXONOMY.md`, "Acceptance outcomes (the ledger's vocabulary)"; ADR-0037). Reason: the verdict rules, the review gate and the `Run` obligation are keyed on `passing` and `ready`, so they never engage for a suite of hundreds of self-re-arming rows.
+- **Adding a `command:` makes it automated** (`TESTING.md`, "When to create", rule 3).
 - **It carries no completeness gate of its own**: nothing is blocked by an acceptance test being `draft`.
 
 The retired `check` type is `TAXONOMY.md`, "`check` — retired".
@@ -148,12 +148,7 @@ The retired `check` type is `TAXONOMY.md`, "`check` — retired".
 
 `deferred` means out of the current parent's scope and still wanted later. It never satisfies completeness: a parent whose scope list holds a deferred item cannot reach a terminal status (validator DEFER checks). Deferring is a **descoping operation** (ADR-0005; procedure in `../skills/status-transition/SKILL.md`):
 
-1. Move the item's ID from the parent's scope list to its `deferred:` list.
-2. On the item, set `origin:` to the former parent and clear `parent:`.
-3. Set `phase:` to a real future phase, else `PHASE-999` (create `docs/phases/PHASE-999-Parking-Lot.md` once; all-9s IDs are counter-exempt).
-4. Mirror it in `SNAPSHOT.yaml`; deferred items are never pruned.
-
-Re-adoption reverses it: a parent, the ID back in its scope list, the non-parked status (`backlog`/`open`/`draft`/`planned`), `origin:` kept as history. Backlog grooming reviews every parked item.
+The steps, and re-adoption, are in `../skills/status-transition/SKILL.md` ("Deferral procedure", "Re-adoption"). Two status facts belong here: a deferred item is never pruned from the snapshot, and re-adoption sets the non-parked status for its type (`backlog`/`open`/`draft`/`planned`).
 
 ## `[[release]]`
 - Allowed: `draft`, `released`, `reverted`

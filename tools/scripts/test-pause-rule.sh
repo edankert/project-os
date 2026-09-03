@@ -51,7 +51,8 @@ tools/skills/feature-scaffold/SKILL.md:1
 tools/skills/release-prep/SKILL.md:2
 tools/skills/close-out/SKILL.md:1
 tools/scripts/generate-adapters.py:1
-docs/PHASES.md:1"
+docs/PHASES.md:1
+tools/skills/impact-analysis/SKILL.md:1"
 while IFS=: read -r site want; do
   [[ -z "$site" ]] && continue
   got=$(grep -cF "$LINK" "$ROOT/$site" 2>/dev/null || true)
@@ -60,7 +61,7 @@ done <<< "$SITES"
 
 # The old phrasings must be gone from the sites (a link beside a restatement is
 # still a restatement).
-stale="$(cd "$ROOT" && grep -rnE 'stop and present resolution options|require explicit user confirmation|stop and request explicit user confirmation|Present the list to the user for decision|document it and discuss before proceeding|stop and return the ambiguities' tools/instructions tools/skills tools/scripts/generate-adapters.py docs/PHASES.md 2>/dev/null || true)"
+stale="$(cd "$ROOT" && grep -rnE 'stop and present resolution options|require explicit user confirmation|stop and request explicit user confirmation|Present the list to the user for decision|document it and discuss before proceeding|stop and return the ambiguities|Stop for user decision' tools/instructions tools/skills tools/scripts/generate-adapters.py docs/PHASES.md 2>/dev/null || true)"
 check "no stop-point still carries its own phrasing" "$([[ -z "$stale" ]]; echo $?)" "$stale"
 
 # -- 3. the generated planner matches the generator ---------------------------

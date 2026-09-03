@@ -53,10 +53,7 @@ The `focus` object tracks the current work context:
 - `focus.issue` (string): Currently active issue ID (or empty string).
 - `focus.note` (string, optional): what is in flight and what comes next, in at most two sentences. Anything longer belongs in the active task or issue note's own sections, which is where a reader looking for the detail already goes. The snapshot is the first file every session loads, so a paragraph here is paid for on every session.
 
-When phase-gated development is used:
-- Update `focus.phase` when transitioning to a new milestone.
-- Agents should verify work aligns with the active phase before starting implementation.
-- Keep `focus.phase` aligned with `items.phases.<PHASE-ID>` when phase notes are used.
+When phase-gated development is used, the rules are in `LIFECYCLE.md`, "Phase alignment (optional gating)"; keep `focus.phase` aligned with `items.phases.<PHASE-ID>` when phase notes are used.
 
 ## Required fields per item (minimum)
 Each item entry must include:
@@ -79,7 +76,7 @@ Then type-specific fields, for example:
 - Decision (ADR): `decision`, `context`, `supersedes`, `superseded`, `related` (IDs)
 - Release: `version`, `tag`, `date`, optional `platform`, `features` (FEAT IDs), `changes` (CHG IDs), `tests_verified` (TST IDs), `previous_release`
 
-The `goal` and `note` prose on any item is at most two sentences each. It is the curation the sync script leaves alone (`LIFECYCLE.md`, "Membership is still yours"), and the longer text goes in the note's own Goal or Notes section.
+The `goal` and `note` prose on any item is at most two sentences each. It is the curation the sync script leaves alone (`LIFECYCLE.md`, "Mandatory Automated Documentation"), and the longer text goes in the note's own Goal or Notes section.
 
 ## Invariants
 - `file` must point to an existing note under `../../docs/`, and the note’s frontmatter `id` should match the snapshot key.
@@ -119,7 +116,7 @@ Recommended approach:
   - features: anything not `done`
   - risks: anything not `closed`
   - requirements: keep `approved` requirements that still matter for current work, retire when obsolete
-  - `deferred` items of every type are **active** — never prune them; they stay in the snapshot (with `origin` and a forward home) until re-adopted or cancelled. Parked work that leaves the snapshot is lost work.
+  - `deferred` items of every type are **active** and never pruned (`STATUSES.md`, "Deferral and re-adoption"); parked work that leaves the snapshot is lost work.
 - Keep **recent** changes only in `items.changes` (e.g. last 10–50), and rely on `../../docs/changes/` notes for history.
 - Keep **all history in notes** (issues/tasks/features/changes/ADRs remain in `../../docs/**` even if removed from the snapshot).
 

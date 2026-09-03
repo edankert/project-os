@@ -26,5 +26,5 @@ tags: [skills, backlog]
 3. Split oversized tasks into smaller tasks with measurable DoD.
 4. Convert unknowns into `ISS-*` rather than embedding them in tasks.
 5. Update `focus` only when starting execution.
-6. Update snapshot `metrics` after grooming (including `tasks_deferred`/`issues_deferred`).
+6. `metrics` follows the notes (`../../instructions/LIFECYCLE.md`, "Mandatory Automated Documentation"); update `focus` and snapshot membership if grooming changed them.
 7. Run the cross-document audit (`../docs-audit/SKILL.md`) as part of the grooming cadence — per-edit checks catch single-file drift, but stale cross-note references only surface in a full-graph sweep.

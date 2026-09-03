@@ -27,7 +27,7 @@ These rules define what "done" means for work tracked in this documentation syst
 ## Verification gating (tests)
 - The gate on each terminal status (task `done`, issue `fixed`, feature `done`, requirement `implemented`) is stated once in `STATUSES.md`, "The contract at a glance". This section says how to satisfy it.
 - Verification is an automated test linked and `passing`, or a manual `[[test]]` note with a clear procedure that a human has run and whose result the note records.
-- Do not tick an acceptance criterion the delivered system does not satisfy. If the work departed from a criterion, amend, narrow or supersede it with recorded rationale (`../skills/close-out/SKILL.md`, "Requirement advancement"); ticking to fit is a fake `done`.
+- Do not tick an acceptance criterion the delivered system does not satisfy. If the work departed from a criterion, amend, narrow or supersede it with recorded rationale (`../skills/close-out/SKILL.md`, step 3 "Requirement advancement"); ticking to fit is a fake `done`.
 - A `deferred` task never resolves a feature's scope: descope it through the deferral procedure (`STATUSES.md`, "Deferral and re-adoption"); never flip it to `done` or drop it from the list.
 - If a terminal status must be set without passing tests (a docs-only or config-only change), record `verification_waiver: <reason>` in the note frontmatter. The validator reports the waiver as a warning; a silent skip is a build failure.
 
@@ -36,7 +36,7 @@ These rules define what "done" means for work tracked in this documentation syst
 - **Independent means a clean context**: a session that starts from the notes and the diff alone, never the author's reasoning trace, and is not the session that authored the work. A human pass also satisfies this and remains the strongest option. Self-review is forbidden.
 - Model family is not the gate (ADR-0013 records the experiment). The boundary is session and context, not vendor.
 - **A `CHG-*` note does not owe a review** (ADR-0019): the change itself is reviewed at the three gates above while the work is live, and reviewing the note later reviews the prose.
-- **An acceptance test does not owe a review either.** It rests at `active` and never reaches `passing` because its verdict is `mark:` (`STATUSES.md` `[[test]]`); the review of an acceptance test is the walk, and gating it would ask for the same evidence twice.
+- **An acceptance test does not owe a review either.** It rests at `active` and never reaches `passing` (`STATUSES.md` `[[test]]`); the review of an acceptance test is the walk, and gating it would ask for the same evidence twice.
 - Record the outcome in the reviewed note's frontmatter (`reviewed_by`, `review_date`, `review_verdict`).
 
 ## Verification expectations (generic)

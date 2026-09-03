@@ -38,7 +38,7 @@ tags: [skills, closeout]
    - If the delivered work deliberately departed from a criterion, **reconcile it — never tick it to fit**: amend, narrow, or supersede it via `../impact-analysis/SKILL.md` and record what changed and why in an `## Amendments` section of the note. Silently rewriting or dropping a criterion destroys the audit trail.
    - Keep frontmatter `acceptance:` (criteria of record) and the body checkboxes (verification record) describing the same criteria; frontmatter wins where they disagree.
    - Set the requirement to `implemented` once the feature named in its `implements:` is `done`. A requirement naming no feature is not advanced by any feature's close-out. The transitions themselves, including what happens when the feature ends `cancelled` or `superseded`, are stated once in `STATUSES.md` `[[requirement]]`.
-4. `../../../SNAPSHOT.yaml` — **do not re-type the statuses.** `tools/scripts/sync-snapshot.py` propagates each item's status from its note, along with `counters` and `metrics.counts`, at pre-commit (ADR-0009). What still needs a decision:
+4. `../../../SNAPSHOT.yaml`: the derived fields follow the notes (`../../instructions/LIFECYCLE.md`, "Mandatory Automated Documentation"). What still needs a decision:
    - add entries for genuinely new items, and prune per `retention` — membership is curation, not derivation
    - update relationships if new tasks/issues/risks were created
    - clear or move `focus` to the next task (`focus` is intent, and stays hand-authored)

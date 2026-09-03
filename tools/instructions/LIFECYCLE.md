@@ -13,7 +13,7 @@ tags: [instructions, lifecycle]
 Rules for the lifecycle of work: intake, plan, implement, verify, close. Each is stated once here, with a reason and a link (project-os-dev REQ-0026).
 
 ## Source of truth
-- `../../SNAPSHOT.yaml` is the canonical, machine-readable active context for agents. Notes under `../../docs/` are the durable human record, and their frontmatter must agree with it. Bases views are for people and are not canonical for agents.
+- `../../SNAPSHOT.yaml` is the canonical, machine-readable active context for agents. Notes under `../../docs/` are the durable human record, and the snapshot's derived fields follow them ("Mandatory Automated Documentation" below). Bases views are for people and are not canonical for agents.
 
 ## Test storage (hybrid)
 - Feature-scoped: `docs/features/<feature-slug>/plan/tests/TST-####-*.md`, an acceptance check for the feature included; system-wide: `docs/tests/TST-####-*.md`, with a system-wide acceptance suite under `docs/tests/acceptance/`.
@@ -59,7 +59,7 @@ A bug, a cleanup or a missing abstraction the task did not ask for is an `ISS-*`
 
 ## Close-out (must happen after work)
 1. Set the note status: task `done`, issue `fixed`, requirement `implemented`, feature `done` (`STATUSES.md`).
-2. Update the snapshot: statuses, relationships, focus, metrics.
+2. Update the snapshot's curated fields: focus, membership, relationships; statuses and metrics follow ("Mandatory Automated Documentation" above).
 3. Add a change note, `docs/changes/CHG-YYYYMMDD-Short-Description.md`, when behaviour, paths or contracts change. A document written for a person (a review, a report, a design) is a `reference` note under `docs/reference/`; a page published elsewhere is a copy, its URL in `source:`.
 4. Add or update a `RISK-*` for a new hazard: a dependency, an env var, a contract.
 5. Never delete a completed note; status and links preserve history.

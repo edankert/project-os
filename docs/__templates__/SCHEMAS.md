@@ -71,7 +71,7 @@ Fields:
 - (recommended) `impacts` (list of strings): Affected areas/paths/flows (keep short).
 - (optional) `issues` (list of links): Issues associated with the change.
 - (optional) `features` (list of links): Features associated with the change.
-- (optional) `reviewed_by` (string): Independent reviewer identity (`model:...` or `user:...`), per `tools/skills/independent-review/SKILL.md`.
+- (optional) `reviewed_by` (string): Independent reviewer identity (`model:...` or `user:...`) when a change note was reviewed; it owes none (`tools/instructions/QUALITY.md`, "Independent review (clean-context)").
 - (optional) `review_date` (string/date): Date of the independent review.
 - (optional) `review_verdict` (string): `approved | changes-requested`.
 
@@ -137,8 +137,8 @@ Fields:
 - (optional) `scope` (string): Short scoping label (area/domain).
 - (required) `acceptance` (list): Acceptance criteria statements (strings). This list is the **criteria of record** — the machine-readable contract other notes and tooling refer to.
   - The body `## Acceptance Criteria` checkboxes are the **verification record**: one box per criterion, ticked only with an evidence pointer (path, `path:line`, command, or note ID) at feature close-out.
-  - Both surfaces must describe the same criteria; where they diverge, frontmatter wins and the body is corrected. Departures from a criterion are amended/superseded with rationale (an `## Amendments` section), never ticked to fit — see `../../tools/skills/close-out/SKILL.md`, "Requirement advancement".
-- (optional) `implements` (link): The feature implementing this requirement. Direction note: this names the feature that implements *this requirement* (the inverse-named back-reference), and it holds **at most one** feature (`tools/instructions/STATUSES.md` `[[requirement]]`, Ownership). The requirement advances to `implemented` when that feature is `done` and its own acceptance criteria are ticked-with-evidence or reconciled. Empty is permitted: a requirement naming no feature gates no feature.
+  - Both surfaces must describe the same criteria; where they diverge, frontmatter wins and the body is corrected. Departures from a criterion are amended/superseded with rationale (an `## Amendments` section), never ticked to fit — see `../../tools/skills/close-out/SKILL.md`, step 3 "Requirement advancement".
+- (optional) `implements` (link): The feature implementing this requirement. Direction note: this names the feature that implements *this requirement* (the inverse-named back-reference), and it holds **at most one** feature (`tools/instructions/STATUSES.md` `[[requirement]]`, Ownership).
 - (optional) `verifies` (list of links/paths): Proof/verification pointers (workflows/tests/repo paths).
 - (optional) `tests` (list of links): `[[TST-...]]` links that verify this requirement.
 
@@ -196,7 +196,7 @@ Fields:
 - (optional) `entrypoint` (string): Repo-relative command/script to run (or blank for purely manual tests).
 - (optional) `command` (string): A runnable check. **When present the note records no verdict** (project-os-dev ADR-0025; `tools/instructions/STATUSES.md` `[[test]]`): it rests at `active`, CI runs it, and the validator's COMMAND-VERDICT reports a `ready`/`passing`/`failing` or a `last_run`/`exit_code` written on it. The reason ADR-0010 gave still holds, the party seeking a transition must not certify it; this closes it by leaving nothing on the note to certify. A hand-edited `status` on a note carrying a `command` was a validator error.
 - (required for manual tests) `last_verified` (date): When a human last performed the procedure. A manual test past the project's staleness window stops satisfying the verification gate — verification that was true a year ago is not evidence about today's system.
-- `status` (ADR-0008, extended by ADR-0031): `ready` (defined, not yet executed) → `passing` / `failing`, plus `draft`, `active` and `retired` for the acceptance half of the type. `blocked` and `deprecated` were removed. `ready` is the state a new executable test note is created in; an acceptance test rests at `active`; `retired` is terminal and is the only removal.
+- `status` (ADR-0008, extended by ADR-0031): `ready` (defined, not yet executed) → `passing` / `failing`, plus `draft`, `active` and `retired` for the acceptance half of the type. `blocked` and `deprecated` were removed. `ready` is the state a new manual test is created in; a test with a `command:` and an acceptance test rest at `active` (`tools/instructions/STATUSES.md` `[[test]]`); `retired` is terminal and is the only removal.
 - (recommended) `requirements` (list of links): Requirements verified by this test (`[[REQ-...]]`).
 - (required where the test verifies anything in particular) `covers` (list of links): **the single encoding of what this test verifies** — `[[FEAT-...]]`, `[[ISS-...]]`, `[[REQ-...]]` (ADR-0032). Resolvable through the index. A system-wide test that verifies nothing in particular leaves it empty, deliberately.
 - (optional) `issues` (list of links): Related issues (`[[ISS-...]]`) — context, not verification. What the test *verifies* goes in `covers`.
@@ -212,9 +212,9 @@ Fields:
 
 ### Acceptance fields (`level: acceptance` only)
 
-An acceptance test is the thing a person walks. It carries the fields below and rests at `status: active`; every one of them is meaningless on an executable test and the validator does not require them there.
+An acceptance test is the thing a person walks. It carries the fields below and rests at `status: active` (`tools/instructions/STATUSES.md` `[[test]]`); every one of them is meaningless on an executable test and the validator does not require them there.
 
-**The note holds intent. The verdict is not on it** (ADR-0037): a verdict is a fact about *(check × platform × release)* and a scalar field cannot hold a three-tuple. It lives as a dated, attributed event in `docs/releases/ledgers/` — see that directory's README.
+**The note holds intent. The verdict is not on it** (ADR-0037): a verdict is a fact about *(check × platform × release)* and a scalar field cannot hold a three-tuple. It lives as a dated, attributed event in `docs/releases/ledgers/`, a directory the release skills create at the first release.
 
 **Seven fields were removed** and the validator refuses each of them, *in a repo that keeps ledgers*: `mark`, `verdict_date`, `verdict_reason`, `invalidated_by`, `automation`, `covered_by`, `evidence`. A repo with no ledger is untouched and keeps reading its scalar marks — a schema change that broke every repo that had not migrated yet would be a worse failure than the one it fixes.
 
@@ -224,8 +224,7 @@ An acceptance test is the thing a person walks. It carries the fields below and 
 - ~~`section`~~, ~~`ordinal`~~ — **removed (ISS-0224).** They were a check's position in `ACCEPTANCE_TESTS.md`, a document that exists in no migrated repo. Order is `(tier, id)` and grouping is `area` alone; measured before removing them, `(tier, id)` reproduces the old order byte-for-byte in every repo, and no area spans two sections anywhere. `migrated_from:` keeps the old address **and the sha** — a record of the past, not a claim about the present.
 
 Where NOT used:
-- The obligation registry: an acceptance test is never owed. Acceptance rows are the most self-re-arming population in a corpus, and per-check obligations are the one use of this granularity that is forbidden outright. Held by construction — the `Run` obligation is keyed on `ready` and these rest at `active`.
-- The independent-review gate (`QUALITY.md`): keyed on `passing`, which an acceptance test does not hold. The review of an acceptance test is the walk.
+- The obligation registry and the independent-review gate: neither engages for an acceptance test, by construction (`tools/instructions/STATUSES.md` `[[test]]`).
 - `SNAPSHOT.yaml` `items.tests`: a repo can hold hundreds of acceptance tests and the snapshot is active-and-recent context. Executable tests are tracked as before.
 
 

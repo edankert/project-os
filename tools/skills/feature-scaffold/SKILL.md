@@ -51,7 +51,7 @@ tags: [skills, features]
 7. **Requirement approval gate:**
    - A feature may not move to `doing` while any linked requirement is still `draft` — approve it (or amend it first, then approve) so implementation works against agreed criteria.
    - Approval means the acceptance criteria are the ones you intend to build against; if the plan already departs from them, amend the requirement now rather than at close-out.
-   - The requirement is advanced again at close-out (`../close-out/SKILL.md`, "Requirement advancement").
+   - The requirement is advanced again at close-out (`../close-out/SKILL.md`, step 3 "Requirement advancement").
 8. **Risk scan:**
    - Review the feature against risk scan triggers in `../../instructions/LIFECYCLE.md`.
    - If any trigger applies, run `../risk-scan/SKILL.md` and create/update `RISK-*` notes.

@@ -3,7 +3,8 @@
 # Claude Code PreToolUse hook for Write/Edit tools
 #
 # Checks that focus.task or focus.issue is set in SNAPSHOT.yaml
-# before allowing code file edits (excludes docs/, tools/, SNAPSHOT.yaml, CLAUDE.md).
+# before allowing code file edits (the exempt paths are listed once in
+# tools/instructions/HOOKS.md HC-001).
 #
 # Exit 0 = allow (no output or empty output)
 # To block: exit 0 with JSON containing permissionDecision: "deny"

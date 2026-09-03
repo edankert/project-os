@@ -57,7 +57,7 @@ Project-defined free text label, but keep it stable. Examples:
 
 ## `level` (tests)
 - `unit`, `integration`, `system`, `e2e`, `acceptance`
-- **`acceptance` is the discriminator of the merged type (ADR-0031)**: a test at this level is the thing a person walks — it rests at `status: active`, its verdict is `mark:`, and it carries the acceptance fields below. Everything else on the scale is executable. The field has always been here; since ADR-0031 it carries the distinction the retired `check` type used to.
+- **`acceptance` is the discriminator of the merged type (ADR-0031)**: a test at this level is the thing a person walks — it rests at `status: active`, its verdict is in the release ledger ("Acceptance outcomes (the ledger's vocabulary)" below), and it carries the acceptance fields below. Everything else on the scale is executable. The field has always been here; since ADR-0031 it carries the distinction the retired `check` type used to.
 - A test moves along the scale rather than between types; how a walk becomes automated is stated once in `TESTING.md`, "When to create", rule 3. (`covered_by:` was removed with the ledger model; `SCHEMAS.md`, "Acceptance fields".)
 
 ## `scope` (tests)

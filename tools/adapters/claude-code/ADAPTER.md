@@ -95,7 +95,7 @@ These files contain detailed rules. Read them when performing the related operat
 
 - The `@` imports inline the content of each file into Claude Code's context when the CLAUDE.md is loaded
 - Core rules (LIFECYCLE) are always imported because it governs every interaction
-- STATUSES and QUALITY are listed as reference instructions — Claude Code reads them on demand when relevant
+- STATUSES and QUALITY are imported too in the reference CLAUDE.md below; the other instruction files are listed as references and read on demand
 - Reference instructions are listed as paths (not imported) to keep context window lean
 - Skill playbooks are listed as paths for the same reason
 

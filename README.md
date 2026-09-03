@@ -15,7 +15,7 @@ Start here:
 - `tools/skills/README.md` (playbooks)
 - `tools/adapters/codex/ADAPTER.md` (Codex adapter model)
 - `tools/agents/bootstrap.sh` (quick preflight/status)
-- `tools/agents/start-change.sh` (docs-first intake scaffold)
+- `tools/agents/start-change.sh` (change-note scaffold)
 - `tools/agents/check-docs-first.sh` (docs-first enforcement)
 - `tools/cockpit/README.md` (optional browser cockpit for project-os docs)
 - `docs/reference/README.md` (optional non-lifecycle reference/source area)

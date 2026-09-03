@@ -51,7 +51,7 @@ A check is not filed into a section. Its section is computed from two fields it 
 
 A repo stores its suite one of two ways, never both.
 
-**Notes (current).** One check per note: `type: [[test]]`, `level: acceptance`, id `TST-*`, stored per `LIFECYCLE.md` "Test storage", from `../../docs/__templates__/test.md`. `status:` is the lifecycle (`draft`/`active`/`retired`) and `mark:` is the verdict; ticking never touches status, which keeps the note outside the verdict rules and the review gate. The section is derived and never written down. See `SCHEMAS.md` `test.md` ("Acceptance fields") and `STATUSES.md` `[[test]]`.
+**Notes (current).** One check per note: `type: [[test]]`, `level: acceptance`, id `TST-*`, stored per `LIFECYCLE.md` "Test storage", from `../../docs/__templates__/test.md`. `status:` is the lifecycle (`draft`/`active`/`retired`); the verdict is not on the note (`STATUSES.md` `[[test]]`). The section is derived and never written down. See `SCHEMAS.md` `test.md` ("Acceptance fields") and `STATUSES.md` `[[test]]`.
 
 **One document (older).** `docs/tests/ACCEPTANCE_TESTS.md`, from `../../docs/__templates__/acceptance-tests.md`: `# Feature tests`, `# Regression tests` and `# Automated tests`, grouped by area, one `- [x] **Test Name:** procedure and expected result` row per check (automated rows have no checkbox). Everything in this file applies to it. A repo that migrates to notes deletes the document in the migration commit, because two records of one thing drift and git holds the old one.
 
@@ -72,7 +72,7 @@ A guarding test that cannot fail does not guard, and LLM-authored tests share th
 
 ## Relationship to TST-* notes
 
-- `TST-*` notes under `docs/tests/` or `docs/features/<slug>/plan/tests/` are individual test specifications with frontmatter, procedure and evidence.
+- `TST-*` notes, stored per `LIFECYCLE.md` "Test storage", are individual test specifications with frontmatter, procedure and evidence.
 - **An acceptance check is a `TST-*` note at `level: acceptance`** (ADR-0031; the retired `check` type is `TAXONOMY.md`, "`check` — retired").
 - `level:` is a spectrum: a `unit` test is a pytest module, an `acceptance` test is a thing a person does, and a `command:` moves a note along it.
-- An acceptance test rests at `active`, so the verdict rules, the review gate and the `Run` obligation, keyed on `passing` and `ready`, never engage. **The review of an acceptance test is doing it.**
+- An acceptance test rests at `active` (`STATUSES.md` `[[test]]`). **The review of an acceptance test is doing it.**

@@ -35,7 +35,7 @@ A `TST-*` note is the record of verification: the procedure, the verdict, and th
    - Store the note per `../../instructions/LIFECYCLE.md` "Test storage".
    - For **manual** tests:
      - write an unambiguous procedure and expected results
-     - leave `status: ready` and `evidence: []`
+     - leave `status: ready` (defined, not yet run; `../../instructions/STATUSES.md` `[[test]]`) and `evidence: []`
      - request human feedback (pass/fail + evidence)
    - For a test with a **`command:`**:
      - set `command:` and `entrypoint` (repo path) and the expected artifacts

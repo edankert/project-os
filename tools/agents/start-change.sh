@@ -48,7 +48,5 @@ sed -e "s|^id: .*|id: ${ID}|" \
 
 echo "Created: ${FILE}"
 echo "Next steps:"
-echo "1) Fill Documentation Coverage values (no 'pending')."
-echo "2) Update SNAPSHOT.yaml."
-echo "3) Implement changes."
-echo "4) Run: bash tools/agents/check-docs-first.sh"
+echo "1) Fill the Documentation Coverage values and link the note from the issues and features it affects."
+echo "2) Run: bash tools/agents/check-docs-first.sh (a change note is due at close-out when behaviour, paths or contracts change; LIFECYCLE.md)"

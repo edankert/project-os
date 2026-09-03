@@ -15,7 +15,7 @@ Use this when work may stop unexpectedly or another agent/session picks it up.
 The durable handoff surface is the snapshot plus the notes; anything a successor needs must be written there. The snapshot holds no coordination state (`SNAPSHOT.md`, "Team model").
 
 ## Before stopping work (handoff checklist)
-1. Update `SNAPSHOT.yaml` (items, statuses, relationships).
+1. Update `SNAPSHOT.yaml`'s curated fields (membership, relationships); statuses and metrics are derived (`LIFECYCLE.md`, "Mandatory Automated Documentation").
 2. Set/clear `focus` appropriately — an empty `focus` means "no work in flight", so leave it set only if work genuinely continues.
 3. Record what is in flight in the active task/issue note: what was done, what is next, and any blocker (a brief "Next Actions" section).
 4. Ensure uncommitted work is described somewhere durable (task note or `CHG-*`), since the working tree is not part of the handoff surface.

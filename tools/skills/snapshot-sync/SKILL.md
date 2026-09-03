@@ -16,7 +16,7 @@ tags: [skills, snapshot]
 
 ## First: most of this is automatic now
 
-`tools/scripts/sync-snapshot.py` syncs the **derived** snapshot fields from note frontmatter — each item's `status`, `counters`, and `metrics.counts`. It runs at pre-commit (writing, and re-staging the file) and in CI with `--check`. So a status authored in a note reaches the snapshot without anyone copying it (ADR-0009).
+`tools/scripts/sync-snapshot.py` syncs the **derived** snapshot fields (`../../instructions/LIFECYCLE.md`, "Mandatory Automated Documentation"). It runs at pre-commit (writing, and re-staging the file) and in CI with `--check`.
 
 ```bash
 python3 tools/scripts/sync-snapshot.py            # sync derived fields

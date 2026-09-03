@@ -35,8 +35,8 @@ tags: [skills, statuses]
 
 Requirements are advanced by the work that delivers them, not on their own schedule:
 
-1. `draft` → `approved`: the criteria are agreed and features may now implement against them (`../feature-scaffold/SKILL.md`, "Requirement approval gate").
-2. `approved` → `implemented`: terminal, set at feature close-out (`../../instructions/STATUSES.md` `[[requirement]]`; procedure in `../close-out/SKILL.md`, "Requirement advancement").There is no `verified` requirement status; verification lives in `[[test]]` notes and the per-criterion evidence pointers.
+1. `draft` → `approved`: the criteria are agreed and features may now implement against them (`../feature-scaffold/SKILL.md`, step 7 "Requirement approval gate").
+2. `approved` → `implemented`: terminal, set at feature close-out (`../../instructions/STATUSES.md` `[[requirement]]`; procedure in `../close-out/SKILL.md`, step 3 "Requirement advancement").There is no `verified` requirement status; verification lives in `[[test]]` notes and the per-criterion evidence pointers.
 
 ## Deferral procedure (transition to `deferred`)
 
@@ -45,10 +45,10 @@ Requirements are advanced by the work that delivers them, not on their own sched
 1. **Descope from the parent**: remove the item's ID from the parent's scope list (feature `tasks:`) and add it to the parent's `deferred:` list — in both the parent note and `../../../SNAPSHOT.yaml`.
 2. **Record provenance**: on the deferred item, set `origin:` to the former parent link and clear `parent:`.
 3. **Assign a forward home**: set `phase:` to a real future phase when one exists; otherwise use the parking lot — create `../../../docs/phases/PHASE-999-Parking-Lot.md` once if absent (status `planned`, all-9s sentinel IDs are counter-exempt) and point `phase:` at it.
-4. **Keep it active**: the item stays in the snapshot (retention never prunes `deferred`) and counts toward `tasks_deferred`/`issues_deferred` metrics.
+4. **Keep it active**: the item stays in the snapshot; retention never prunes `deferred` (`../../instructions/STATUSES.md`, "Deferral and re-adoption").
 
 ## Re-adoption (transition out of `deferred`)
 
 1. Assign a new (or the original) `parent:` and add the ID back to that parent's scope list (note + snapshot).
-2. Set the non-parked status (`backlog`/`open`/`draft`/`planned` per type) and update `phase:` to the real phase of the new work.
+2. Set the non-parked status for the type (`../../instructions/STATUSES.md`, "Deferral and re-adoption") and update `phase:` to the real phase of the new work.
 3. Keep `origin:` as history of where the item was first scoped.
