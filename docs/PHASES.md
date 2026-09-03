@@ -62,7 +62,7 @@ When executing work, the LLM must:
 2. **Consult this registry**: Understand the broader context and boundaries of the current phase.
 3. **Prevent phase bleeding**: Do not introduce implementations from future phases prematurely.
    - Example: Don't build Phase 4 export logic while working on a Phase 2 core engine task.
-4. **Flag scope concerns**: If a task requires future-phase dependencies, document it and discuss before proceeding.
+4. **Flag scope concerns**: a task that needs a future-phase dependency is a scope change the user decides; document it and ask (`tools/instructions/LIFECYCLE.md`, "When to pause for the user").
 
 ## Phase Progression
 

@@ -7,19 +7,22 @@ owner: user:edwin
 created: 2026-09-03
 updated: 2026-09-03
 source: ["project-os-dev FEAT-0024, TASK-0090 to TASK-0095", "project-os-dev docs/reference/Prompting-Guide-Review-2026-09-03.md, findings 2.1, 2.3, 5.3, 6.1, 6.2, 7.1, 7.2, 7.4, 8.1"]
-commit: "0154e9d, bb6eb70, 7ae32ed, f5bf4f5, 1760161, 9b53acb"
+commit: "0154e9d, bb6eb70, 7ae32ed, f5bf4f5, 1760161, 9b53acb, 08c0238"
 pr: ""
-impacts: ["tools/instructions/LIFECYCLE.md", "tools/instructions/HOOKS.md", "tools/instructions/QUALITY.md", "tools/instructions/HANDOFF.md", "tools/instructions/MARKDOWN.md", "tools/skills/README.md", "tools/skills/status-transition/SKILL.md", "tools/skills/issue-intake/SKILL.md", "tools/skills/feature-scaffold/SKILL.md", "tools/skills/release-prep/SKILL.md", "tools/skills/close-out/SKILL.md", "tools/skills/test-authoring/SKILL.md", "tools/skills/independent-review/SKILL.md", "tools/scripts/generate-adapters.py", "tools/scripts/test-pause-rule.sh", ".claude/agents/planner.md", ".cursor/rules/lifecycle.mdc", ".cursor/rules/quality.mdc", ".cursor/rules/markdown.mdc"]
+impacts: ["tools/instructions/LIFECYCLE.md", "tools/instructions/HOOKS.md", "tools/instructions/QUALITY.md", "tools/instructions/HANDOFF.md", "tools/instructions/MARKDOWN.md", "tools/skills/README.md", "tools/skills/status-transition/SKILL.md", "tools/skills/issue-intake/SKILL.md", "tools/skills/feature-scaffold/SKILL.md", "tools/skills/release-prep/SKILL.md", "tools/skills/close-out/SKILL.md", "tools/skills/test-authoring/SKILL.md", "tools/skills/independent-review/SKILL.md", "tools/scripts/generate-adapters.py", "tools/scripts/test-pause-rule.sh", "docs/PHASES.md", ".claude/agents/planner.md", ".cursor/rules/lifecycle.mdc", ".cursor/rules/quality.mdc", ".cursor/rules/markdown.mdc"]
 issues: []
 features: []
 related: ["[[INSTR-LIFECYCLE]]", "[[INSTR-QUALITY]]", "[[INSTR-HANDOFF]]", "[[INSTR-MARKDOWN]]", "[[CHG-20260903-Prompting-Guide-Contradictions]]"]
+reviewed_by: "model:claude-opus-5[1m]"
+review_date: 2026-09-03
+review_verdict: changes-requested
 ---
 
 # One pause rule, and the scope rules the guides state
 
 ## Summary
 
-An agent reading the template was told to stop and ask the user in eleven places across eight files, each in its own words and none saying what to finish first. LIFECYCLE.md now states the rule once, under "Execution", in a section called "When to pause for the user": pause only for a destructive or irreversible action, a real scope change, or input only the user can provide; do everything that does not depend on the answer first, then ask at the end of a turn that also delivers that progress. Every other site names the decision the user owns and links that section.
+An agent reading the template was told to stop and ask the user in twelve places across nine files, each in its own words and none saying what to finish first. The review found eleven; the independent review of this change found the twelfth, in `docs/PHASES.md`, which restates the phase-alignment rule for repos that adopt phases. LIFECYCLE.md now states the rule once, under "Execution", in a section called "When to pause for the user": pause only for a destructive or irreversible action, a real scope change, or input only the user can provide; do everything that does not depend on the answer first, then ask at the end of a turn that also delivers that progress. Every other site names the decision the user owns and links that section.
 
 The same pass adds six rules the Claude 5 prompting guides state and project-os did not, each one or two sentences in the file that owns the neighbouring rule:
 
@@ -32,9 +35,9 @@ The same pass adds six rules the Claude 5 prompting guides state and project-os 
 
 ## Impact
 
-- The eleven stop-points read as one rule with eleven decisions. Close-out step 1 also says what to do with the rest of a close-out when one test blocks it: finish every other part, then say what was left out.
-- `tools/scripts/test-pause-rule.sh` is new. It asserts the rule is stated in exactly one file, that seven files link it, that no old phrasing remains, and that the generated planner is current. project-os-dev TST-0005 runs it.
-- LIFECYCLE.md grew from 1,343 to 1,599 words. project-os-dev FEAT-0026 trims it under 800 next; the new rules were written without anecdotes so the trim does not have to re-trim them.
+- The twelve stop-points read as one rule with twelve decisions. Close-out step 1 also says what to do with the rest of a close-out when one test blocks it: finish every other part, then say what was left out.
+- `tools/scripts/test-pause-rule.sh` is new. It asserts the rule is stated in exactly one file under a heading that exists, that all twelve sites in nine files link it, that no old phrasing remains, and that the generated planner is current. project-os-dev TST-0005 runs it. The first review round found that a renamed heading, a dropped link in LIFECYCLE.md or release-prep, and the PHASES.md site were all invisible to the first version; the second version sees them.
+- LIFECYCLE.md grew from 1,343 to 1,632 words (the first version of this note said 1,599, which was the count after the first commit alone; the review corrected it). project-os-dev FEAT-0026 trims it next; the new rules were written without anecdotes so the trim does not have to re-trim them.
 - The reviewer's schema in project-os-dev's `review-external.py` gains a `reproduced` label and stops dropping unreproduced findings. A human transcribing a verdict now sees the leads too.
 - Downstream repos pick everything up at the next template sync plus a generator run.
 

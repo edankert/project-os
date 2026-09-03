@@ -5,7 +5,8 @@
 # agent pauses for the user is stated in exactly one file, LIFECYCLE.md
 # ("When to pause for the user"); and every stop-point that used to phrase its
 # own version now names the decision the user owns and links that section.
-# A third assertion checks that the generated planner subagent was regenerated
+# The section itself must exist under that heading, or every link dangles. A
+# further assertion checks that the generated planner subagent was regenerated
 # after its prompt changed, since the planner prompt is one of the sites.
 #
 # Runs from anywhere: paths resolve from this script's location, so
@@ -30,21 +31,27 @@ check() { # check <name> <ok:0|1> [detail]
 }
 
 # -- 1. exactly one file states the rule, and it is LIFECYCLE.md -------------
-hits="$(cd "$ROOT" && { grep -rlF --include='*.md' "$ANCHOR" tools/instructions tools/skills tools/adapters 2>/dev/null; grep -lF "$ANCHOR" tools/scripts/generate-adapters.py 2>/dev/null; } | sort -u)"
+hits="$(cd "$ROOT" && { grep -rlF --include='*.md' "$ANCHOR" tools/instructions tools/skills tools/adapters docs/PHASES.md 2>/dev/null; grep -lF "$ANCHOR" tools/scripts/generate-adapters.py 2>/dev/null; } | sort -u)"
 count=$(printf '%s\n' "$hits" | sed '/^$/d' | wc -l | tr -d ' ')
 check "the pause rule is stated in exactly one file" "$([[ "$count" -eq 1 ]]; echo $?)" "found $count: $(printf '%s' "$hits" | tr '\n' ' ')"
 check "the one file is $HOME_FILE" "$([[ "$hits" == "$HOME_FILE" ]]; echo $?)" "got '$hits'"
+headings=$(grep -c '^### When to pause for the user$' "$ROOT/$HOME_FILE" 2>/dev/null || true)
+check "the section the links name exists as a heading" "$([[ "${headings:-0}" -eq 1 ]]; echo $?)" "found $headings heading(s)"
 
 # -- 2. each stop-point links the rule instead of restating it ---------------
-# file:minimum occurrences. issue-intake has two sites (the ambiguity check and
-# the impact-analysis conflict), so it must link twice.
-SITES="tools/instructions/HOOKS.md:1
+# file:minimum occurrences. LIFECYCLE.md links its own section from two sites
+# (impact analysis, phase alignment); issue-intake has two (the ambiguity check
+# and the impact-analysis conflict); release-prep has two (open issues, release
+# exceptions). docs/PHASES.md is the registry the phase-alignment rule restates.
+SITES="tools/instructions/LIFECYCLE.md:2
+tools/instructions/HOOKS.md:1
 tools/skills/status-transition/SKILL.md:1
 tools/skills/issue-intake/SKILL.md:2
 tools/skills/feature-scaffold/SKILL.md:1
-tools/skills/release-prep/SKILL.md:1
+tools/skills/release-prep/SKILL.md:2
 tools/skills/close-out/SKILL.md:1
-tools/scripts/generate-adapters.py:1"
+tools/scripts/generate-adapters.py:1
+docs/PHASES.md:1"
 while IFS=: read -r site want; do
   [[ -z "$site" ]] && continue
   got=$(grep -cF "$LINK" "$ROOT/$site" 2>/dev/null || true)
@@ -53,7 +60,7 @@ done <<< "$SITES"
 
 # The old phrasings must be gone from the sites (a link beside a restatement is
 # still a restatement).
-stale="$(cd "$ROOT" && grep -rnE 'stop and present resolution options|require explicit user confirmation|stop and request explicit user confirmation|Present the list to the user for decision' tools/instructions tools/skills tools/scripts/generate-adapters.py 2>/dev/null || true)"
+stale="$(cd "$ROOT" && grep -rnE 'stop and present resolution options|require explicit user confirmation|stop and request explicit user confirmation|Present the list to the user for decision|document it and discuss before proceeding|stop and return the ambiguities' tools/instructions tools/skills tools/scripts/generate-adapters.py docs/PHASES.md 2>/dev/null || true)"
 check "no stop-point still carries its own phrasing" "$([[ -z "$stale" ]]; echo $?)" "$stale"
 
 # -- 3. the generated planner matches the generator ---------------------------
