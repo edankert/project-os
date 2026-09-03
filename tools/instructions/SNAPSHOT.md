@@ -4,7 +4,7 @@ id: INSTR-SNAPSHOT
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-07-21
+updated: 2026-09-03
 tags: [instructions, snapshot]
 ---
 
@@ -51,6 +51,7 @@ The `focus` object tracks the current work context:
 - `focus.feature` (string): Currently active feature ID (or empty string).
 - `focus.task` (string): Currently active task ID (or empty string).
 - `focus.issue` (string): Currently active issue ID (or empty string).
+- `focus.note` (string, optional): what is in flight and what comes next, in at most two sentences. Anything longer belongs in the active task or issue note's own sections, which is where a reader looking for the detail already goes. The snapshot is the first file every session loads, so a paragraph here is paid for on every session.
 
 When phase-gated development is used:
 - Update `focus.phase` when transitioning to a new milestone.
@@ -60,7 +61,7 @@ When phase-gated development is used:
 ## Required fields per item (minimum)
 Each item entry must include:
 - `file` (string): Repo-relative path to the canonical note (e.g. `docs/issues/ISS-0001-...md`).
-- `title` (string): Short human title (no ID).
+- `title` (string): Short human title (no ID), at most twelve words. The sync script derives it from the note's `title:` (ADR-0018), so this is a limit on note titles: a title that needs more words is a summary, and the summary goes in the note body.
 - `status` (string)
 - `owner` (string)
 
@@ -77,6 +78,8 @@ Then type-specific fields, for example:
 - Change: `commit`, `pr`, `issues` (ISS IDs), `features` (FEAT IDs)
 - Decision (ADR): `decision`, `context`, `supersedes`, `superseded`, `related` (IDs)
 - Release: `version`, `tag`, `date`, optional `platform`, `features` (FEAT IDs), `changes` (CHG IDs), `tests_verified` (TST IDs), `previous_release`
+
+The `goal` and `note` prose on any item is at most two sentences each. It is the curation the sync script leaves alone (`LIFECYCLE.md`, "Membership is still yours"), and the longer text goes in the note's own Goal or Notes section.
 
 ## Invariants
 - `file` must point to an existing note under `../../docs/`, and the note’s frontmatter `id` should match the snapshot key.

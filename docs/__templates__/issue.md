@@ -18,7 +18,7 @@ tests: []
 # <Title>
 
 ## Problem
-<What is wrong?>
+<Two or three sentences, point first: what is wrong and who sees it. The detail goes under Repro and Evidence.>
 
 ## Repro
 <How to reproduce; commands; inputs>

@@ -26,7 +26,7 @@ related: []
 # <Feature>
 
 ## Goal
-<What capability is delivered?>
+<Two or three sentences, point first: what capability is delivered and for whom. The detail goes under Scope.>
 
 ## Scope
 <In/out of scope>
