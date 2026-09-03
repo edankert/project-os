@@ -4,7 +4,7 @@ id: SKILL-TEST-AUTHORING
 status: active
 owner: group:maintainers
 created: 2026-01-27
-updated: 2026-01-27
+updated: 2026-09-03
 tags: [skills, tests]
 ---
 
@@ -23,6 +23,9 @@ tags: [skills, tests]
 - A new/updated test note stored according to scope:
   - feature-scoped: `../../../docs/features/<feature-slug>/plan/tests/TST-####-Short-Description.md`
   - system-wide: `../../../docs/tests/TST-####-Short-Description.md`
+
+## What is being authored
+A `TST-*` note is the record of verification: the procedure, the verdict, and the adequacy evidence a reader can re-run. The scratch checks written on the way to that verdict, a one-off script, a grep, a mutated copy of the code, are not kept; record what they showed in `adequacy:` and delete them. Committed code tests follow the repo's existing convention for that kind of change, sit beside the tests they resemble, and are sized to the behaviours the task states, roughly one focused test per behaviour. Reason: the verification gate rewards linking more `TST-*` notes, and nothing else says where the limit is.
 
 ## Checklist
 1. Allocate the next `TST-####` (use `../../../SNAPSHOT.yaml -> counters.TST`).
