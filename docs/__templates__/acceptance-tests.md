@@ -14,7 +14,7 @@ scope: tests
 related: []
 ---
 
-> **This is the older single-document form of the acceptance suite.** The current form is **one note per check** — `check.md`, `type: [[check]]`, id `CHK-*`, at `docs/tests/acceptance/`. Both are read; a repo stores its suite one way or the other and never both. See `../../tools/instructions/TESTING.md`, "Where the acceptance suite lives".
+> **This is the older single-document form of the acceptance suite.** The current form is **one note per check** — `test.md` with `level: acceptance`, id `TST-*`, at `docs/tests/acceptance/`. Both are read; a repo stores its suite one way or the other and never both. See `../../tools/instructions/TESTING.md`, "Where the acceptance suite lives".
 
 # Acceptance Test Suite: <Project> v<version>
 
@@ -56,7 +56,7 @@ Full tier rules: `tools/instructions/TESTING.md`.
 
 # Automated tests
 
-<!-- Temporary tests. Remove or promote after a verified release. -->
+<!-- Checks carrying a `command:`. Executed by CI. No checkbox, no verdict. Nothing removes a check. -->
 
 ---
 

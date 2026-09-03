@@ -62,15 +62,15 @@ Present the results as a table:
 | TST-0020 | acceptance | failing | 2026-03-05 | FEAT-0003 | 2026-03-04 | FAILING |
 ```
 
-### 5. Check acceptance test tiers
-If the project uses the acceptance test tier system (see `../../instructions/TESTING.md`):
-- Read the acceptance suite — `docs/tests/acceptance/CHK-*.md`, or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated (`../../instructions/TESTING.md`).
-- **Tier 1 + Tier 2** tests must ALL be checked (passing). Any unchecked test is a release blocker.
-- **Tier 3** tests do not gate the release — they are informational.
-- A test may be marked as a **release exception** if it cannot be completed. Exceptions must be documented in the release note with justification.
+### 5. Check the acceptance suite
+Sections and gating are stated once, in `../../instructions/TESTING.md` ("The three sections", "Release gating"); this step applies them.
+- Read the acceptance suite — `TST-*` notes at `level: acceptance` under `docs/tests/acceptance/`, or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated.
+- Every **manual** check (no `command:`) must be settled for this release and platform. An unsettled one is a release blocker.
+- A check carrying a `command:` is settled by CI and never enters the manual list; a broken command returns it to the list.
+- A check may be marked as a **release exception** if it cannot be run. Exceptions must be documented in the release note with justification.
 
 ### 6. Gate the release
-- If ANY Tier 1/Tier 2 acceptance test is unchecked, or any `TST-*` note has verdict **STALE**, **UNTESTED**, or **FAILING**: **STOP.**
+- If any manual acceptance check is unsettled, or any `TST-*` note has verdict **STALE**, **UNTESTED**, or **FAILING**: **STOP.**
 - Report: "Release blocked. N tests need attention before release can proceed."
 - List each blocking test with its verdict and what action is needed:
   - STALE → re-run the test procedure
@@ -81,9 +81,9 @@ If the project uses the acceptance test tier system (see `../../instructions/TES
 ### 7. Re-run tests
 For each test that needs re-running:
 1. Read the test note's Preconditions and Procedure sections.
-2. If `kind: manual`: present the procedure to the user for execution. The user runs through the steps and reports PASS or FAIL.
-3. If `kind: automated` and `entrypoint` is set: run the entrypoint command and capture the result.
-4. Update the test note:
+2. If the test has no `command:` (a manual test): present the procedure to the user for execution. The user runs through the steps and reports PASS or FAIL.
+3. If the test carries a `command:`: run it and capture the result. Its status is written by the runner, never by hand (`../../instructions/STATUSES.md` `[[test]]`).
+4. For a manual test, update the test note:
    - `status: passing` or `status: failing`
    - `last_run: <today's date>`
    - `updated: <today's date>`
@@ -101,7 +101,7 @@ When all tests pass:
    - `version`: the release version
    - `tag`: the git tag (suggest `v<version>`)
    - `date`: today's date
-   - `status: staged` (not yet deployed)
+   - `status: draft` (prepared and verified, not yet live)
    - `features`: list of all in-scope feature IDs
    - `changes`: list of CHG-* IDs created since the previous release
    - `tests_verified`: list of all TST-* IDs verified in this cycle
@@ -123,7 +123,7 @@ After deployment/merge to production:
 
 ### Rollback
 If a release is rolled back:
-1. Update the REL-* note: `status: rolled-back`.
+1. Update the REL-* note: `status: reverted`.
 2. Update `releases.latest` to point to `previous_release` (or the last `released` entry in history).
-3. Update the history entry status to `rolled-back`.
+3. Update the history entry status to `reverted`.
 4. Create an `ISS-*` to track the rollback cause.

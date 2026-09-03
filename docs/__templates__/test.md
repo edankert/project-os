@@ -28,7 +28,6 @@ related: []
 # THE VERDICT IS NOT HERE (ADR-0037). It is a dated event in
 # docs/releases/ledgers/<release>-<platform>.json — a verdict is a fact
 # about (check x platform x release) and a field cannot hold three.
-tier: ""             # 1 feature check · 2 regression check · 3 verification check for one build
 area: ""             # the human grouping — one walk's worth of related checks
 ---
 

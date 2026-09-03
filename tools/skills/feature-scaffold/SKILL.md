@@ -49,7 +49,7 @@ tags: [skills, features]
    - Check for conflicts with existing requirements on overlapping features.
    - If conflicts are found, stop and present resolution options before implementation.
 7. **Requirement approval gate:**
-   - A feature may not move to `in-progress` while any linked requirement is still `draft` — approve it (or amend it first, then approve) so implementation works against agreed criteria.
+   - A feature may not move to `doing` while any linked requirement is still `draft` — approve it (or amend it first, then approve) so implementation works against agreed criteria.
    - Approval means the acceptance criteria are the ones you intend to build against; if the plan already departs from them, amend the requirement now rather than at close-out.
    - The requirement is advanced again at close-out (`../close-out/SKILL.md`, "Requirement advancement").
 8. **Risk scan:**

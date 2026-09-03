@@ -52,13 +52,13 @@ Positive integer sort order for roadmap sequencing.
 Project-defined free text label, but keep it stable. Examples:
 - `docs`, `build`, `tests`, `tooling`, `runtime`, `ui`, `api`
 
-## `kind` (tests)
-- `manual`, `automated`
+## `kind` (tests) — removed (ADR-0034)
+- There is no `kind` field. `command:` answers who runs a test: present, the runner; absent, a person (`../../docs/__templates__/SCHEMAS.md`, `test.md`).
 
 ## `level` (tests)
 - `unit`, `integration`, `system`, `e2e`, `acceptance`
 - **`acceptance` is the discriminator of the merged type (ADR-0031)**: a test at this level is the thing a person walks — it rests at `status: active`, its verdict is `mark:`, and it carries the acceptance fields below. Everything else on the scale is executable. The field has always been here; since ADR-0031 it carries the distinction the retired `check` type used to.
-- A test moves along the scale rather than between types. **Adding a `command:` to an `acceptance` test is how a walk becomes automated**, and a `passing` test named in another's `covered_by:` settles it (see `TESTING.md` tiers and `../skills/release-verification/SKILL.md`).
+- A test moves along the scale rather than between types. **Adding a `command:` to an `acceptance` test is how a walk becomes automated**, and a `passing` test named in another's `covered_by:` settles it (see `TESTING.md` "The three sections" and `../skills/release-verification/SKILL.md`).
 
 ## `scope` (tests)
 - `feature`, `system`
