@@ -149,7 +149,7 @@ Claude Code has no built-in "model A for planning, model B for execution" split 
 
 | Lifecycle phase | Runs in | Model |
 |---|---|---|
-| Preflight / planning (LIFECYCLE preflight) | `planner` subagent | pinned — `PLANNER_MODEL` in `tools/scripts/generate-adapters.py` |
+| Preflight / planning (LIFECYCLE preflight) | the main loop for a single issue or task; the `planner` subagent for a multi-item scaffold or an ambiguous ask | pinned — `PLANNER_MODEL` in `tools/scripts/generate-adapters.py` |
 | Implementation | main session loop | the session model (`model` in `.claude/settings.json`, or `/model`) |
 | Independent review (LIFECYCLE close-out, QUALITY gate) | `independent-reviewer` subagent | pinned — `REVIEWER_MODEL` in the same file |
 
@@ -157,7 +157,7 @@ The pins are a choice revisited at each model release, not a standing claim abou
 
 **What makes the review independent is stated once, in `QUALITY.md` "Independent review (clean-context)"** (ADR-0013): a session that starts from the notes and the diff and did not author the work. A subagent provides that by construction. The pinned model being the same as the authoring model is expected and is not a defect; what must never happen is the authoring session reviewing its own work. `reviewed_by` records the model as provenance, not as a compliance token.
 
-`HC-008` (`hooks/model-routing-hint.sh`) injects a per-prompt hint derived from the focus item's status so the delegation actually happens; a hook cannot change the session model, so the hint is advisory and the pins do the routing. The script keeps its filename so existing `.claude/settings.json` files keep resolving.
+`HC-008` (`hooks/model-routing-hint.sh`) injects a per-prompt line stating the focus item, its status and its phase, and who writes the note for new work; it recommends the planner only for a multi-item scaffold or an ambiguous ask and the reviewer only in review states. A hook cannot change the session model, so the hint is advisory and the pins do the routing. The script keeps its filename so existing `.claude/settings.json` files keep resolving.
 
 Two Claude Code behaviours to know when relying on this. A **resumed** session keeps the model its transcript was saved with, regardless of the `model` key in `.claude/settings.json`; check `/model` if it matters, or start a fresh session. And the agent-file watcher only covers directories that **existed at session start**: creating `.claude/agents/` for the first time needs a new session before the subagents resolve (edits to files in an already-present directory hot-reload within seconds).
 
