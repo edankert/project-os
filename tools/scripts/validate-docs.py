@@ -2688,7 +2688,7 @@ def validate(root, report):
             if recorded != computed[key]:
                 report.error("METRICS", "metrics.counts.%s is %d but computed %d (run validate-docs.sh --fix-metrics)" % (key, recorded, computed[key]))
 
-    # -- independent-review fields (QUALITY.md "Independent review (different-model)")
+    # -- independent-review fields (QUALITY.md "Independent review (clean-context)")
     for coll_name, settled in sorted(REVIEW_SETTLED_STATUSES.items()):
         coll = items.get(coll_name) or {}
         if not isinstance(coll, dict):
