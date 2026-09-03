@@ -153,7 +153,7 @@ Claude Code has no built-in "model A for planning, model B for execution" split 
 | Implementation | main session loop | the session model (`model` in `.claude/settings.json`, or `/model`) |
 | Independent review (LIFECYCLE close-out, QUALITY gate) | `independent-reviewer` subagent | pinned — `REVIEWER_MODEL` in the same file |
 
-Both pins default to the strongest available Claude model, because planning and adversarial review are the phases where capability pays off most.
+The pins are a choice revisited at each model release, not a standing claim about the strongest model available. As of 2026-09-03 both are `claude-fable-5-1`. Planning and adversarial review reward capability; the model guides also say review quality holds at lower effort, so the reviewer does not need the highest effort the harness allows. Measure on your own work before raising it.
 
 **What makes the review independent is stated once, in `QUALITY.md` "Independent review (clean-context)"** (ADR-0013): a session that starts from the notes and the diff and did not author the work. A subagent provides that by construction. The pinned model being the same as the authoring model is expected and is not a defect; what must never happen is the authoring session reviewing its own work. `reviewed_by` records the model as provenance, not as a compliance token.
 

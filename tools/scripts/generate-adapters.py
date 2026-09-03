@@ -36,12 +36,14 @@ CURSOR_RULES = [
     ("MARKDOWN.md", "markdown", ["**/*.md"]),
 ]
 
-# Model routing (HC-008). The lifecycle phases that most reward capability —
-# planning and adversarial review — get the strongest pin. Full model IDs, not
-# aliases, so `reviewed_by` stays deterministic across releases.
+# Model pins for the two subagents (HC-008 delegation hint). The lifecycle
+# phases that most reward capability — planning and adversarial review — get
+# the pin. Full model IDs, not aliases, so `reviewed_by` stays deterministic
+# across releases. The pins are revisited at each model release; they are not a
+# standing claim about the strongest model available.
 #
-# Both are Opus as of ADR-0013, and deliberately the same as the likely
-# authoring model. The pins used to differ as a proxy for independence; that
+# Both are Fable 5.1 as of 2026-09-03 (project-os-dev ISS-0044), and
+# deliberately the same as the likely authoring model. The pins used to differ as a proxy for independence; that
 # proxy is retired. Independence is now a clean context and a separate session
 # (QUALITY.md, "Independent review (clean-context)"), which subagents provide by
 # construction — they start from the notes and the diff, never the author's
@@ -57,8 +59,8 @@ CURSOR_RULES = [
 # `reviewed_by` still records the model. That is provenance, not a compliance
 # token: a later reader needs to know who reviewed, and a future finding about a
 # specific model's blind spots needs the data.
-PLANNER_MODEL = "claude-opus-5"
-REVIEWER_MODEL = "claude-opus-5"
+PLANNER_MODEL = "claude-fable-5-1"
+REVIEWER_MODEL = "claude-fable-5-1"
 
 PLANNER_AGENT = """---
 name: planner
