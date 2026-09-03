@@ -19,7 +19,7 @@ Before any code edit, start documentation intake first:
 3. Update `SNAPSHOT.yaml` for active work state.
 4. Only then implement code changes.
 
-After edits, run `bash tools/agents/check-docs-first.sh` and `bash tools/scripts/validate-docs.sh`, and fix any failures — the validator also runs at git pre-commit (`bash tools/scripts/install-git-hooks.sh` to install) and in CI, so drift becomes a build failure.
+After edits, run `bash tools/agents/check-docs-first.sh` and `bash tools/scripts/validate-docs.sh`, and fix what they report; the validator also runs at pre-commit and in CI (`tools/instructions/QUALITY.md`, "Documentation Fidelity").
 
 All documentation types must be considered on every behavior/path change:
 - features

@@ -64,7 +64,7 @@ A bug, a cleanup or a missing abstraction the task did not ask for is an `ISS-*`
 7. Run `bash tools/scripts/validate-docs.sh` and fix what it reports.
 8. Before pushing, run `bash tools/scripts/validate-docs.sh --as-committed`. Reason: local checks read the working tree and CI reads the commit, so an ignored or unstaged file passes here and is absent there.
 9. After pushing, confirm the run went green (`gh run list --limit 1`). A change is not landed until you have seen that.
-10. If the work touched a `TST-*` or `CHG-*` note, or moves a requirement to `implemented` or a feature to `done`, run `../skills/independent-review/SKILL.md`.
+10. At the review gates `QUALITY.md` states ("Independent review"), run `../skills/independent-review/SKILL.md`.
 
 ## Snapshot retention (active + recent)
 - Keep the snapshot to active and recent items (`SNAPSHOT.md`); the notes are the archive.

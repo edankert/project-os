@@ -22,7 +22,7 @@ fi
 is_doc_only_path() {
   local path="$1"
   case "$path" in
-    docs/*|SNAPSHOT.yaml|AGENTS.md|LLM_BRIEF.md|tools/agents/*)
+    docs/*|tools/*|.claude/*|.cursor/*|.github/*|SNAPSHOT.yaml|CLAUDE.md|CONTEXT.md|README.md|AGENTS.md|LLM_BRIEF.md|.prettierrc|.markdownlint*|.yamllint*|.gitignore|.project-os-sync)  # the list is HOOKS.md HC-001
       return 0
       ;;
     *)

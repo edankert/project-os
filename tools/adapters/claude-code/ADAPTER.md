@@ -130,7 +130,7 @@ Manual fallback: copy `hooks.json` from this adapter directory into `.claude/set
 | Event | Hooks | Type | Purpose |
 |---|---|---|---|
 | `PreToolUse` | HC-001 Document-First | `command` | Reads SNAPSHOT.yaml, blocks code edits without focus |
-| `PreToolUse` | HC-003 Verification Gate | `command` | **Blocking**: denies status→done/closed/verified while linked TST-* notes are not `passing` (recorded `verification_waiver` escapes; no linked test → `ask`) |
+| `PreToolUse` | HC-003 Verification Gate | `command` | **Blocking**: denies a transition to a terminal status while linked TST-* notes are not `passing` (the statuses are listed once in HOOKS.md HC-003) (recorded `verification_waiver` escapes; no linked test → `ask`) |
 | `PostToolUse` | HC-004 Phase Alignment | `command` | Detects status→doing, reminds about phase check |
 | `PostToolUse` | HC-005 Risk Scan Trigger | `command` | Detects package/env/CI file changes |
 | `Stop` | HC-006 Close-out Check + HC-007 Docs Validation | `command` | Runs `tools/scripts/validate-docs.sh` and blocks stop on violations; checks focus is cleared, forces close-out if not |
@@ -139,7 +139,7 @@ Manual fallback: copy `hooks.json` from this adapter directory into `.claude/set
 
 **All hooks are `command` type** (fast shell scripts, no API calls). This avoids LLM cost/latency and 529 overload errors. Stop hooks use `{decision: "block", reason: "..."}` to force continuation. All scripts use `$CLAUDE_PROJECT_DIR` for path resolution. HC-003 and HC-007 need `python3` on PATH (stdlib only); they fail open with a note if it is missing, so a broken runtime never bricks edits — but treat that note as a setup error.
 
-Session hooks are the innermost of three enforcement layers: the same validator also runs at git pre-commit (`bash tools/scripts/install-git-hooks.sh` to install) and in CI (`.github/workflows/validate-docs.yml`). Session hooks and pre-commit can be bypassed; CI cannot — that layering is deliberate.
+Session hooks are the innermost of the three enforcement layers `tools/instructions/QUALITY.md` "Documentation Fidelity" names: the same validator also runs at git pre-commit (`bash tools/scripts/install-git-hooks.sh` to install) and in CI (`.github/workflows/validate-docs.yml`). Session hooks and pre-commit can be bypassed; CI cannot — that layering is deliberate.
 
 See `tools/instructions/HOOKS.md` for the full hook contract specifications and `hooks/` in this directory for the implementations.
 

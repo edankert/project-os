@@ -55,7 +55,7 @@ tags: [skills, closeout]
    - Before pushing, run `bash tools/scripts/validate-docs.sh --as-committed`. It checks `HEAD` as a fresh clone would see it, against the full CI step set — a local pass proves neither, because local checks run one command against the working tree while CI runs three against the commit.
    - After pushing, confirm the run went green (`gh run list --limit 1`). A change is not landed until you have seen that.
 8. **Independent review:**
-   - If this close-out created/updated a `TST-*` or `CHG-*` note, or sets a requirement to `implemented` / feature to `done`, run `../independent-review/SKILL.md` before applying the terminal status.
+   - At the review gates stated once in `../../instructions/QUALITY.md` ("Independent review (clean-context)"), run `../independent-review/SKILL.md` before applying the terminal status.
 9. **Retention enforcement** (still manual — the sync script does not prune, because which completed work stays in active context is a judgement no count-based rule reproduced):
    - Apply `retention` settings from `../../../SNAPSHOT.yaml`.
    - Preserve notes under `../../../docs/`; prune only snapshot entries when policy says to keep the snapshot active/recent.

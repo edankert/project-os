@@ -82,7 +82,7 @@ Return the allocated IDs with their paths, a short plan summary per item, any im
 
 REVIEWER_AGENT = """---
 name: independent-reviewer
-description: Independent review pass required by project-os QUALITY.md — any change that creates or updates a TST-* or CHG-* note, or transitions a requirement to verified / feature to done. Reviews adversarially and records reviewed_by/review_date/review_verdict in the note frontmatter.
+description: Independent review pass at the gates project-os QUALITY.md states (a TST-* reaching passing, a requirement reaching implemented, a feature reaching done). Reviews adversarially from a clean context and records reviewed_by/review_date/review_verdict in the note frontmatter.
 model: %(model)s
 ---
 

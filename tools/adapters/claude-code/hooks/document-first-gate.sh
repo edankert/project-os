@@ -21,7 +21,8 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-# Allow edits to documentation and config files
+# Allow edits to documentation and config files. The list is stated once in
+# tools/instructions/HOOKS.md HC-001; tools/agents/check-docs-first.sh cites it too.
 case "$FILE_PATH" in
   */docs/*|*/tools/*|*SNAPSHOT.yaml|*CLAUDE.md|*CONTEXT.md|*README.md|*AGENTS.md|*LLM_BRIEF.md|*.cursor/*|*/.claude/*|*/.github/*|*.prettierrc|*.markdownlint*|*.yamllint*|*.gitignore|*.project-os-sync)
     exit 0

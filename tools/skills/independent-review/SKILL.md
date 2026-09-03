@@ -18,10 +18,8 @@ That is a change from what this skill used to say, and it is evidence-backed rat
 Two kinds of correlation were being conflated. Shared **weights** correlate capability. Shared **context** correlates commitment. This fleet's misses have consistently been the second kind: claims written wider than the code, surviving because everyone arrived already holding the claim.
 
 ## When to use
-- A change creates or updates any `TST-*` note (the author of a fix must not be the sole judge of the test that guards it).
-- A change carries a `CHG-*` note (behavior, paths, or contracts changed).
-- A close-out would transition a requirement to `implemented` or a feature to `done`.
-- Any time a `verification_waiver` is being recorded (the waiver itself deserves a second pair of eyes).
+- At the three review gates stated once in `../../instructions/QUALITY.md`, "Independent review (clean-context)"; a change note owes no review (ADR-0019).
+- Optionally, when a `verification_waiver` is being recorded: the waiver deserves a second pair of eyes, though no gate requires it.
 
 ## Inputs
 - The diff (or changed file list) for the work being reviewed.

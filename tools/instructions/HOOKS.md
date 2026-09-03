@@ -19,7 +19,7 @@ Contract IDs are `HC-001`..`HC-008`. (Earlier revisions of this file used `CHC-0
 - Trigger: before functional code changes.
 - Rule: `LIFECYCLE.md` — "Preflight (must happen before code changes)" and "Mandatory Automated Documentation".
 - Check logic:
-  - `SNAPSHOT.yaml` has an active `focus.task` or `focus.issue` covering the work (docs/tools/config paths are exempt).
+  - `SNAPSHOT.yaml` has an active `focus.task` or `focus.issue` covering the work. Exempt paths, stated once here and cited by both implementations: `docs/`, `tools/`, `.claude/`, `.cursor/`, `.github/`, `SNAPSHOT.yaml`, `CLAUDE.md`, `CONTEXT.md`, `README.md`, `AGENTS.md`, `LLM_BRIEF.md`, and the lint and sync configs (`.prettierrc`, `.markdownlint*`, `.yamllint*`, `.gitignore`, `.project-os-sync`).
   - Code changes have a `docs/changes/CHG-*.md` note when required.
   - Change notes have no pending documentation-coverage entries.
 - Implementations: Claude Code `hooks/document-first-gate.sh` (blocking PreToolUse); Codex/generic `bash tools/agents/start-change.sh "<short title>"` + `bash tools/agents/check-docs-first.sh`.
@@ -43,7 +43,7 @@ Contract IDs are `HC-001`..`HC-008`. (Earlier revisions of this file used `CHC-0
 - Check logic:
   - Find linked `TST-*` IDs from the snapshot and note frontmatter.
   - Confirm every required test is `status: passing`.
-- On failure: block the terminal status transition unless an explicit `verification_waiver: <reason>` is recorded in the note frontmatter (the waiver is a logged artifact, not a silent skip).
+- On failure: block the terminal status transition unless a `verification_waiver` is recorded (`QUALITY.md`, "Verification gating").
 - Enforcement: this gate must be mechanical, not advisory. The Claude Code adapter implements it as a blocking PreToolUse hook (`../adapters/claude-code/hooks/verification-gate.py`); other adapters must run `tools/scripts/validate-docs.sh` before close-out and at pre-commit/CI, which enforces the same invariant repo-wide.
 
 ## HC-004: Phase alignment
@@ -89,7 +89,7 @@ Contract IDs are `HC-001`..`HC-008`. (Earlier revisions of this file used `CHC-0
   - Every ID referenced from snapshot relationship fields or active-note frontmatter resolves to a snapshot item or note.
   - No terminal status without passing linked tests (or a recorded `verification_waiver`).
   - `metrics.counts` values match the computed counts (`--fix-metrics` rewrites them).
-- On failure: fix the drift before stopping/committing. Rationale: convention-only rules are demonstrably bypassed by agents under context pressure; the three layers (session hook, pre-commit, CI) exist because the first two can be skipped and CI cannot.
+- On failure: fix the drift before stopping/committing. Rationale and the three enforcement layers: `QUALITY.md`, "Documentation Fidelity".
 
 ## HC-008: Delegation hint
 
