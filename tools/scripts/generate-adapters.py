@@ -143,13 +143,22 @@ def build_skill(name, src_rel, body):
         "",
         "This operation is governed by the canonical project-os playbook.",
         "",
-        "1. Read `%s` in full — it is the source of truth for this skill." % src_rel,
-        "2. Execute its checklist exactly, honoring the preflight and close-out rules in `tools/instructions/LIFECYCLE.md` (document first, update `SNAPSHOT.yaml` and notes in the same turn as the work).",
-        "3. Before finishing, run `bash tools/scripts/validate-docs.sh` and fix anything it reports.",
-        "4. Before pushing, run `bash tools/scripts/validate-docs.sh --as-committed` — it checks `HEAD` as a fresh clone would see it, against the full CI step set. Step 3 runs one check against your working tree; CI runs three against the commit.",
-        "5. After pushing, confirm the run went green (`gh run list --limit 1`). A change is not landed until you have seen that.",
-        "",
+        "1. Read `%s` in full; it is the source of truth for this skill." % src_rel,
+        "2. Follow its checklist, honouring the preflight and close-out rules in `tools/instructions/LIFECYCLE.md` (document first; update `SNAPSHOT.yaml` and the notes in the same turn as the work). Where the checklist and the repo disagree, say so and file an `ISS-*` rather than improvising.",
     ]
+    if bullets:
+        lines += ["", "Use when:", ""] + ["- %s." % b for b in bullets]
+    # The three close-out steps belong to the close-out playbook. Repeating them
+    # in every generated skill told inbox-triage and ad-hoc-intake, which push
+    # nothing, to confirm a CI run (project-os-dev TASK-0101).
+    if name == "close-out":
+        lines += [
+            "",
+            "3. Before finishing, run `bash tools/scripts/validate-docs.sh` and fix anything it reports.",
+            "4. Before pushing, run `bash tools/scripts/validate-docs.sh --as-committed`; it checks `HEAD` as a fresh clone would see it, against the full CI step set.",
+            "5. After pushing, confirm the run went green (`gh run list --limit 1`). A change is not landed until you have seen that.",
+        ]
+    lines.append("")
     return "\n".join(lines)
 
 
