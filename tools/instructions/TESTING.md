@@ -73,6 +73,6 @@ A guarding test that cannot fail does not guard, and LLM-authored tests share th
 ## Relationship to TST-* notes
 
 - `TST-*` notes under `docs/tests/` or `docs/features/<slug>/plan/tests/` are individual test specifications with frontmatter, procedure and evidence.
-- **An acceptance check is a `TST-*` note at `level: acceptance`** (ADR-0031). There is no `check` type and no `CHK-*` id; migrated notes keep the old id as an alias.
+- **An acceptance check is a `TST-*` note at `level: acceptance`** (ADR-0031; the retired `check` type is `TAXONOMY.md`, "`check` — retired").
 - `level:` is a spectrum: a `unit` test is a pytest module, an `acceptance` test is a thing a person does, and a `command:` moves a note along it.
 - An acceptance test rests at `active`, so the verdict rules, the review gate and the `Run` obligation, keyed on `passing` and `ready`, never engage. **The review of an acceptance test is doing it.**

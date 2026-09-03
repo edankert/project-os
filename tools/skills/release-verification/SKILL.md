@@ -64,10 +64,7 @@ Present the results as a table:
 
 ### 5. Check the acceptance suite
 Sections and gating are stated once, in `../../instructions/TESTING.md` ("The three sections", "Release gating"); this step applies them.
-- Read the acceptance suite — `TST-*` notes at `level: acceptance` under `docs/tests/acceptance/`, or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated.
-- Every **manual** check (no `command:`) must be settled for this release and platform. An unsettled one is a release blocker.
-- A check carrying a `command:` is settled by CI and never enters the manual list; a broken command returns it to the list.
-- A check may be marked as a **release exception** if it cannot be run. Exceptions must be documented in the release note with justification.
+- Read the acceptance suite (`TST-*` notes at `level: acceptance`, stored per `../../instructions/LIFECYCLE.md` "Test storage", or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated) and list every check that "Release gating" calls a blocker for this release and platform; record any release exception as it says.
 
 ### 6. Gate the release
 - If any manual acceptance check is unsettled, or any `TST-*` note has verdict **STALE**, **UNTESTED**, or **FAILING**: **STOP.**

@@ -34,10 +34,8 @@ tags: [skills, release]
 - Which of them block the release is the user's decision (`../../instructions/LIFECYCLE.md`, "When to pause for the user"); present the list with the recommendations and carry on with the steps below that do not depend on it.
 
 ### 2. Check acceptance tests
-- Read the acceptance suite — `TST-*` notes at `level: acceptance` under `docs/tests/acceptance/`, or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated. Sections and gating are stated once, in `../../instructions/TESTING.md`; this step applies them.
-- List every manual check (no `command:`) that is not settled for this release and platform. Each one is a **release blocker**.
+- Read the acceptance suite (`TST-*` notes at `level: acceptance`, stored per `../../instructions/LIFECYCLE.md` "Test storage", or `docs/tests/ACCEPTANCE_TESTS.md` in a repo that has not migrated). Sections and gating are stated once, in `../../instructions/TESTING.md` "Release gating"; list every check it calls a blocker for this release and platform.
 - If a check cannot be run, recording a **release exception** with justification is the user's decision (`TESTING.md`, "Release gating"; pause rule: `../../instructions/LIFECYCLE.md`, "When to pause for the user").
-- A check carrying a `command:` is settled by CI and does not enter this list.
 
 ### 2b. Docs consistency audit
 - Run `bash tools/scripts/validate-docs.sh` (mechanical) and `../docs-audit/SKILL.md` (cross-document, to quiescence) before drafting the release note — releases are the last chance to catch stale references before they ship as documentation.

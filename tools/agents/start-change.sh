@@ -31,49 +31,20 @@ done
 
 ID="$(basename "$FILE" .md)"
 
-cat > "$FILE" <<EOF
----
-type: "[[change]]"
-id: ${ID}
-title: "${TITLE}"
-status: draft
-owner: unassigned
-created: ${TODAY_HUMAN}
-updated: ${TODAY_HUMAN}
-source: []
-commit: ""
-pr: ""
-impacts: []
-issues: []
-features: []
-related: []
----
-
-# ${TITLE}
-
-## Summary
-<what changed and why>
-
-## Impact
-- <affected areas/flows/workflows>
-
-## Documentation Coverage (All Types Considered)
-Set each item to one of: \`updated\`, \`new\`, \`not-applicable\`, \`deferred\`.
-
-- features: pending
-- requirements: pending
-- tasks: pending
-- issues: pending
-- tests: pending
-- workflows: pending
-- decisions: pending
-- risks: pending
-- changes: new
-- snapshot: pending
-
-## Follow-ups
-- [ ] <doc updates / regressions / cleanup>
-EOF
+# The note is scaffolded from the one template the repo carries, never from a
+# copy embedded here: an embedded copy drifts (it shipped `status: draft`, a
+# value STATUSES.md does not allow for a change note; project-os-dev ISS-0048).
+TEMPLATE="$ROOT/docs/__templates__/change.md"
+if [[ ! -f "$TEMPLATE" ]]; then
+  echo "start-change: $TEMPLATE not found; cannot scaffold a change note." >&2
+  exit 1
+fi
+sed -e "s|^id: .*|id: ${ID}|" \
+    -e "s|^title: .*|title: \"${TITLE}\"|" \
+    -e "s|^created: .*|created: ${TODAY_HUMAN}|" \
+    -e "s|^updated: .*|updated: ${TODAY_HUMAN}|" \
+    -e "s|^# <Change Title>|# ${TITLE}|" \
+    "$TEMPLATE" > "$FILE"
 
 echo "Created: ${FILE}"
 echo "Next steps:"

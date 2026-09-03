@@ -18,23 +18,9 @@ related: []
 
 # Acceptance Test Suite: <Project> v<version>
 
-## Sections
+## Sections and rules
 
-A check is not filed into a section; its section is derived from `covers:` and `command:`.
-
-- **Feature tests:** verify core user-facing capabilities; `covers:` names a `FEAT-*`; never removed, and re-checked when a change overlaps.
-- **Regression tests:** guard previously-broken behavior; `covers:` names the `ISS-*` that created it; completed once and not re-opened by a later change.
-- **Automated tests:** carry a `command:`; executed by CI; no verdict and no checkbox.
-
-Full tier rules: `tools/instructions/TESTING.md`.
-
-## Rules
-
-1. New feature implemented → add a feature test under the feature's area heading, naming the `FEAT-*`.
-2. Bug fixed → add a regression test naming the `ISS-*`.
-3. Any code change invalidates overlapping feature tests (mark for re-check). A regression test is not re-opened.
-4. A release is blocked while any manual check is unsettled (exceptions must be documented in the release note).
-5. A check a machine executes carries a `command:`. Nothing removes a check.
+The three sections, when a check is created, invalidated or retired, and release gating are stated once in `tools/instructions/TESTING.md`. A check is not filed into a section; its section is derived from `covers:` and `command:`.
 
 ---
 
@@ -56,7 +42,7 @@ Full tier rules: `tools/instructions/TESTING.md`.
 
 # Automated tests
 
-<!-- Checks carrying a `command:`. Executed by CI. No checkbox, no verdict. Nothing removes a check. -->
+<!-- Checks carrying a `command:`; see TESTING.md "Automated tests". -->
 
 ---
 

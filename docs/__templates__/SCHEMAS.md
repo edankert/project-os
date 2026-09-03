@@ -234,9 +234,7 @@ Where used:
 
 ## `check.md` — removed (ADR-0031)
 
-There is no `check` type and no `check.md` template. An acceptance check is a `[[test]]` at `level: acceptance`; its fields are documented under `test.md` above.
-
-The type existed so a human verdict could not collide with the machinery a test carries, and it was removed because that separation blocked the thing that mattered more: **a check could not be automated.** A manual test becomes automated by adding `command:`. See `project-os-cockpit` ADR-0031, which supersedes ADR-0030.
+There is no `check` type and no `check.md` template; an acceptance check is a `[[test]]` at `level: acceptance`, its fields documented under `test.md` above. Why the type was retired is stated once in `tools/instructions/TAXONOMY.md`, "`check` — retired". See `project-os-cockpit` ADR-0031, which supersedes ADR-0030.
 
 ## `release.md` (`type: [[release]]`)
 

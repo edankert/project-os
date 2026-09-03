@@ -139,7 +139,7 @@ An acceptance test is a `[[test]]` at `level: acceptance`: the thing a person wa
 - **Adding a `command:` makes it automated**: CI settles it, it leaves the manual list, and the note records no verdict (ADR-0038).
 - **It carries no completeness gate of its own**: nothing is blocked by an acceptance test being `draft`.
 
-The retired `check` type was merged into `[[test]]` so a check could be automated (project-os-cockpit ADR-0031); migrated notes keep the old `CHK-*` id as an alias.
+The retired `check` type is `TAXONOMY.md`, "`check` — retired".
 
 ## Deferral and re-adoption
 
