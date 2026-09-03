@@ -47,6 +47,6 @@ All documentation types must be considered on every behavior/path change:
 - Agent/tool operating instructions are not project documentation: `tools/**`.
 
 ## Output Expectations
-- Provide a short project summary before edits: purpose, active feature/task/issue, intended files.
+- Prose written for a person follows `tools/instructions/WRITING.md`: one line before starting on what you are about to do, a recap at the end that stands on its own, and evidence for every claim of progress (`tools/instructions/QUALITY.md`, "Verification expectations").
 - After edits, report changed files and validation commands run.
 - If blocked by missing dependencies or external repos, state exact missing path/tool.
