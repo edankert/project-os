@@ -40,7 +40,7 @@ Suggested prompts (LLM/agent)
 - Existing project derive/import:
   - "Enable project-os for this existing repo. Merge the project-os structure into the root, then follow tools/skills/project-derive/SKILL.md to derive issues/features/requirements/tasks/tests/changes/workflows from existing docs, trackers, changelogs, and tests. Capture provenance in source/Evidence and populate SNAPSHOT.yaml."
 - Sync existing project-os with upstream template:
-  - "Sync project-os template updates from the upstream project-os clone into this repo. Use tools/scripts/sync-project-os.sh <path-to-upstream> to update only template-owned files (tools/, including tools/cockpit/, docs/\_\_templates\_\_/, tools/instructions/, docs/README.md, docs/INDEX.md, CONTEXT.md; optional SECURITY/ROADMAP). Do NOT overwrite SNAPSHOT.yaml or project-owned docs (docs/features, docs/issues, docs/requirements, docs/tests, docs/changes, docs/decisions, docs/workflows, docs/reference, docs/research). After syncing, review changes and run tools/skills/snapshot-sync/SKILL.md."
+  - "Sync project-os template updates from the upstream project-os clone into this repo with tools/scripts/sync-project-os.sh <path-to-upstream>; which paths are template-owned and which are project-owned is stated once in tools/instructions/SYNCING.md."
 - Validation:
   - "Run tools/skills/snapshot-sync/SKILL.md to reconcile note frontmatter and SNAPSHOT.yaml counters/relationships."
 
