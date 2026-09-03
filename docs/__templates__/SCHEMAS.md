@@ -85,7 +85,7 @@ Purpose: a work package describing a capability, with traceability to requiremen
 Fields:
 - (required) `goal` (string): Short outcome statement.
 - (optional) `requirements` (list of links): `[[REQ-...]]` links implemented by this feature.
-- (optional) `tasks` (list of links): `[[TASK-...]]` links that deliver the feature — the feature's **current scope**; the feature can only be `done` when every listed task is `done` or `cancelled`.
+- (optional) `tasks` (list of links): `[[TASK-...]]` links that deliver the feature — the feature's **current scope**; its completeness gate is `tools/instructions/STATUSES.md` `[[feature]]`.
 - (optional) `deferred` (list of links): `[[TASK-...]]` links descoped out of the feature via the deferral procedure (each keeps `origin` pointing back here). Not part of completeness.
 - ~~`tests`~~ — **removed (ADR-0032).** A feature does not list its tests. The verification link has one direction and one encoding: the test's `covers:`. A feature's tests are rendered from a reverse index over that field, so the list is derived and cannot drift — where the field could only ever be as correct as the last person to edit both sides, and a third of the fleet's feature→test edges disagreed when it was measured.
 
@@ -138,7 +138,7 @@ Fields:
 - (required) `acceptance` (list): Acceptance criteria statements (strings). This list is the **criteria of record** — the machine-readable contract other notes and tooling refer to.
   - The body `## Acceptance Criteria` checkboxes are the **verification record**: one box per criterion, ticked only with an evidence pointer (path, `path:line`, command, or note ID) at feature close-out.
   - Both surfaces must describe the same criteria; where they diverge, frontmatter wins and the body is corrected. Departures from a criterion are amended/superseded with rationale (an `## Amendments` section), never ticked to fit — see `../../tools/skills/close-out/SKILL.md`, "Requirement advancement".
-- (optional) `implements` (link): The feature implementing this requirement. Direction note: this names the feature that implements *this requirement* (the inverse-named back-reference), and it holds **at most one** feature — two or more is a validator error (ADR-0007). The requirement advances to `implemented` when that feature is `done` and its own acceptance criteria are ticked-with-evidence or reconciled. Empty is permitted: a requirement naming no feature gates no feature.
+- (optional) `implements` (link): The feature implementing this requirement. Direction note: this names the feature that implements *this requirement* (the inverse-named back-reference), and it holds **at most one** feature (`tools/instructions/STATUSES.md` `[[requirement]]`, Ownership). The requirement advances to `implemented` when that feature is `done` and its own acceptance criteria are ticked-with-evidence or reconciled. Empty is permitted: a requirement naming no feature gates no feature.
 - (optional) `verifies` (list of links/paths): Proof/verification pointers (workflows/tests/repo paths).
 - (optional) `tests` (list of links): `[[TST-...]]` links that verify this requirement.
 

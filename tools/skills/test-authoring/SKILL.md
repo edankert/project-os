@@ -44,7 +44,4 @@ A `TST-*` note is the record of verification: the procedure, the verdict, and th
    - For **automated** tests:
      - set `entrypoint` to the command/script (repo path) and expected artifacts
      - once run, set `status: passing|failing` and record evidence paths/log excerpts
-4. Apply gating:
-   - Do not mark the implementing task `done` until required tests are `passing`.
-   - Do not mark an issue `fixed` until verifying tests are `passing`. `fixed` is the single terminal issue status (ADR-0008); there is no separate `closed` step.
-   - Do not mark a requirement `implemented` (its terminal status) until every acceptance criterion is ticked-with-evidence or reconciled. Requirements have no `verified` status — a test note's own `passing` status is the verification record.
+4. Apply the gates in `../../instructions/STATUSES.md`, "The contract at a glance": a task, issue or feature does not reach its terminal status until the tests it links are `passing`, and a requirement is never test-gated.

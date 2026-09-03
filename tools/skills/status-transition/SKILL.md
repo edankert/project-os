@@ -22,9 +22,7 @@ tags: [skills, statuses]
 ## Checklist
 1. Confirm the transition is allowed. **`../../instructions/STATUSES.md` is normative** — allowed values, the gate on each terminal transition, and who writes the value. Do not rely on a restatement anywhere else; there are none by design (ISS-0006).
 2. **Pre-transition gates:**
-   - Verification gate: before transitioning a task to `done`, an issue to `fixed`, or a feature to `done`, verify linked `TST-*` notes are passing and every child in the scope list is scope-resolved (`done`, `cancelled` or `superseded` — never `deferred`; see `../../instructions/QUALITY.md`).
-   - **Requirements are never test-gated** (ADR-0007). A requirement reaches `implemented` on its acceptance criteria alone; a linked test that is `failing` or `ready` does not block it. Phases carry no test gate either — no validator check implements one.
-   - Feature gate: before transitioning a feature to `done`, verify every requirement naming it in `implements:` has all acceptance criteria ticked-with-evidence or reconciled, or is descoped (validator FEATURE-REQ).
+   - Terminal gates: the gate on each terminal status is stated once in `../../instructions/STATUSES.md`, "The contract at a glance"; check it before the transition, and remember that a requirement is never test-gated and a phase carries no test gate.
    - Phase alignment gate: before transitioning a task to `doing`, check the task `phase` (or inherited parent feature phase) against `focus.phase` in `../../../SNAPSHOT.yaml`. If the task is ahead of the active phase, whether it runs now is the user's decision (`../../instructions/LIFECYCLE.md`, "When to pause for the user").
    - Deferral gate: transitioning to `deferred` is a **descoping operation**, not a plain status flip — run the deferral procedure below, all steps in the same turn.
 3. Update `../../../SNAPSHOT.yaml`:
@@ -40,7 +38,7 @@ tags: [skills, statuses]
 Requirements are advanced by the work that delivers them, not on their own schedule:
 
 1. `draft` → `approved`: the criteria are agreed and features may now implement against them (`../feature-scaffold/SKILL.md`, "Requirement approval gate").
-2. `approved` → `implemented` — **terminal** (ADR-0007). Set at feature close-out once the single feature named in the requirement's `implements:` is `done`, with every acceptance criterion ticked against evidence or reconciled — full procedure in `../close-out/SKILL.md`, "Requirement advancement". There is no `verified` requirement status; verification lives in `[[test]]` notes and the per-criterion evidence pointers.
+2. `approved` → `implemented`: terminal, set at feature close-out (`../../instructions/STATUSES.md` `[[requirement]]`; procedure in `../close-out/SKILL.md`, "Requirement advancement").There is no `verified` requirement status; verification lives in `[[test]]` notes and the per-criterion evidence pointers.
 
 ## Deferral procedure (transition to `deferred`)
 

@@ -58,7 +58,7 @@ Pause for the user only when the work genuinely requires them: a destructive or 
 A bug, a cleanup or a missing abstraction the task did not ask for is an `ISS-*` at `triage` or a follow-up in your summary, not a change in this diff, unless the requested behaviour cannot work without it. Reason: the document-first gate blocks an edit with no focus item, and widening the task is the bypass. When the wording admits two readings, implement the one it most directly supports and state the assumption in the task note; ask only when the readings lead to materially different work.
 
 ## Close-out (must happen after work)
-1. Set the note status: task `done`, issue `fixed` (its only terminal status, ADR-0008), requirement `implemented`, feature `done`.
+1. Set the note status: task `done`, issue `fixed`, requirement `implemented`, feature `done` (`STATUSES.md`).
 2. Update the snapshot: statuses, relationships, focus, metrics.
 3. Add a change note, `docs/changes/CHG-YYYYMMDD-Short-Description.md`, when behaviour, paths or contracts change. A document written for a person (a review, a report, a design) is a `reference` note under `docs/reference/`; a page published elsewhere is a copy, its URL in `source:`.
 4. Add or update a `RISK-*` for a new hazard: a dependency, an env var, a contract.

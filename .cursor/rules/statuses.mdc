@@ -64,7 +64,8 @@ If a project needs different states, update this file and the templates in `../.
   - `backlog`/`planned` → `deferred` (descoped and parked) or `cancelled` (will not be built)
   - `deferred` → `planned` (re-adopted)
   - `done` → `superseded` (replaced by a newer feature; link the successor)
-- **A feature may not reach `done` while a requirement naming it in `implements:` has an unresolved acceptance criterion** (ADR-0007, validator FEATURE-REQ), unless that requirement is descoped. The task and test gates in `QUALITY.md` also apply.
+- **A feature may not reach `done` while a requirement naming it in `implements:` has an unresolved acceptance criterion** (ADR-0007, validator FEATURE-REQ), unless that requirement is descoped.
+- **A feature may not move to `doing` while a requirement it implements is still `draft`**; approve the requirement first (`../skills/feature-scaffold/SKILL.md`, "Requirement approval gate"). Reason: implementation works against agreed criteria, not against a draft.
 
 ## `[[phase]]`
 - Allowed: `planned`, `active`, `done`, `deferred`, `superseded`

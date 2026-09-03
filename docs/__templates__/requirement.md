@@ -23,7 +23,7 @@ tests: []
 <Must/should/shall statement>
 
 ## Acceptance Criteria
-<One checkbox per entry in the frontmatter `acceptance:` list. Tick only with an evidence pointer, at feature close-out. Every criterion must be ticked or reconciled before this requirement reaches `implemented` (its terminal status) — and an unresolved criterion blocks the owning feature from `done`.>
+<One checkbox per entry in the frontmatter `acceptance:` list. Tick only with an evidence pointer, at feature close-out; the gates on `implemented` and on the owning feature are in `tools/instructions/STATUSES.md` `[[requirement]]``.>
 - [ ] <criterion> — evidence: <path, path:line, command, or note ID>
 
 ## Traceability
