@@ -1399,6 +1399,153 @@ def _parse_decision_options(text):
     return out
 
 
+#: Matched spans are invisible to readers, so they must be invisible to the
+#: check: the ADR template ships the rule-ADR block inside one of these, and a
+#: note keeping that comment is not a rule-ADR. Non-greedy; an unterminated
+#: `<!--` is malformed markdown and stays visible rather than being guessed at.
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+#: Only TST IDs are resolved out of `## Conformance` (REQ-0025). Deliberately
+#: narrower than ID_RE: the section legally names check codes (DECISION-RULE),
+#: type names and prose, and none of those may read as a dangling reference.
+_CONFORMANCE_TST_RE = re.compile(r"\bTST-(\d{2,})\b")
+
+
+def _decision_sections(text):
+    """H2 heading -> content lines, for a decision note's visible body.
+
+    Frontmatter, fenced code blocks and HTML comments are removed first: a
+    heading inside any of them is quotation, not structure. A `###` heading is
+    content of the section above it, not a boundary; an H1 ends the current
+    section without starting one. Duplicate headings pool their content.
+    """
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            text = text[end + 4:]
+    text = _HTML_COMMENT_RE.sub("", text)
+    sections = {}
+    current = None
+    in_fence = False
+    for line in text.splitlines():
+        if FENCE_RE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = re.match(r"^##\s+(.+?)\s*$", line)
+        if m:
+            current = m.group(1)
+            sections.setdefault(current, [])
+            continue
+        if re.match(r"^#\s", line):
+            current = None
+            continue
+        if current is not None:
+            sections[current].append(line)
+    return sections
+
+
+def validate_decision_rule(root, items, note_index, report):
+    """DECISION-RULE — a rule-ADR names its domain and its conformance, or it binds nothing.
+
+    ADR-0023 (project-os-dev): a rule of the form *every member of DOMAIN
+    satisfies P* is recorded as an ordinary ADR carrying ``## Rule``,
+    ``## Domain`` and ``## Conformance`` — a section convention rather than a
+    new note kind (ADR-0022), with the ``## Rule`` heading's presence as the
+    marker. This check is that convention's named discharge, and ADR-0022 is
+    explicit that a convention without one is a preference.
+
+    Fires when **either** required section is missing or empty (REQ-0025),
+    because either omission alone produces a rule that binds nothing: with no
+    domain nothing says what the check must range over, and with no
+    conformance the rule is unenforced by construction — ISS-0005 measured
+    five such rules already living in the fleet as feature-less requirements,
+    "already effectively feature-exempt with no mechanism at all". And it
+    fires at **any** ADR status: a `proposed` rule binds nothing yet but is
+    malformed in exactly the same way, and a check that waited for `accepted`
+    would let every rule enter the corpus unexamined.
+
+    The parsing line, drawn deliberately (PLAN.md open question 2): only
+    ``TST-####`` tokens in ``## Conformance`` are resolved, and a dangling one
+    is an error. A validator check code (``DECISION-RULE``, ``REQ-BOXES``), a
+    type name ("the enum makes it unrepresentable") and plain prose are all
+    legal conformance and are never treated as references. A TST is
+    deliberately NOT required: a type that makes the violation unrepresentable
+    is the *strongest* discharge in ADR-0023's list, and demanding a test note
+    would push authors toward the weaker instrument (the ADR-0010 inversion).
+    Headings inside fenced code blocks and HTML comments do not count — the
+    ADR template ships the block commented, and the raw template must not arm
+    the check against its own output.
+
+    An **error from day one**, chosen against a counted violation set rather
+    than inherited (ADR-0011). Censused 2026-08-12 at landing: grep for
+    ``^## Rule`` over ``docs/decisions/*.md`` across all 12 repos under
+    ~/Dev/repos found exactly two notes carrying the heading — your-health
+    ADR-0020 and ADR-0021, the pilot pair — both with non-empty Domain and
+    Conformance and resolving TST references (TST-0018, TST-0019), plus one
+    non-hit (your-trainer ADR-0009's ``### Rules``, an H3 that is not the
+    marker). Zero violations means nothing to migrate, so per ADR-0021's
+    precedent a warning would be the permanent tier ADR-0011 forbids. No
+    PROMOTIONS entry and no GRANDFATHERED.yaml entries exist for this gate,
+    deliberately. The known cost, accepted in ADR-0023's consequences: a note
+    using ``## Rule`` casually, as prose scaffolding, is checked as a rule-ADR
+    and fails — that is the price of a section convention doing a type's job.
+    """
+    decisions_dir = root / "docs" / "decisions"
+    if not decisions_dir.is_dir():
+        return
+
+    def resolves(ref_id):
+        if ref_id in note_index:
+            return True
+        for coll in (items.values() if isinstance(items, dict) else []):
+            if isinstance(coll, dict) and ref_id in coll:
+                return True
+        return False
+
+    for path in sorted(decisions_dir.glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        sections = _decision_sections(text)
+        if "Rule" not in sections:
+            continue
+        rel = path.relative_to(root).as_posix()
+        m = ID_RE.match(path.name)
+        label = "%s-%s" % (m.group(1), m.group(2)) if m else rel
+        for name, why in (
+            ("Domain", "a rule that does not name the set it ranges over cannot be conformed to"),
+            ("Conformance", "a rule with no named discharge is unenforced by construction"),
+        ):
+            lines = sections.get(name)
+            if lines is None:
+                report.error(
+                    "DECISION-RULE",
+                    "%s carries `## Rule` but no `## %s` section; %s "
+                    "(tools/instructions/DECISIONS.md, \"A decision that states "
+                    "a rule\") (%s)" % (label, name, why, rel),
+                )
+            elif not any(l.strip() for l in lines):
+                report.error(
+                    "DECISION-RULE",
+                    "%s carries `## Rule` but its `## %s` section is empty; %s "
+                    "(tools/instructions/DECISIONS.md, \"A decision that states "
+                    "a rule\") (%s)" % (label, name, why, rel),
+                )
+        conformance = sections.get("Conformance") or []
+        for tm in sorted(set(_CONFORMANCE_TST_RE.findall("\n".join(conformance)))):
+            tst_id = "TST-%s" % tm
+            if not resolves(tst_id):
+                report.error(
+                    "DECISION-RULE",
+                    "%s `## Conformance` names %s, which resolves to no snapshot "
+                    "item or note; a rule discharged by a test that does not "
+                    "exist is not discharged (%s)" % (label, tst_id, rel),
+                )
+
+
 def validate_brief(root, report):
     """BRIEF-PLACEHOLDER — the project says what it is, or says nothing.
 
@@ -1768,6 +1915,7 @@ def validate(root, report):
 
     validate_brief(root, report)
     validate_decision_options(root, report)
+    validate_decision_rule(root, items, note_index, report)
     validate_design_notes(root, docs_dir, report)
     validate_release_contents(note_index, report)
     validate_plan_notes(root, docs_dir, allowed_status, grandfathered, report)
