@@ -82,6 +82,16 @@ Agents are REQUIRED to automatically keep the documentation system in sync with 
 - Only start code changes once planning artifacts exist (issue/feature/tasks as appropriate).
 - Keep snapshot `focus` aligned with what is actually being worked.
 
+### When to pause for the user
+Pause for the user only when the work genuinely requires them: a destructive or irreversible action, a real scope change, or input that only they can provide. Everything else is a judgment call you make yourself. First do everything that does not depend on the answer; then put the question at the end of a turn that also delivers that progress. Reason: a question asked before the independent work is done hands the whole task back unfinished, and a turn that ends on a promise leaves nothing for the user to decide on.
+
+Every other file that names a pause links here and says only which decision the user owns. This section is the one statement of the rule (ADR-0024 in project-os-dev).
+
+### Scope of a change
+Something you notice that the task did not ask for, whether a bug, a cleanup or a missing abstraction, is an `ISS-*` at `triage` or a follow-up in your summary, not a change in this diff, unless the requested behaviour cannot work without it. Reason: the document-first gate blocks an edit that has no focus item, and widening the current task to cover the extra change is the bypass; filing the issue is what makes the gate survivable.
+
+When the task's wording admits more than one reading, implement the reading it most directly supports and state the assumption in the task note. Ask only when the readings lead to materially different work; that is a scope change under the pause rule above.
+
 ## Close-out (must happen after work)
 After completing a task/issue/feature:
 1. Update the Markdown note status (task `done`, issue `fixed`, requirement `implemented`, feature `done`). `fixed` is the single terminal issue status since ADR-0008 — there is no second `closed` step.
