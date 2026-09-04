@@ -55,4 +55,4 @@ The issue lives in project-os-dev (ISS-0055); the harness assertions extend proj
 
 ## Follow-ups
 
-- [ ] Record the mode in each downstream repo's index; six of them carry all eight hooks as `100644` and are one clean clone from every hook failing.
+- [x] Record the mode in each downstream repo's index, done 2026-09-04 with one mode-only commit per repo. All 96 hook entries across the twelve repos are `100755`; a fresh clone of `your-trainer` delivers all eight executable and runs the hint. The commits are listed in project-os-dev ISS-0055.
