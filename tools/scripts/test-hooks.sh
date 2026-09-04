@@ -9,6 +9,8 @@
 #                                                    stays within a size bound
 #   HC-001 document-first-gate.sh (PreToolUse)      allows paths outside every project-os
 #                                                    repo (project-os-dev ISS-0003)
+# Every hook file is also checked for the executable bit, which the assertions
+# below cannot detect on their own (project-os-dev ISS-0055).
 # Paths resolve from this script's location. Exit 0 = every assertion holds.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -62,6 +64,21 @@ gate()      { printf '{"tool_input":{"file_path":"%s"}}' "$2" | CLAUDE_PROJECT_D
 vgate()     { python3 -c 'import json,sys; print(json.dumps({"tool_input":{"file_path":sys.argv[1],"new_string":sys.argv[2]},"cwd":sys.argv[3]}))' "$2" "$3" "$1" | python3 "$HOOKS/verification-gate.py" 2>/dev/null; }
 # tstnote <project-dir> <id> <status> [extra frontmatter line]
 tstnote()   { mkdir -p "$1/docs/tests"; { printf -- '---\nid: %s\nstatus: %s\n' "$2" "$3"; [ -n "$4" ] && printf '%s\n' "$4"; printf -- '---\n'; } > "$1/docs/tests/$2-x.md"; }
+
+# -- Every hook file is executable -------------------------------------------
+# The assertions below invoke each hook as `bash "$HOOKS/<name>"`, which runs a
+# file whatever its mode. Claude Code does not: .claude/settings.json registers
+# every hook by bare path with no interpreter, so a hook missing the executable
+# bit fails with "Permission denied" on each event it is registered for. That is
+# how the delegation hint reached twelve repos unrunnable while this harness was
+# green (project-os-dev ISS-0055). A failure here is fixed by re-running
+# `python3 tools/scripts/generate-adapters.py --install-hooks`, and, in a repo
+# with core.fileMode=false, by recording the mode with
+# `git update-index --chmod=+x <path>` so it survives the next clone.
+for hook in "$HOOKS"/*; do
+  [ -f "$hook" ] || continue
+  check "$(basename "$hook") is executable" "$([ -x "$hook" ]; echo $?)" "mode is $(stat -f '%Sp' "$hook" 2>/dev/null || stat -c '%A' "$hook")"
+done
 
 # -- HC-006: the Stop hook names two actions ---------------------------------
 fixture "$TMP/doing" TASK-0001 doing FEAT-0001 doing ""
