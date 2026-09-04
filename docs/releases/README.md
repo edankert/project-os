@@ -23,5 +23,4 @@ Release notes are created by the `release-verification` skill during the release
 - `REL-####-<version-or-short-name>.md`
 
 ## Status lifecycle
-- `draft` → `staged` → `released`
-- `released` → `rolled-back` (if rollback occurs)
+Stated once, in `../../tools/instructions/STATUSES.md` `[[release]]`.
