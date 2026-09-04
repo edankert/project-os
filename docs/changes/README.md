@@ -25,7 +25,7 @@ Traceable records of **what changed** in the repo and **why** (after work lands)
 ## When to add a change note
 - After merging work that affects users/flows (scripts, directory layout, supported systems, environment variables).
 - When changing behavior or expectations (e.g., build output location, CI behavior, tool output format).
-- When a fix is significant enough that you want a stable link from issues/features to “what shipped”.
+When a change note is due is stated once, in `../../tools/instructions/LIFECYCLE.md` close-out step 3: when behaviour, paths or contracts change. It is an obligation, not a preference.
 
 ## What to include
 - Links to related `ISS-*`, `FEAT-*`, `TASK-*`, and any ADRs.

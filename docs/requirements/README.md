@@ -20,4 +20,4 @@ Requirements define **what must be true** (acceptance criteria) and enable trace
 - When you need to demonstrate coverage (e.g. tests produce specific artifacts; build outputs land in a specific path).
 
 ## What to link
-- `implements:` / `verifies:` should point to features, scripts, tests, or workflows that demonstrate the requirement is met.
+- `implements:` names at most one feature; two is a validator error and zero is allowed (`../../tools/instructions/STATUSES.md`, `[[requirement]]` Ownership).
