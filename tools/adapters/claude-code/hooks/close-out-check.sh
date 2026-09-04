@@ -52,11 +52,6 @@ EOF
   fi
 fi
 
-# Check if focus.task or focus.issue is still set (work in progress). Read the
-# whole focus block, so key order does not matter. This used to pipe the value
-# through `echo "" | jq -r --arg f ... '$f'`, which never runs the filter on an
-# empty input, so both values were always empty and this hook never blocked
-# (project-os-dev TASK-0102, found by TST-0007).
 # Did this session write anything since the last reminder? An absent marker
 # means it did not, so there is no close-out owed and the stop goes through.
 #
@@ -75,6 +70,11 @@ if command -v session_marker >/dev/null 2>&1; then
   fi
 fi
 
+# Check if focus.task or focus.issue is still set (work in progress). Read the
+# whole focus block, so key order does not matter. This used to pipe the value
+# through `echo "" | jq -r --arg f ... '$f'`, which never runs the filter on an
+# empty input, so both values were always empty and this hook never blocked
+# (project-os-dev TASK-0102, found by TST-0007).
 focus_value() {
   sed -n '/^focus:/,/^[^[:space:]]/p' "$SNAPSHOT" | grep -E "^[[:space:]]+$1:" | head -1 | sed -E "s/^[[:space:]]+$1:[[:space:]]*//" | sed 's/#.*//' | tr -d '"' | tr -d "'" | tr -d '[:space:]'
 }
