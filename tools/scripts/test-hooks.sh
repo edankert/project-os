@@ -178,6 +178,21 @@ for hook in "$HOOKS"/*; do
   check "$(basename "$hook") is executable" "$([ -x "$hook" ]; echo $?)" "mode is $(stat -f '%Sp' "$hook" 2>/dev/null || stat -c '%A' "$hook")"
 done
 
+# On disk is not enough. A repo with core.fileMode=false records a new hook as
+# 100644 whatever its mode here, so the checks above pass while a fresh clone
+# still gets "Permission denied" -- which is how ISS-0055 shipped, and how
+# session-touch.sh was added an hour after fixing it. Skipped outside a
+# repository, and outside one that tracks these files.
+if git -C "$HOOKS" rev-parse --show-toplevel >/dev/null 2>&1; then
+  while read -r mode _ _ path; do
+    [ -n "$path" ] || continue
+    case "$path" in *lib/*) continue ;; esac    # sourced, never executed
+    check "$(basename "$path") is executable in git" "$([ "$mode" = "100755" ]; echo $?)" "index mode is $mode; record it with git update-index --chmod=+x"
+  done <<GITMODES
+$(git -C "$HOOKS" ls-files -s . 2>/dev/null)
+GITMODES
+fi
+
 # -- HC-006: the focus half blocks only a stop that follows a write -----------
 # Appended last, like the block above, so the ordinals TST-0007 documents by
 # number do not shift. A set focus is durable project state: before ISS-0056 the
