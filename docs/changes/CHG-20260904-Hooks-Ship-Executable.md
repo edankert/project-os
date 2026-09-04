@@ -25,7 +25,7 @@ The bit was never travelling with the file. This repo recorded all eight hook sc
 
 Three changes, so that the next new hook does not repeat it:
 
-1. All eight hook scripts are now `100755` in this repo's index. A clone and a sync both carry the bit.
+1. All eight hook scripts are now `100755` in this repo's index, so a clone of this repo carries the bit. A sync does not: `sync_file` returns early on `current == new`, comparing bytes only, so a mode-only change never reaches a downstream repo whose copy of the script is already byte-identical. The installer below is what repairs those.
 2. `generate-adapters.py --install-hooks` sets the executable bit on every file in `hooks/`, and does it on the path where an existing `hooks` key is left alone — which is the common case, a repo whose settings are already right and whose newest hook script is not. `SYNCING.md` step 5 already tells you to re-run that command after a sync, so the post-sync flow now repairs the bit on its own.
 3. `test-hooks.sh` asserts every file in `hooks/` is executable, eight new assertions, 37 to 45. The harness could never have caught this before: it invokes each hook as `bash "$HOOKS/<name>"`, which runs a file whatever its mode.
 
@@ -33,7 +33,7 @@ Three changes, so that the next new hook does not repeat it:
 
 ## Impact
 
-- **Downstream repos need the sync plus a generator run.** After `sync-project-os.sh`, the hook files arrive executable on disk. In a repo with `core.fileMode = false` git will not record that, so run `git update-index --chmod=+x tools/adapters/claude-code/hooks/*` once and commit, or the next clone is broken again.
+- **Downstream repos are fixed by the generator run, not by the sync.** Their hook scripts are byte-identical to this repo's, so the sync reports them up to date and leaves the mode alone. `python3 tools/scripts/generate-adapters.py --install-hooks` sets the bit; `SYNCING.md` step 5 already calls for it after every sync. In a repo with `core.fileMode = false` git then ignores the bit it just got, so run `git update-index --chmod=+x tools/adapters/claude-code/hooks/*` once and commit, or the next clone is broken again.
 - The delegation hint starts printing its line where it has been silent.
 - Nothing about hook behaviour changes. No hook logic was touched.
 
