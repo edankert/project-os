@@ -33,7 +33,7 @@ These files contain detailed rules. Read them when performing the related operat
 - Markdown authoring: tools/instructions/MARKDOWN.md
 - Handoff/recovery: tools/instructions/HANDOFF.md
 - Importing from existing projects: tools/instructions/IMPORTING.md
-- Acceptance test tiers and lifecycle: tools/instructions/TESTING.md
+- Acceptance test sections and lifecycle: tools/instructions/TESTING.md
 - Hook contracts: tools/instructions/HOOKS.md
 - Syncing template updates: tools/instructions/SYNCING.md
 
@@ -63,6 +63,7 @@ These files contain detailed rules. Read them when performing the related operat
 - Adapter sync: tools/skills/adapter-sync/SKILL.md
 - Project init: tools/skills/project-init/SKILL.md
 - Project derive: tools/skills/project-derive/SKILL.md
+- Design authoring: tools/skills/design-authoring/SKILL.md
 
 ## Project-specific notes
 
