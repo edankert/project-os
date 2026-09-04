@@ -34,7 +34,7 @@ if [ ! -f "$SNAPSHOT" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-[ -r "$SCRIPT_DIR/lib/session-marker.sh" ] && . "$SCRIPT_DIR/lib/session-marker.sh"
+[ -r "$SCRIPT_DIR/shared/session-marker.sh" ] && . "$SCRIPT_DIR/shared/session-marker.sh"
 
 # Mechanical validation first: block stop while the docs invariants are broken (HC-007).
 VALIDATOR="$PROJECT_DIR/tools/scripts/validate-docs.sh"

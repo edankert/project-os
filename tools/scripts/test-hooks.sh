@@ -183,10 +183,25 @@ done
 # still gets "Permission denied" -- which is how ISS-0055 shipped, and how
 # session-touch.sh was added an hour after fixing it. Skipped outside a
 # repository, and outside one that tracks these files.
+# A hook file a downstream .gitignore swallows is invisible to every check
+# above: git ls-files never lists it, so its mode is never wrong, and a clone
+# simply does not have it. One repo ignored `lib/` and would have dropped the
+# marker helper (project-os-dev ISS-0056), which is why the directory is called
+# `shared`.
+if git -C "$HOOKS" rev-parse --show-toplevel >/dev/null 2>&1; then
+  for hook in "$HOOKS"/* "$HOOKS"/shared/*; do
+    [ -f "$hook" ] || continue
+    # --no-index, because check-ignore reports nothing for an already-tracked
+    # file: without it this passes here and only fails in the repo that has not
+    # committed the file yet, which is the one place nobody is looking.
+    check "$(basename "$hook") is not gitignored" "$(! git -C "$HOOKS" check-ignore -q --no-index "$hook"; echo $?)" "a .gitignore pattern hides it from the commit"
+  done
+fi
+
 if git -C "$HOOKS" rev-parse --show-toplevel >/dev/null 2>&1; then
   while read -r mode _ _ path; do
     [ -n "$path" ] || continue
-    case "$path" in *lib/*) continue ;; esac    # sourced, never executed
+    case "$path" in *shared/*) continue ;; esac # sourced, never executed
     check "$(basename "$path") is executable in git" "$([ "$mode" = "100755" ]; echo $?)" "index mode is $mode; record it with git update-index --chmod=+x"
   done <<GITMODES
 $(git -C "$HOOKS" ls-files -s . 2>/dev/null)
@@ -199,7 +214,7 @@ fi
 # hook read it as if it described the turn, and cost a forced continuation on
 # every stop -- questions included -- in any repo whose focus was parked.
 SESSION="test-hooks-$$-aaaa"
-. "$HOOKS/lib/session-marker.sh"
+. "$HOOKS/shared/session-marker.sh"
 MARKER=$(session_marker "$SESSION" "$TMP/doing")
 rm -f "$MARKER"
 # stop_with_session <project-dir> <session-id>

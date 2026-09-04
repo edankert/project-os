@@ -20,8 +20,8 @@
 INPUT=$(cat)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-[ -r "$SCRIPT_DIR/lib/session-marker.sh" ] || exit 0
-. "$SCRIPT_DIR/lib/session-marker.sh"
+[ -r "$SCRIPT_DIR/shared/session-marker.sh" ] || exit 0
+. "$SCRIPT_DIR/shared/session-marker.sh"
 
 SESSION=$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
 [ -n "$SESSION" ] || exit 0

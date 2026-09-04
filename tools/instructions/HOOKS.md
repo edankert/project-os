@@ -79,7 +79,7 @@ Contract IDs are `HC-001`..`HC-008`. (Earlier revisions of this file used `CHC-0
   - Metrics and relationships are updated.
   - Required `CHG-*` and `RISK-*` notes exist when behavior, paths, contracts, or hazards changed.
 - The write test: a `PostToolUse` hook records the session's first write; the Stop hook consumes that record when it blocks, so the reminder arrives once per burst of work rather than once per turn. `focus` is durable project state and says nothing about what a turn did, so reading it alone charged a forced continuation to every stop, questions included, in any repo whose focus item was parked (project-os-dev ISS-0056). Every path that cannot answer the question — no session identifier in the payload, no recorder on disk — blocks, because a check that disables itself when its input is missing is worse than one that nags. A session that writes through the shell rather than the editing tools records nothing and is not reminded; ISS-0056 holds the alternatives that were weighed.
-- Implementations: Claude Code `hooks/close-out-check.sh` (blocking Stop hook, also runs HC-007) with `hooks/session-touch.sh` (`PostToolUse`) as its recorder, sharing one path formula in `hooks/lib/session-marker.sh`. Tools without a per-session identifier implement the focus half unconditionally.
+- Implementations: Claude Code `hooks/close-out-check.sh` (blocking Stop hook, also runs HC-007) with `hooks/session-touch.sh` (`PostToolUse`) as its recorder, sharing one path formula in `hooks/shared/session-marker.sh`. Tools without a per-session identifier implement the focus half unconditionally.
 - On failure: complete the missing close-out work before stopping.
 
 ## HC-007: Mechanical docs validation
