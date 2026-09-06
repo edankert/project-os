@@ -194,5 +194,16 @@ printf '\nci:\n  suite_command: "false"\n' >> "$TMP/ci-fail/SNAPSHOT.yaml"
 python3 "$RUNNER" --repo-root "$TMP/ci-fail" --ci >/dev/null 2>&1; code=$?
 check "--ci fails the run when the declared suite fails" "$([[ $code -eq 1 ]]; echo $?)" "exit $code"
 
+# 4e. a failing command echoes its output, so CI says why rather than only that.
+# A run reported "failing  ./gradlew test" and the log held nothing else.
+fixture "$TMP/run-why" $'status: active' 'command: "echo the-reason-it-broke; exit 3"'
+out="$(python3 "$RUNNER" --repo-root "$TMP/run-why" 2>&1)"
+check "a failing command echoes its captured output" \
+  "$(printf '%s' "$out" | grep -q 'the-reason-it-broke' && echo 0 || echo 1)" "$out"
+fixture "$TMP/run-quiet" $'status: active' 'command: "echo fine"'
+out="$(python3 "$RUNNER" --repo-root "$TMP/run-quiet" 2>&1)"
+check "a passing command does not echo its output" \
+  "$(printf '%s' "$out" | grep -q '      | ' && echo 1 || echo 0)" "$out"
+
 echo "test-verdict-model: $assertions assertions, $failures failure(s)"
 [[ "$failures" -eq 0 ]]

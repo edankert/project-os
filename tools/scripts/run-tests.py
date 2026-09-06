@@ -26,6 +26,8 @@ import sys
 from pathlib import Path
 
 DEFAULT_TIMEOUT = 600
+# How much of a failing command's output to echo, so CI says *why* it failed.
+FAILURE_OUTPUT_LINES = 40
 
 
 def split_frontmatter(text):
@@ -108,15 +110,25 @@ def run_one(root, cmd, timeout):
             env={**os.environ, "PROJECT_OS_TEST_RUN": "1"},
         )
     except subprocess.TimeoutExpired:
-        return "unrunnable", None, "timed out after %ss" % timeout
+        return "unrunnable", None, "timed out after %ss" % timeout, []
     except OSError as exc:
-        return "unrunnable", None, "could not execute: %s" % exc
+        return "unrunnable", None, "could not execute: %s" % exc, []
     # 127 is the shell's "command not found"; treat as environmental, not a failure.
     if proc.returncode == 127:
         head = (proc.stderr or "").strip().splitlines()[:1]
-        return "unrunnable", 127, "command not found%s" % (": " + head[0] if head else "")
-    tail = ((proc.stderr or "") + (proc.stdout or "")).strip().splitlines()[-1:]
-    return ("passing" if proc.returncode == 0 else "failing"), proc.returncode, (tail[0] if tail else "")
+        return "unrunnable", 127, "command not found%s" % (": " + head[0] if head else ""), []
+    combined = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    lines = combined.splitlines()
+    tail = lines[-1:]
+    outcome = "passing" if proc.returncode == 0 else "failing"
+    # A verdict nobody can diagnose is a poor verdict. On a failure the captured
+    # output is what says whether the code is wrong or the runner is missing a
+    # toolchain, and it is otherwise thrown away -- a CI run reported only
+    # "failing  ./gradlew test" and the log held nothing else.
+    if outcome == "failing" and lines:
+        detail_lines = lines[-FAILURE_OUTPUT_LINES:]
+        return outcome, proc.returncode, (tail[0] if tail else ""), detail_lines
+    return outcome, proc.returncode, (tail[0] if tail else ""), []
 
 
 def main(argv=None):
@@ -148,9 +160,11 @@ def main(argv=None):
         # full locally; this is the one non-bypassable run, not a smaller one.
         print("== RUN  %s (ci: the declared suite, covering %d test note(s)) =="
               % (root.name, len(tests)))
-        outcome, _code, detail = run_one(root, suite, args.timeout)
+        outcome, _code, detail, output = run_one(root, suite, args.timeout)
         print("   %-12s %-10s %s%s"
               % ("ci.suite", outcome, suite[:48], ("  — " + detail[:60]) if detail else ""))
+        for line in output:
+            print("      | %s" % line)
         if outcome == "passing":
             return 0
         if outcome == "failing":
@@ -175,15 +189,18 @@ def main(argv=None):
     for _path, tid, cmd in tests:
         seen = already.get(cmd)
         if seen is None:
-            outcome, _code, detail = run_one(root, cmd, args.timeout)
+            outcome, _code, detail, output = run_one(root, cmd, args.timeout)
             already[cmd] = (outcome, detail, tid)
             note = ""
         else:
             outcome, detail, first = seen
             note = "  (same command as %s)" % first
+            output = []
         counts[outcome] += 1
         print("   %-12s %-10s %s%s%s" % (
             tid, outcome, cmd[:48], ("  — " + detail[:60]) if detail and not note else "", note))
+        for line in output:
+            print("      | %s" % line)
 
     print("   passing=%(passing)d failing=%(failing)d unrunnable=%(unrunnable)d" % counts)
     if len(already) < len(tests):
