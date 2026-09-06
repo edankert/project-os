@@ -8,7 +8,8 @@
 #   3. a manual test (no command:) at `ready` under a done task still fails the
 #      gate, so the change loosened nothing for manual tests;
 #   4. run-tests.py leaves every note byte-identical, exits 1 when a command
-#      fails, rejects --write, and runs a repeated command: only once.
+#      fails, rejects --write, runs a repeated command: only once, and under
+#      --ci runs the declared ci.suite_command instead of every command.
 # Paths resolve from this script's location. Exit 0 = every assertion holds.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -170,6 +171,28 @@ check "the shared result names the note that ran it" \
 check "the runner says how many notes shared a result" \
   "$(printf '%s' "$out" | grep -q '1 command(s) ran; 1 note(s) shared a result' && echo 0 || echo 1)" "$out"
 check "sharing a result does not change the exit code" "$code" "exit $code"
+
+# 4d. --ci runs the declared ci.suite_command once instead of every command, and
+# a repo declaring none still runs them all, so nothing silently stops being run.
+fixture "$TMP/ci-suite" $'status: active' 'command: "false"'
+printf '\nci:\n  suite_command: "true"\n' >> "$TMP/ci-suite/SNAPSHOT.yaml"
+out="$(python3 "$RUNNER" --repo-root "$TMP/ci-suite" --ci 2>&1)"; code=$?
+check "--ci runs the declared suite and not the failing command" "$code" "exit $code: $out"
+check "--ci names the suite it ran" \
+  "$(printf '%s' "$out" | grep -q 'ci.suite' && echo 0 || echo 1)" "$out"
+check "--ci says how many notes the suite covers" \
+  "$(printf '%s' "$out" | grep -q 'covering 1 test note' && echo 0 || echo 1)" "$out"
+out="$(python3 "$RUNNER" --repo-root "$TMP/ci-suite" 2>&1)"; code=$?
+check "without --ci the note's own failing command still runs" "$([[ $code -eq 1 ]]; echo $?)" "exit $code"
+fixture "$TMP/ci-none" $'status: active' 'command: "false"'
+out="$(python3 "$RUNNER" --repo-root "$TMP/ci-none" --ci 2>&1)"; code=$?
+check "--ci with nothing declared still runs every command" "$([[ $code -eq 1 ]]; echo $?)" "exit $code"
+check "--ci with nothing declared says so" \
+  "$(printf '%s' "$out" | grep -q 'no ci.suite_command' && echo 0 || echo 1)" "$out"
+fixture "$TMP/ci-fail" $'status: active' 'command: "true"'
+printf '\nci:\n  suite_command: "false"\n' >> "$TMP/ci-fail/SNAPSHOT.yaml"
+python3 "$RUNNER" --repo-root "$TMP/ci-fail" --ci >/dev/null 2>&1; code=$?
+check "--ci fails the run when the declared suite fails" "$([[ $code -eq 1 ]]; echo $?)" "exit $code"
 
 echo "test-verdict-model: $assertions assertions, $failures failure(s)"
 [[ "$failures" -eq 0 ]]
