@@ -9,6 +9,9 @@ tool, a timeout) is an environment gap locally, reported and not counted as a
 failure; in CI (the `CI` variable set) it fails the run, because a test CI
 cannot run has no verdict, unless PROJECT_OS_ALLOW_UNRUNNABLE=1 accepts that.
 
+Notes that share a `command:` run it once and share the outcome: a second run of
+the same command in the same tree cannot reach a different verdict.
+
 Usage: run-tests.py [--repo-root DIR] [--filter TST-0001 ...] [--timeout SECONDS]
 """
 
@@ -108,13 +111,30 @@ def main(argv=None):
     # ADR-0025 (project-os-dev): the runner never writes to a note. A test
     # with a command: records no verdict; this exit code, in CI, is the verdict.
     counts = {"passing": 0, "failing": 0, "unrunnable": 0}
+    # Two notes may carry the same command:, and several usually do — a suite-wide
+    # command belongs on every test it verifies. Running it a second time cannot
+    # reach a different verdict, so the first run's outcome is reused. Nine repos
+    # ran one Gradle suite twenty-nine times before this existed; at the default
+    # timeout that is hours of CI for one answer.
+    already = {}
     print("== RUN  %s ==" % root.name)
     for _path, tid, cmd in tests:
-        outcome, _code, detail = run_one(root, cmd, args.timeout)
+        seen = already.get(cmd)
+        if seen is None:
+            outcome, _code, detail = run_one(root, cmd, args.timeout)
+            already[cmd] = (outcome, detail, tid)
+            note = ""
+        else:
+            outcome, detail, first = seen
+            note = "  (same command as %s)" % first
         counts[outcome] += 1
-        print("   %-12s %-10s %s%s" % (tid, outcome, cmd[:48], ("  — " + detail[:60]) if detail else ""))
+        print("   %-12s %-10s %s%s%s" % (
+            tid, outcome, cmd[:48], ("  — " + detail[:60]) if detail and not note else "", note))
 
     print("   passing=%(passing)d failing=%(failing)d unrunnable=%(unrunnable)d" % counts)
+    if len(already) < len(tests):
+        print("   %d command(s) ran; %d note(s) shared a result"
+              % (len(already), len(tests) - len(already)))
     # Locally an unrunnable command (a missing sibling checkout, a missing
     # tool, a timeout) is an environment gap and not a failure. In CI it is a
     # red build, because CI is the verdict and a test CI cannot run has none;

@@ -8,7 +8,7 @@
 #   3. a manual test (no command:) at `ready` under a done task still fails the
 #      gate, so the change loosened nothing for manual tests;
 #   4. run-tests.py leaves every note byte-identical, exits 1 when a command
-#      fails, and rejects --write.
+#      fails, rejects --write, and runs a repeated command: only once.
 # Paths resolve from this script's location. Exit 0 = every assertion holds.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -154,6 +154,22 @@ CI=1 python3 "$RUNNER" --repo-root "$TMP/run-missing" >/dev/null 2>&1; code=$?
 check "in CI an unrunnable test fails the run" "$([[ $code -eq 1 ]]; echo $?)" "exit $code"
 env -u CI python3 "$RUNNER" --repo-root "$TMP/run-missing" >/dev/null 2>&1; code=$?
 check "locally an unrunnable test is an environment gap" "$code" "exit $code"
+
+# 4c. two notes carrying the same command: run it once and share the outcome.
+# A suite-wide command belongs on every test it verifies, and running it again
+# cannot reach a different verdict; nine repos ran one Gradle suite 29 times.
+fixture "$TMP/run-dup" $'status: active' 'command: "true"'
+cp "$TMP/run-dup/docs/tests/TST-0001-X.md" "$TMP/run-dup/docs/tests/TST-0002-Y.md"
+sed -i.bak 's/TST-0001/TST-0002/g' "$TMP/run-dup/docs/tests/TST-0002-Y.md"
+rm -f "$TMP/run-dup/docs/tests/TST-0002-Y.md.bak"
+out="$(python3 "$RUNNER" --repo-root "$TMP/run-dup" 2>&1)"; code=$?
+check "two notes with the same command still both report" \
+  "$(printf '%s' "$out" | grep -cq 'TST-0002' && echo 0 || echo 1)" "$out"
+check "the shared result names the note that ran it" \
+  "$(printf '%s' "$out" | grep -q 'same command as TST-0001' && echo 0 || echo 1)" "$out"
+check "the runner says how many notes shared a result" \
+  "$(printf '%s' "$out" | grep -q '1 command(s) ran; 1 note(s) shared a result' && echo 0 || echo 1)" "$out"
+check "sharing a result does not change the exit code" "$code" "exit $code"
 
 echo "test-verdict-model: $assertions assertions, $failures failure(s)"
 [[ "$failures" -eq 0 ]]
