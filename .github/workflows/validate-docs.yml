@@ -11,6 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # A repo that builds with Gradle needs the JDK it targets, and the runner
+      # default is not it: your-health targets Java 21 and CI failed with
+      # "invalid source release: 21" for four minutes before anything said so.
+      # The version belongs to the repo, in .java-version; a repo without one
+      # (or without a Gradle wrapper) skips this and keeps the runner default.
+      - name: Set up the JDK this repo targets
+        if: hashFiles('gradlew') != '' && hashFiles('.java-version') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version-file: .java-version
       - name: Validate SNAPSHOT.yaml <-> docs consistency
         run: bash tools/scripts/validate-docs.sh --repo-root "$GITHUB_WORKSPACE"
       # --ci runs the repo's declared ci.suite_command once. A repo's test notes
