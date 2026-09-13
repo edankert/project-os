@@ -33,7 +33,10 @@ A `TST-*` note is the record of verification: the procedure, the verdict, and th
    - link the test from impacted items (requirement/feature/task/issue) and link those IDs back from the test
 3. Create/update the test note from `../../../docs/__templates__/test.md`:
    - Store the note per `../../instructions/LIFECYCLE.md` "Test storage".
-   - For **manual** tests:
+   - For an **acceptance check** (`level: acceptance`, no `command:`):
+     - write it under the four headings in `../../instructions/TESTING.md`, "A check is walkable by a stranger" — Setup, Steps, Expect, Not this check. If someone walking it cannot tell what to do or what should happen, the check is wrong, not the walker.
+     - leave `status: active`: an acceptance check rests there, and its verdict is an event in the release ledger rather than a field on the note (`../../instructions/STATUSES.md` `[[test]]`)
+   - For any other **manual** test:
      - write an unambiguous procedure and expected results
      - leave `status: ready` (defined, not yet run; `../../instructions/STATUSES.md` `[[test]]`) and `evidence: []`
      - request human feedback (pass/fail + evidence)
