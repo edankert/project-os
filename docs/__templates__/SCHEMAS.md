@@ -232,6 +232,25 @@ Where NOT used:
 Where used:
 - Tracked in `SNAPSHOT.yaml` (`items.tests`) for agent context and linked from test notes.
 
+## `walk.md` — the walk order (`WALK.md`)
+
+Purpose: the one file per project that says in what order a release is walked. Instantiated from `walk.md` to `docs/tests/acceptance/WALK.md`, typed `[[reference]]`, resting at `active` (or `deprecated`). What a walk sheet does with it is stated once in `tools/instructions/TESTING.md`, "The walk"; this entry is the syntax alone.
+
+Frontmatter: the standing-document fields (`type`, `title`, `status`, `owner`, `created`, `updated`), plus one optional key:
+
+- (optional) `gallery` (string): a command that regenerates the project's screen gallery. The walk sheet prints it at the top of the survey, as the thing to run and compare before walking anything.
+
+Body: prose the walker reads once, then **one `### ` heading per sitting with one fenced `yaml` block under it**. The heading is the sitting's name as the sheet prints it. The block's keys:
+
+| key | required | what it holds |
+|---|---|---|
+| `surfaces` (list) | one of the two | The `area:` strings this sitting claims, or `SUR-*` ids whose note title is that area string. A check joins the **first** sitting in file order that claims its area. |
+| `checks` (list) | one of the two | Check ids pulled into this sitting regardless of area. |
+| `state` (string) | recommended | The product state the sitting needs and the cheapest way to reach it, in the same register as a check's Setup line. |
+| `bench` (list) | recommended | What must be physically present, signed in or installed before the sitting starts, one line each. |
+
+A sitting block with neither `surfaces` nor `checks` claims nothing, and the generator reports it. No key carries a duration.
+
 ## `check.md` — removed (ADR-0031)
 
 There is no `check` type and no `check.md` template; an acceptance check is a `[[test]]` at `level: acceptance`, its fields documented under `test.md` above. Why the type was retired is stated once in `tools/instructions/TAXONOMY.md`, "`check` — retired". See `project-os-cockpit` ADR-0031, which supersedes ADR-0030.
