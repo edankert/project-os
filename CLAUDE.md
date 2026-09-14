@@ -60,6 +60,7 @@ These files contain detailed rules. Read them when performing the related operat
 - Impact analysis: tools/skills/impact-analysis/SKILL.md
 - Release preparation: tools/skills/release-prep/SKILL.md
 - Release verification: tools/skills/release-verification/SKILL.md
+- Walk procedure: tools/skills/walk-procedure/SKILL.md
 - Adapter sync: tools/skills/adapter-sync/SKILL.md
 - Project init: tools/skills/project-init/SKILL.md
 - Project derive: tools/skills/project-derive/SKILL.md
