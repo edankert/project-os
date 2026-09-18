@@ -8,7 +8,7 @@ owner: unassigned
 created: 2026-07-05
 updated: 2026-07-05
 source:
-  - compass_artifact_wf-84fa61ff-0d47-4742-a0b7-97fec656e051_text_markdown.md
+  - "project-os-dev: docs/reference/Reliability-Toolkit-Research-2026-07.md (was compass_artifact_wf-84fa61ff-0d47-4742-a0b7-97fec656e051_text_markdown.md at this repo's root)"
 commit: ""
 pr: ""
 impacts:
