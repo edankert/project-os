@@ -29,6 +29,9 @@ tasks: [TASK-0001, TASK-0002]
 
 # The widget stops
 
+## Scope
+- SCOPE-DELTA: the widget stops from two sources.
+
 ## Acceptance
 - CRITERION-ALPHA: the widget stops within one second.
 
@@ -59,6 +62,7 @@ python3 "$SCRIPT" FEAT-0001 --repo-root "$R" --out "$P" --claim "CLAIM-BETA hold
 check "a packet is written" test -s "$P"
 check "it carries the acceptance criterion word for word" grep -q "CRITERION-ALPHA: the widget stops within one second." "$P"
 check "it carries the author's claim" grep -q "CLAIM-BETA holds" "$P"
+check "it carries what the note's Scope says the feature delivers" grep -q "SCOPE-DELTA" "$P"
 check "it names the linked test from the task" grep -q "TST-0007" "$P"
 check "it names the test whose covers: names the feature" grep -q "TST-0008" "$P"
 check "it carries the author's last full run" grep -q "12 passed" "$P"

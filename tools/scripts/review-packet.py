@@ -204,6 +204,14 @@ def build(root, feat_id, rng, claims, round_no, since, diff_path):
             "Give each claim *holds*, *refuted* (with the command and what it printed) or *not checked*.", "",
             "### Acceptance criteria of %s" % feat_id, "",
             section(text, "Acceptance", "Acceptance Criteria") or "(the feature note states none: that is a finding)", ""]
+    # The note's Scope says what the feature delivers, and it can promise
+    # behaviour no criterion states. Measured on a known review (project-os-dev
+    # TASK-0130): a reviewer given only the criteria missed a promised
+    # behaviour the Scope named, so the Scope is carried too.
+    scope = section(text, "Scope")
+    if scope:
+        out += ["### What the note's Scope says the feature delivers", "",
+                "Check each behaviour here that no criterion above already covers.", "", scope, ""]
     for req in reqs:
         rnote = find_note(root, req)
         if rnote:

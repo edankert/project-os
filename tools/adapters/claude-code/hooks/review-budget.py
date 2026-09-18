@@ -6,7 +6,10 @@ review ran 90-125 tool calls with nothing telling it to stop. The skill now
 gives it a budget; this hook is what holds it.
 
 For the `independent-reviewer` subagent only, counted per `agent_id`:
-  - PostToolUse at the warning point adds context: calls left, finish up.
+  - PostToolUse at the warning point (call 36 of 40, 12 of 15) adds context:
+    calls left, finish up. It was call 30 until 2026-09-18, when measured
+    reviews (project-os-dev TASK-0130) all stopped at about 34 calls: an early
+    warning to finish makes the real budget the warning point, not the limit.
   - PreToolUse past the budget denies the call with an instruction to write
     the report. Edits to notes under docs/ are still allowed, so the verdict
     and findings can be recorded, up to GRACE more calls; then everything is
@@ -107,7 +110,7 @@ def main():
     if event == "PostToolUse":
         budget = state.get("budget") or first
         count = state.get("count", 0)
-        warn_at = budget - max(3, budget // 4)
+        warn_at = budget - max(3, budget // 10)
         if count == warn_at:
             emit("PostToolUse", additionalContext=(
                 "Review budget: %d of %d tool calls used, %d left. Finish the claims you have started; "

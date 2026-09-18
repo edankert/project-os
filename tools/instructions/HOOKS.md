@@ -128,7 +128,7 @@ Contract IDs are `HC-001`..`HC-010`. (Earlier revisions of this file used `CHC-0
 - Check logic:
   1. Ignore every call whose hook input does not carry `agent_type: independent-reviewer` and an `agent_id`. The shell wrapper returns before starting Python for them, because it runs on every tool call of every session.
   2. Count calls per `agent_id`. The budget is 40, or 15 once the reviewer has read a round-two packet (`review-packet-<FEAT>-r2`). `PROJECT_OS_REVIEW_BUDGET` and `PROJECT_OS_REVIEW_BUDGET_ROUND2` override them per repo.
-  3. After the call a quarter of the way from the end (call 30 of 40), add context saying how many calls are left.
+  3. After call 36 of 40 (12 of 15 in round two), add context saying how many calls are left. The warning was at call 30 until measured reviews all stopped near 34: a warning to finish up becomes the real limit.
   4. Past the budget, deny the call with an instruction to write the report and mark unfinished claims *not checked*. Edits to notes under `docs/` are still allowed for 10 more calls, so the verdict can be recorded.
 - Implementations: Claude Code `hooks/review-budget.sh` with `hooks/review-budget.py`, registered for `PreToolUse` and `PostToolUse` with no matcher. Codex has no equivalent: its hook input does not name the subagent, so there the budget is the skill's instruction only.
 - On failure: fail open. A broken budget must not block anyone's work; the skill's stated budget still applies.

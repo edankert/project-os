@@ -25,10 +25,10 @@ check "a main-session call gets no output" test -z "$out"
 out="$(call PreToolUse Explore other-agent Bash '{"command":"ls"}')"
 check "another subagent gets no output" test -z "$out"
 
-for i in $(seq 1 29); do pre Bash '{"command":"ls"}' >/dev/null; post Bash >/dev/null; done
-out="$(pre Bash '{"command":"ls"}')"; check "call 30 is allowed" test -z "$out"
-out="$(post Bash)"; check "call 30 is followed by a warning with 10 left" grep -q "10 left" <<<"$out"
-for i in $(seq 31 39); do pre Bash '{"command":"ls"}' >/dev/null; done
+for i in $(seq 1 35); do pre Bash '{"command":"ls"}' >/dev/null; out="$(post Bash)"; [ -n "$out" ] && echo "  (early warning at call $i)"; done
+out="$(pre Bash '{"command":"ls"}')"; check "call 36 is allowed" test -z "$out"
+out="$(post Bash)"; check "call 36 is followed by a warning with 4 left" grep -q "4 left" <<<"$out"
+for i in $(seq 37 39); do pre Bash '{"command":"ls"}' >/dev/null; done
 out="$(pre Bash '{"command":"ls"}')"; check "call 40 is still allowed" test -z "$out"
 out="$(pre Read '{"file_path":"src/a.py"}')"
 check "call 41 is denied" grep -q '"permissionDecision": "deny"' <<<"$out"

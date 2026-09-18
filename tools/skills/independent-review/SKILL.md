@@ -15,7 +15,7 @@ A session reviewing its own output shares its commitments: it watched the work b
 
 Two kinds of correlation were being conflated. Shared **weights** correlate capability. Shared **context** correlates commitment. This fleet's misses have consistently been the second kind: claims written wider than the code, surviving because everyone arrived already holding the claim.
 
-**A review is also bounded** (ADR-0047). Measured on 2026-09-18, a review with no scope, no procedure and no stopping point ran 90–125 tool calls and about 20 minutes, and spent its first 30–45 calls finding out what had changed. The useful work was a few calls: FEAT-0107's review in your-trainer found its main defect by deleting the write guards and running the tests. So a review starts from a packet, checks a list of claims, and stops at a budget.
+**A review is also bounded** (ADR-0047). Measured on 2026-09-18, a review with no scope, no procedure and no stopping point ran 90–125 tool calls and about 20 minutes, and spent its first 30–45 calls finding out what had changed. The useful work was a few calls: breaking a guard and running the tests, or checking one claim against one file. So a review starts from a packet, checks a list of claims, and stops at a budget.
 
 ## When to use
 - At the review gates stated once in `../../instructions/QUALITY.md`, "Independent review (clean-context)": one review per feature reaching `done`, covering its linked tests and requirements. A change note owes no review (ADR-0019).
@@ -39,16 +39,16 @@ Two kinds of correlation were being conflated. Shared **weights** correlate capa
    > Independent review of FEAT-0001, round 1. Your first call reads the packet at `<path>`. Follow `tools/skills/independent-review/SKILL.md`, "The reviewer".
 
    You may add up to three claims with `--claim`: a behaviour the criteria do not state but the change relies on. Do not add open questions, extra areas to explore, or checks the validator or the docs audit already cover (change-note impact lists, parity matrices, snapshot agreement).
-4. Launch it in a clean context that is not the authoring session: the `independent-reviewer` subagent, a separate Codex or Cursor session, or a person.
+4. **Launch two reviewers at once, on the same packet, each in a clean context** that is not the authoring session: two `independent-reviewer` subagents started in the same turn, two separate Codex or Cursor sessions, or a person (one person is enough on their own). Measured on a known review (project-os-dev TASK-0130), a single run found the hardest defect about half the time; two runs catch it about three times in four, and together they cost less than one unbounded review did. Round two uses one reviewer.
 
 ## The reviewer
 
-**Your budget is 40 tool calls in round one and 15 in round two.** In Claude Code a hook enforces it (`../../instructions/HOOKS.md`, HC-010): at call 30 you are told how many are left, and past the budget every call except a note edit is refused. Plan for the budget; do not rely on the refusal.
+**Your budget is 40 tool calls in round one and 15 in round two.** In Claude Code a hook enforces it (`../../instructions/HOOKS.md`, HC-010): at call 36 you are told how many are left, and past the budget every call except a note edit is refused. Plan for the budget; do not rely on the refusal. Another reviewer may be working on the same packet at the same time; work on your own and do not look for its notes.
 
 1. **Read the packet.** It is your scope. Read code outside it only when a line in its diff leads there.
-2. **List the claims.** Each acceptance criterion, each linked test ("this test fails when the behaviour it guards is broken"), and each author claim.
+2. **List the claims.** Each acceptance criterion, each behaviour the note's Scope says is delivered that no criterion covers, each linked test ("this test fails when the behaviour it guards is broken"), and each author claim. **A claim that names several parts gets a verdict per part**: both platforms, each of three sources, every mode. One gap does not settle the others: a gap found on one platform says nothing about the other, so check each part before moving on.
 3. **Break what the feature depends on most.** Pick at most three guards: the lines that, if removed, would let the main behaviour silently fail. Remove each, run the targeted tests, record whether any test failed, and restore it. A guard whose removal leaves the tests passing refutes that test's claim.
-4. **Check the remaining claims against the diff.** Give each one *holds*, *refuted* (with the command you ran and what it printed) or *not checked*.
+4. **Check the remaining claims against the diff.** Give each one *holds*, *refuted* (with the command you ran and what it printed) or *not checked*. **A *holds* cites its evidence too**: the line or the command output that shows it. For a claim with several parts, cite one for each part; a part you did not look at makes the claim *not checked* for that part, never *holds*.
 5. **Stop when every claim has a verdict.** Add at most five other observations you noticed on the way, one line each, without investigating them further.
 
 **Keep the context small**, because every turn re-reads all of it:
@@ -57,13 +57,13 @@ Two kinds of correlation were being conflated. Shared **weights** correlate capa
 - Keep only the tail of test output (`| tail -20`).
 - Make independent reads in the same turn.
 
-**Report** in this shape, in your final message and in a `## Review` section of the feature note:
+**Report** in this shape, in your final message:
 
 | # | Claim | Verdict | Evidence |
 |---|---|---|---|
 | 1 | <criterion, word for word> | holds / refuted / not checked | <command and output, or the line> |
 
-Then the other observations, then one line on what was independent (fresh context, separate session) and what was not (the model, recorded in `reviewed_by`). Record `reviewed_by`, `review_date`, `review_round` and `review_verdict` in the frontmatter of the feature and of each linked test you checked: `changes-requested` if any claim is *refuted*, otherwise `approved`. Write nothing else in the notes, and file no issues; the author does that.
+Then the other observations, then one line on what was independent (fresh context, separate session) and what was not (the model). **Write nothing in the notes and file no issues.** The author combines both reviewers' reports into the note (see "After the review").
 
 ## Round two
 
@@ -74,7 +74,7 @@ python3 tools/scripts/review-packet.py FEAT-0001 --round 2 --since <commit round
 It holds only round one's `## Review` section and the source diff since that commit. The reviewer answers *fixed* or *not fixed* for each refuted claim, with the command that shows it, and raises no new findings. Its budget is 15 calls. **There is no round three:** a disagreement that survives round two is adjudicated, as `../../instructions/QUALITY.md` states.
 
 ## After the review: fix, then file what is left
-1. Transcribe the verdict; never anticipate it.
+1. **Combine the two reports, then transcribe; never anticipate a verdict.** A claim either reviewer marked *refuted* with evidence is *refuted*. A claim one marked *holds* and the other *not checked* is *holds*. Where they disagree, *holds* against *refuted*, the refutation's command decides: run it. Write one combined `## Review` section, and record `changes-requested` if any claim is *refuted*. List both reviewers in `reviewed_by`.
 2. **Fix every finding about code the feature changed before the feature closes**, whether or not it refuted a claim (`../../instructions/QUALITY.md`, "A finding is fixed in the feature that caused it"). A refuted claim also sends the fixes to round two.
 3. **File only what the filing bar admits** (`../../instructions/QUALITY.md`, "The filing bar"): the fix needs the owner's decision, the defect lies in code the feature did not change, or the fix is too large for the session. Everything else stays in the note's `## Review` section. An issue opens with what a user would notice (`../issue-intake/SKILL.md`).
 4. **Ask the owner, don't file for them.** A question goes in the close-out summary with a recommendation. If a sensible default exists, take it and say so.
