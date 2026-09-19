@@ -1,6 +1,6 @@
 # Phase Registry
 
-This document is the **registry overview** for the project's development phases. It explains how phase-gated development works and can either list simple phase definitions directly or point to first-class `PHASE-*` notes under `docs/phases/`.
+This document explains how the project's phases work, and keeps the history of why each phase was planned. **Each phase's status lives in its own note under `docs/phases/`, and only there.** Do not keep a table of phases and statuses here once those notes exist: a hand-kept copy drifts from the notes (ADR-0009; project-os-dev ISS-0072 found one showing a finished phase as planned).
 
 ## How Phases Work
 
@@ -11,18 +11,10 @@ This document is the **registry overview** for the project's development phases.
 
 ## Phase Definitions
 
-> **Instructions**: Replace the example phases below with your project's actual roadmap. Each phase should represent a coherent milestone with clear boundaries.
+A phase is a `[[phase]]` note, `docs/phases/PHASE-####-Short-Name.md`, created from `docs/__templates__/phase.md`. Its status, scope, linked work and exit criteria are written there. To see all phases and their statuses, list `docs/phases/` or open the cockpit.
 
-| Phase | Name | Description | Key Deliverables |
-|-------|------|-------------|------------------|
-| 1 | Foundation | Core infrastructure and stability | Database schema, authentication, base architecture |
-| 2 | Core Engine | Primary business logic | Domain models, core algorithms, API contracts |
-| 3 | Product | User-facing features | UI/UX, integrations, licensing |
-| 4 | Portability | Data exchange and interoperability | Import/export, external API support |
-| 5 | Intelligence | AI and automation features | LLM integration, smart features |
-| 6 | Launch | Production readiness | Store assets, deployment config, documentation |
+A small project with no phase notes may instead list its phases here, as a table of number, name and description, with no status column. It moves to phase notes as soon as one phase needs a status or exit criteria, and deletes the table in the same commit.
 
-For durable phase tracking, create `[[phase]]` notes from `docs/__templates__/phase.md` and link to them from the `phase` field.
 Use `tools/skills/phase-planning/SKILL.md` when creating or migrating first-class phase notes.
 
 ## Usage
