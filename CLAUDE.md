@@ -1,6 +1,6 @@
 # Project: project-os (documentation framework template)
 
-Read SNAPSHOT.yaml at session start to understand current project state and focus.
+The session-start hook prints the current focus and in-flight work from SNAPSHOT.yaml.
 Read CONTEXT.md for the full project-os contract, edit policy, and invariants.
 
 ## Role of this repo
