@@ -4277,6 +4277,30 @@ def validate(root, report):
                     " / ".join("`%s:`" % f for f in back_fields),
                     c_path.relative_to(root)))
 
+    # -- ISS-0096 CITES-SUPERSEDED: work in flight that links to a note that
+    #    has been replaced. derive-pointers.py stamps the old note, so an agent
+    #    who opens it is told; this tells the one who only follows the link.
+    #    Only in-flight notes are judged, and only their link fields: a closed
+    #    ticket or an accepted ADR citing its predecessor is history, not a
+    #    wrong turn.
+    in_flight = {"backlog", "doing", "review", "planned", "active", "open", "triage", "draft", "proposed", "approved"}
+    cite_fields = tuple(f for f in RELATIONSHIP_FIELDS if f not in ("supersedes", "superseded")) + ("related",)
+    for nid, (n_path, n_fm) in sorted(note_index.items()):
+        if str((n_fm or {}).get("status", "")).strip() not in in_flight:
+            continue
+        #: A parent's `tasks:` and a phase's lists hold its children, and a
+        #: superseded child still belongs to it: that is not a wrong turn.
+        own_children = ("tasks", "features", "issues", "requirements") if prefix_of(nid) == "PHASE" else ("tasks",)
+        for field in (f for f in cite_fields if f not in own_children):
+            for ref in extract_ids((n_fm or {}).get(field)):
+                target = note_index.get(ref)
+                if ref == nid or target is None or str((target[1] or {}).get("status", "")).strip() != "superseded":
+                    continue
+                by = extract_ids((target[1] or {}).get("superseded_by")) or extract_ids((target[1] or {}).get("superseded"))
+                report.warn(
+                    "CITES-SUPERSEDED", "%s links to %s in `%s:`, and %s is superseded%s; link the note that replaced it (%s)" % (
+                        nid, ref, field, ref, " by %s" % ", ".join(by) if by else "", n_path.relative_to(root)))
+
     children_by_phase = {}   # PHASE id -> [(child id, child status)]
     for child_id, (_c_path, c_fm) in note_index.items():
         ctype = note_type(c_fm)

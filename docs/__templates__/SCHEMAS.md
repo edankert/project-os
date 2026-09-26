@@ -52,7 +52,9 @@ Fields:
 - (optional) `alternatives` (list): Options considered (strings or links).
 - (optional) `consequences` (list): Key impacts/tradeoffs (strings or links).
 - (optional) `supersedes` (string/link): Link to the ADR replaced by this one (prefer `[[ADR-....]]`).
-- (optional) `superseded` (string/link): Link to the ADR that replaces this one (prefer `[[ADR-....]]`).
+- (optional) `superseded` (string/link): Link to the ADR that replaces this one. Written by `sync-snapshot.py` from the new ADR's `supersedes:`; do not write it by hand (ADR-0048).
+- (optional) `amends` (string/link or list): The ADR(s) this one changes in part, leaving the rest standing.
+- (optional) `amended_by` (list): The ADRs that amend this one. Written by `sync-snapshot.py` from their `amends:`; do not write it by hand.
 
 Body sections:
 - A decision stating a quantified rule carries `## Rule`, `## Domain` and `## Conformance` in its body — the rule-ADR convention, normative in `tools/instructions/DECISIONS.md` ("A decision that states a rule") and enforced by `DECISION-RULE`.

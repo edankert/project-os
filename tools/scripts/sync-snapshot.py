@@ -590,6 +590,24 @@ def derive_lists_module():
     return _DL
 
 
+_DP = None
+
+
+def derive_pointers_module():
+    """derive-pointers.py, sharing this script's validator; None when absent."""
+    global _DP
+    if _DP is None:
+        path = Path(__file__).resolve().parent / "derive-pointers.py"
+        if not path.is_file():
+            return None
+        spec = _ilu.spec_from_file_location("_derive_pointers", path)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod._vd = _vd
+        _DP = mod
+    return _DP
+
+
 def retention_config(snap):
     """The two per-repo gates (ADR-0018, TASK-0085). Absent means OFF.
 
@@ -742,6 +760,20 @@ def main(argv=None):
         if n:
             print("   %d reverse list(s) would follow their children; set retention.derive_lists "
                   "to adopt (ADR-0048), and see derive-lists.py for the changes" % n)
+    # ADR-0048 (ISS-0096): a note named in another's `supersedes:` or
+    # `amends:` gets its back-pointer, and a superseded one its status. This
+    # runs in every repo: it writes only a pointer that is missing or wrong,
+    # and the fleet had one such note when it arrived.
+    dp = derive_pointers_module()
+    if dp is not None:
+        for c in dp.derive(root, write=not args.check):
+            dl_changes.append({"id": c["id"], "field": c["field"], "added": c["want"], "removed": []})
+            if not args.check:
+                dl_written.append(c["path"])
+        dl_written = sorted(set(dl_written))
+        if not args.check:
+            statuses, index, claimants = note_statuses(root)   # a stamp can change a status
+            st_changes += sync_statuses(lines, statuses)
     snap_after = load_yaml("".join(lines)) or {}
     mt_changes = sync_metrics(lines, snap_after, index, claimants)
 

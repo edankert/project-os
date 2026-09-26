@@ -8,7 +8,8 @@ project-os-dev ISS-0093, ADR-0048. Every note under `docs/` gets a record:
              [[ID...]] or bare ID in its body
   headings   its `#` headings, backticks and emphasis removed
   archived   True when the note sits under docs/archive/ (ISS-0091)
-  superseded_by, frozen   filled by the tools that own them (ISS-0096, ISS-0097)
+  superseded_by, amended_by   the back-pointers derive-pointers.py stamps (ISS-0096)
+  frozen     filled by the tool that owns it (ISS-0097)
 
 `backlinks(index)` inverts `links`. Records are built through
 validate-docs.py's `parse_frontmatter` and `cached_note_value`, so a note is
@@ -28,7 +29,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 LINK_FIELDS = ("parent", "phase", "tasks", "features", "requirements", "issues", "tests",
                "related", "depends", "blocks", "implements", "supersedes", "superseded",
-               "amends", "risks", "deferred", "origin", "covers", "fixes")
+               "superseded_by", "amends", "amended_by", "risks", "deferred", "origin", "covers", "fixes")
 
 
 def _module(name, filename):
@@ -116,7 +117,8 @@ def build(root):
             "links": sorted(links),
             "headings": facts["headings"],
             "archived": rel.parts[:2] == ("docs", "archive"),
-            "superseded_by": sorted(set(ids_in(fm.get("superseded")))),
+            "superseded_by": sorted(set(ids_in(fm.get("superseded_by")) or ids_in(fm.get("superseded")))),
+            "amended_by": sorted(set(ids_in(fm.get("amended_by")))),
             "frozen": False,
         }
     return out

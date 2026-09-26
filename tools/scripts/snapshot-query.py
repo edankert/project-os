@@ -95,10 +95,43 @@ def note_paths(root, item_id):
     return exact or sorted(p for p in docs.rglob(item_id + "-*.md") if p.is_file())
 
 
+_VD = None
+
+
+def validator():
+    global _VD
+    if _VD is None:
+        _VD = _module("validate_docs_for_query", "validate-docs.py")
+    return _VD
+
+
+def add_pointers(root, rec):
+    """Say when the item's note has been replaced or amended (ISS-0096).
+
+    derive-pointers.py stamps the old note, so the answer is on the note even
+    when the snapshot entry is old or gone. An agent that looks an id up is told
+    before it reads a rule that no longer holds.
+    """
+    path = root / rec["file"] if rec["file"] else None
+    if path is None or not path.is_file():
+        return rec
+    try:
+        fm = validator().parse_frontmatter(path) or {}
+    except Exception:  # an unreadable note says nothing about pointers
+        return rec
+    by = _ids(fm.get("superseded_by")) or _ids(fm.get("superseded"))
+    if by:
+        rec["superseded_by"] = by
+    amended = _ids(fm.get("amended_by"))
+    if amended:
+        rec["amended_by"] = amended
+    return rec
+
+
 def from_note(root, item_id, path):
     """The note's own frontmatter, for an id the snapshot does not carry."""
     try:
-        fm = _module("validate_docs_for_query", "validate-docs.py").parse_frontmatter(path)
+        fm = validator().parse_frontmatter(path)
     except Exception:  # an unreadable note is still found, with what can be told
         fm = {}
     fm = fm if isinstance(fm, dict) else {}
@@ -169,6 +202,8 @@ def main(argv=None):
                 continue
             found.append(rec)
 
+    if args.ids:
+        found = [add_pointers(root, rec) for rec in found]
     if args.json:
         print(json.dumps({"version": 1, "items": found, "missing": missing}, indent=2))
         for line in notes:
@@ -176,6 +211,8 @@ def main(argv=None):
     else:
         for rec in found:
             extra = "".join(" %s=%s" % (k, rec[k]) for k in ("parent", "phase") if rec[k])
+            extra += "".join(" %s=%s" % (k.replace("_", "-"), ",".join(rec[k]))
+                             for k in ("superseded_by", "amended_by") if rec.get(k))
             print("%s %s %s%s%s" % (rec["id"], rec["status"] or "?", rec["file"] or "(no file)", extra,
                                     " (from the note; not in SNAPSHOT.yaml)" if rec["source"] == "note" else ""))
             if len(args.ids) == 1:
