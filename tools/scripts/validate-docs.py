@@ -55,6 +55,8 @@ parser that supports the constrained YAML subset SNAPSHOT.yaml uses
 import argparse
 import datetime
 import hashlib
+import json
+import os
 import re
 import shlex
 import sys
@@ -1507,10 +1509,21 @@ def parse_yaml_subset(text):
     return root
 
 
+def _yaml_loader():
+    """PyYAML's C loader when libyaml is present, else its Python one.
+
+    Both build values with SafeConstructor, so a date is a date either way;
+    the C loader parses a large repo's notes about 13 times faster
+    (project-os-dev ISS-0093: 3,120 notes in 0.32 s against 4.2 s).
+    """
+    import yaml  # type: ignore
+    return getattr(yaml, "CSafeLoader", None) or yaml.SafeLoader
+
+
 def load_yaml(text):
     try:
         import yaml  # type: ignore
-        return yaml.safe_load(text)
+        return yaml.load(text, Loader=_yaml_loader())
     except Exception:
         return parse_yaml_subset(text)
 
@@ -1528,20 +1541,215 @@ def load_snapshot_yaml(text):
         import yaml  # type: ignore
     except ImportError:
         return parse_yaml_subset(text)
-    return yaml.safe_load(text)
+    return yaml.load(text, Loader=_yaml_loader())
 
 
-def parse_frontmatter(path):
+def _parse_frontmatter_file(path):
+    return _parse_frontmatter_strict(path)[0]
+
+
+def _parse_frontmatter_strict(path):
+    """(frontmatter, strict) for one note.
+
+    `strict` is True when PyYAML itself parsed exactly the text that
+    NOTE-FRONTMATTER checks, so that check need not parse the note a second
+    time. On your-trainer the second parse was 0.6 s of a cold 2.1 s run
+    (project-os-dev ISS-0093). It is False whenever that is not certain: no
+    PyYAML, a parse error (the subset parser then answers), or a note whose
+    first `---` is not alone on its line or whose next `---` is not the
+    closing one, where the two checks read different text.
+    """
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
-        return None
+        return None, False
     if not text.startswith("---"):
-        return None
+        return None, False
     end = text.find("\n---", 3)
     if end == -1:
+        return None, False
+    body = text[4:end]
+    same_text = text[3:4] == "\n" and text.find("---", 3) == end + 1
+    try:
+        import yaml  # type: ignore
+        return (yaml.load(body, Loader=_yaml_loader()) or {}), same_text
+    except Exception:
+        return (parse_yaml_subset(body) or {}), False
+
+
+# ---------------------------------------------------------- the note cache
+#: project-os-dev ISS-0093. The validator, walk-sheet.py and sync-snapshot.py
+#: all parse through `parse_frontmatter`, and one validator run used to parse
+#: each of your-trainer's 3,150 notes about five times. Each note is now parsed
+#: once per process, and the result is kept on disk between runs, keyed by
+#: path, size and mtime, so a run re-reads only notes that changed. The cache
+#: is discarded whenever this file changes (its hash is in the key), lives
+#: outside the repository, and is never trusted when unreadable.
+#: PROJECT_OS_NO_CACHE=1 turns the disk cache off.
+import atexit as _atexit
+import pickle as _pickle
+import hashlib as _hashlib
+import datetime as _dt
+import tempfile as _tempfile
+
+_NOTE_CACHE = {}          # cache file -> {"dirty": bool, "entries": {path: [size, mtime, value]}}
+_CACHE_TAG = None
+
+
+def _cache_tag():
+    global _CACHE_TAG
+    if _CACHE_TAG is None:
+        try:
+            import yaml  # type: ignore
+            libyaml = bool(getattr(yaml, "__with_libyaml__", False))
+        except ImportError:
+            libyaml = None
+        _CACHE_TAG = _hashlib.sha1(Path(__file__).read_bytes() + repr(libyaml).encode()).hexdigest()[:16]
+    return _CACHE_TAG
+
+
+def _to_json(value):
+    if isinstance(value, _dt.datetime):
+        return {"__datetime__": value.isoformat()}
+    if isinstance(value, _dt.date):
+        return {"__date__": value.isoformat()}
+    if isinstance(value, dict):
+        return {str(k): _to_json(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_json(v) for v in value]
+    return value
+
+
+def _from_json(value):
+    if isinstance(value, dict):
+        if set(value) == {"__date__"}:
+            return _dt.date.fromisoformat(value["__date__"])
+        if set(value) == {"__datetime__"}:
+            return _dt.datetime.fromisoformat(value["__datetime__"])
+        return {k: _from_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_from_json(v) for v in value]
+    return value
+
+
+_CACHE_FILES = {}
+
+
+def _cache_file_for(key):
+    """One cache file per repository: the folder that holds `docs/`."""
+    marker = os.sep + "docs" + os.sep
+    root = key.split(marker, 1)[0] if marker in key else os.path.dirname(key)
+    found = _CACHE_FILES.get(root)
+    if found is None:
+        digest = _hashlib.sha1(str(Path(root).resolve()).encode()).hexdigest()[:16]
+        found = _CACHE_FILES[root] = Path(_tempfile.gettempdir()) / "project-os-note-cache" / ("%s.json" % digest)
+    return found
+
+
+def _cache_for(cache_file):
+    cache = _NOTE_CACHE.get(cache_file)
+    if cache is None:
+        cache = {"dirty": False, "entries": {}}
+        if os.environ.get("PROJECT_OS_NO_CACHE") != "1":
+            try:
+                data = json.loads(cache_file.read_text(encoding="utf-8"))
+                if data.get("tag") == _cache_tag():
+                    cache["entries"] = data.get("entries") or {}
+            except (OSError, ValueError, AttributeError):
+                pass
+        _NOTE_CACHE[cache_file] = cache
+    return cache
+
+
+@_atexit.register
+def _save_note_caches():
+    if os.environ.get("PROJECT_OS_NO_CACHE") == "1":
+        return
+    for cache_file, cache in _NOTE_CACHE.items():
+        if not cache["dirty"]:
+            continue
+        try:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            tmp = cache_file.with_suffix(".%d.tmp" % os.getpid())
+            tmp.write_text(json.dumps({"tag": _cache_tag(), "entries": cache["entries"]}), encoding="utf-8")
+            os.replace(tmp, cache_file)
+        except (OSError, TypeError, ValueError):
+            pass
+
+
+def cached_note_value(path, kind, compute):
+    """compute(path), cached like the frontmatter under `kind` (ISS-0093)."""
+    try:
+        st = path.stat()
+    except OSError:
+        return compute(path)
+    key = os.path.abspath(path) + "#" + kind
+    cache = _cache_for(_cache_file_for(os.path.abspath(path)))
+    hit = cache["entries"].get(key)
+    if hit and hit[0] == st.st_size and hit[1] == st.st_mtime_ns:
+        return _from_json(hit[2])
+    value = compute(path)
+    try:
+        cache["entries"][key] = [st.st_size, st.st_mtime_ns, _to_json(value)]
+        json.dumps(cache["entries"][key])
+        cache["dirty"] = True
+    except (TypeError, ValueError):
+        cache["entries"].pop(key, None)
+    return value
+
+
+def _frontmatter_entry(path):
+    """[size, mtime, value as JSON, strict] for a note, from the cache or a parse."""
+    try:
+        st = path.stat()
+    except OSError:
         return None
-    return load_yaml(text[4:end]) or {}
+    key = os.path.abspath(path)
+    cache = _cache_for(_cache_file_for(key))
+    hit = cache["entries"].get(key)
+    if hit and len(hit) == 4 and hit[0] == st.st_size and hit[1] == st.st_mtime_ns:
+        return hit
+    value, strict = _parse_frontmatter_strict(path)
+    entry = [st.st_size, st.st_mtime_ns, _to_json(value), strict]
+    try:
+        json.dumps(entry)
+        cache["entries"][key] = entry
+        cache["dirty"] = True
+    except (TypeError, ValueError):
+        cache["entries"].pop(key, None)   # a value JSON cannot hold is simply not cached
+    return entry
+
+
+_DECODED = {}             # (path, size, mtime) -> the frontmatter, pickled
+
+
+def parse_frontmatter(path):
+    """A note's frontmatter, parsed at most once per process and cached on disk.
+
+    Every call returns a fresh copy, so a caller that changes the dict cannot
+    change what the next caller reads. The validator asks for each note about
+    five times, so the copy comes from a pickle, which is several times faster
+    than decoding the cached JSON again.
+    """
+    entry = _frontmatter_entry(path)
+    if entry is None:
+        return None
+    key = (os.path.abspath(path), entry[0], entry[1])
+    blob = _DECODED.get(key)
+    if blob is not None:
+        return _pickle.loads(blob)
+    value = _from_json(entry[2])
+    try:
+        _DECODED[key] = _pickle.dumps(value, protocol=_pickle.HIGHEST_PROTOCOL)
+    except Exception:  # noqa: BLE001 -- a value pickle cannot hold is decoded each time
+        pass
+    return value
+
+
+def frontmatter_is_strict_yaml(path):
+    """True when PyYAML parsed this note's frontmatter as NOTE-FRONTMATTER reads it."""
+    entry = _frontmatter_entry(path)
+    return bool(entry and entry[3])
 
 
 # ------------------------------------------------------------------ helpers
@@ -2637,26 +2845,32 @@ def validate_frontmatter_typos(root, report):
     if schemas.is_file():
         known |= set(re.findall(r"`([a-z_]+):?`", schemas.read_text(encoding="utf-8", errors="replace")))
     links = set(RELATIONSHIP_FIELDS) | {"related"}
-    for path in sorted(docs.rglob("*.md")):
-        if templates in path.parents:
-            continue
+    resembles = {}
+
+    def top_keys(path):
         try:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):             # pragma: no cover
-            continue
+            return []
         if not text.startswith("---"):
+            return []
+        return key_re.findall(text.split("\n---", 1)[0])
+
+    for path in sorted(docs.rglob("*.md")):
+        if templates in path.parents:
             continue
-        for key in key_re.findall(text.split("\n---", 1)[0]):
+        for key in cached_note_value(path, "top-keys", top_keys):
             if key in known or key in links or len(key) < 4:
                 continue
-            for field in sorted(links):
-                if key + "s" == field or field + "s" == key:
-                    continue
-                if 0 < _edit_distance(key, field) <= (1 if len(field) < 6 else 2):
-                    report.error("FRONTMATTER-TYPO", "%s: frontmatter key `%s:` is defined nowhere and looks like "
-                                 "`%s:`, a field that carries links; as written, the note has no `%s`"
-                                 % (path.relative_to(root), key, field, field))
-                    break
+            if key not in resembles:
+                resembles[key] = next((field for field in sorted(links)
+                                       if key + "s" != field and field + "s" != key
+                                       and 0 < _edit_distance(key, field) <= (1 if len(field) < 6 else 2)), "")
+            field = resembles[key]
+            if field:
+                report.error("FRONTMATTER-TYPO", "%s: frontmatter key `%s:` is defined nowhere and looks like "
+                             "`%s:`, a field that carries links; as written, the note has no `%s`"
+                             % (path.relative_to(root), key, field, field))
 
 
 #: Which file indexes which directory (project-os-dev ISS-0052, TASK-0164).
@@ -2858,13 +3072,17 @@ def validate_frontmatter_parses(root, report):
     docs = root / "docs"
     if not docs.is_dir():
         return
-    for path in sorted(docs.rglob("*.md")):
+    def yaml_error(path):
+        """"" when the frontmatter parses as YAML (or there is none), else
+        the parser's first line. Cached by path, size and mtime (ISS-0093)."""
         try:
             text = path.read_text(encoding="utf-8")
         except OSError:                                  # pragma: no cover
-            continue
+            return ""
         if not text.startswith("---"):
-            continue
+            return ""
+        if frontmatter_is_strict_yaml(path):
+            return ""                    # PyYAML already parsed this text
         try:
             #: **A real YAML parse, not `load_yaml`.** This script's own
             #: parser is a deliberate dependency-free SUBSET, and it is
@@ -2872,8 +3090,14 @@ def validate_frontmatter_parses(root, report):
             #: `title: "Retire "walk" from it"` without complaint. So the
             #: check needs PyYAML, and is silent where PyYAML is absent
             #: rather than pretending a subset parse is a YAML parse.
-            yaml.safe_load(text.split("---", 2)[1])
+            yaml.load(text.split("---", 2)[1], Loader=_yaml_loader())
         except Exception as exc:                         # noqa: BLE001
+            return str(exc).splitlines()[0] or type(exc).__name__
+        return ""
+
+    for path in sorted(docs.rglob("*.md")):
+        error = cached_note_value(path, "yaml-error", yaml_error)
+        if error:
             try:
                 rel = path.relative_to(root)
             except ValueError:                           # pragma: no cover
@@ -2882,7 +3106,7 @@ def validate_frontmatter_parses(root, report):
                 "NOTE-FRONTMATTER",
                 "%s: frontmatter does not parse (%s). Identity comes from the "
                 "filename, so this note still indexes and links while every "
-                "field on it reads as absent" % (rel, str(exc).splitlines()[0]))
+                "field on it reads as absent" % (rel, error))
 
 
 def _blob_sha(text):
@@ -3981,7 +4205,14 @@ def validate(root, report):
     #    ADR-0009 makes the note the authored source of state, so the note wins
     #    and the snapshot is what gets corrected. Only TASK ids are compared:
     #    a `tasks:` list that mentions another id type is a different defect.
-    snap_features = ((items or {}).get("features") or {})
+    # ADR-0048 (project-os-dev ISS-0095): with `retention.derive_lists` the
+    # sync writes every reverse list from the child's own field, so a list that
+    # disagrees is the sync's to fix, and `sync-snapshot.py --check` (in CI and
+    # before every commit and stop) is what reports it. These three checks
+    # would tell the author to hand-edit a list nobody writes by hand.
+    _ret = snap.get("retention") if isinstance(snap, dict) else None
+    lists_derived = bool(isinstance(_ret, dict) and _ret.get("derive_lists"))
+    snap_features = ((items or {}).get("features") or {}) if not lists_derived else {}
     for feat_id, entry in sorted(snap_features.items()):
         if not isinstance(entry, dict):
             continue
@@ -4025,6 +4256,8 @@ def validate(root, report):
     for child_id, (c_path, c_fm) in sorted(note_index.items()):
         ctype = note_type(c_fm)
         back_fields = {"task": ("tasks",), "issue": ("fixes", "issues")}.get(ctype)
+        if lists_derived and ctype == "task":
+            continue
         if not back_fields:
             continue
         for parent_id in extract_ids((c_fm or {}).get("parent")):
@@ -4206,7 +4439,7 @@ def validate(root, report):
     PARENT_SETTLED = {"done", "cancelled", "superseded", "fixed", "declined", "deferred", "implemented", "retired"}
     snap_tasks_coll = items.get("tasks") if isinstance(items.get("tasks"), dict) else {}
     flagged = set()
-    for coll in ("features", "phases", "issues"):
+    for coll in (("features", "phases", "issues") if not lists_derived else ()):
         for parent_id, entry in sorted(((items or {}).get(coll) or {}).items()):
             if not isinstance(entry, dict) or str(entry.get("status", "")) in PARENT_SETTLED:
                 continue
@@ -4293,11 +4526,16 @@ def main(argv=None):
     if not args.quiet:
         for line in report.warnings:
             print(line)
+    # Run from validate-docs.sh, this is one step of several, and the script
+    # prints the verdict for all of them last. A line reading "validate-docs:
+    # OK" here was taken for the whole answer while a later step failed
+    # (project-os-dev ISS-0089), so the step says it is only the notes.
+    name = "validate-docs [notes]" if os.environ.get("PROJECT_OS_VALIDATE_STEP") == "1" else "validate-docs"
     if report.errors:
-        print("validate-docs: FAIL (%d error%s)" % (len(report.errors), "s" if len(report.errors) != 1 else ""))
+        print("%s: FAIL (%d error%s)" % (name, len(report.errors), "s" if len(report.errors) != 1 else ""))
         return 1
     if not args.quiet:
-        print("validate-docs: OK (%s)" % root)
+        print("%s: OK (%s)" % (name, root))
     return 0
 
 

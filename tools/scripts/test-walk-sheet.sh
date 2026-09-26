@@ -1162,6 +1162,10 @@ check "a refused procedure carries no printable steps in the payload" \
 allout="$(python3 "$SHEET" --check --repo-root "$UNCITED" 2>&1)"; code=$?
 check "--check with no platform walks every ledger it finds" \
   "$( { [[ $code -eq 1 ]] && printf '%s' "$allout" | grep -q 'testbed'; }; echo $?)" "exit $code: $allout"
+# project-os-dev ISS-0089: a disagreement reads as an error to a reader who
+# filters the output for ERROR, as the validator's own lines do.
+check "every --check disagreement is marked ERROR [WALK]" \
+  "$( { printf '%s\n' "$allout" | grep -q '^ERROR \[WALK\] walk-sheet --check (testbed): '; ! printf '%s\n' "$allout" | grep -q '^walk-sheet --check ([a-z]*): [^n]'; }; echo $?)" "$allout"
 noproc="$(python3 "$SHEET" --check --repo-root "$LAYERS" 2>&1)"; code=$?
 check "--check on a repo with no procedures at all passes quietly" \
   "$( { [[ $code -eq 0 ]] && [[ -z "$noproc" ]]; }; echo $?)" "exit $code: $noproc"
@@ -1283,8 +1287,8 @@ check "and it says nothing under --quiet" "$([[ -z "$out_allret" ]]; echo $?)" "
 BADLEDGER="$TMP/proc-badledger"; rm -rf "$BADLEDGER"; cp -R "$PROC" "$BADLEDGER"
 cp "$BADLEDGER/docs/releases/ledgers/WORKING-testbed.json" "$BADLEDGER/docs/releases/ledgers/testbed.json"
 out_bad="$(python3 "$SHEET" --check --quiet --repo-root "$BADLEDGER" 2>&1)"; code=$?
-check "a ledger whose filename names no platform still fails --check" \
-  "$( { [[ $code -eq 2 ]] && printf '%s' "$out_bad" | grep -q 'does not name a platform'; }; echo $?)" \
+check "a ledger whose filename names no platform still fails --check, marked ERROR [WALK]" \
+  "$( { [[ $code -eq 2 ]] && printf '%s' "$out_bad" | grep -q '^ERROR \[WALK\] .*does not name a platform'; }; echo $?)" \
   "exit $code: $out_bad"
 rm "$BADLEDGER/docs/releases/ledgers/testbed.json"
 python3 - "$BADLEDGER/docs/releases/ledgers/WORKING-testbed.json" <<'PY'

@@ -1262,14 +1262,29 @@ def claims(sitting: Sitting, check: Check, surfaces: dict[str, str]) -> bool:
             or surfaces.get(check.area, "") in sitting.surfaces)
 
 
+_PLACEMENTS: dict = {}
+
+
 def placement(checks: list[Check], sittings: list[Sitting],
               surfaces: dict[str, str]) -> dict[str, str]:
-    """`check id -> sitting name`; the first sitting to claim a check keeps it."""
+    """`check id -> sitting name`; the first sitting to claim a check keeps it.
+
+    Memoised for the run (project-os-dev ISS-0093): `--check` asked the same
+    question 475 times for one repo, 1.1 million `claims` calls. The key is the
+    check ids with the identity of the sitting and surface objects, which a
+    run never mutates; a copy returned per call keeps callers apart.
+    """
+    key = (tuple(c.id for c in checks), id(sittings), id(surfaces))
+    if key in _PLACEMENTS:
+        return dict(_PLACEMENTS[key][0])
     out: dict[str, str] = {}
     for sitting in sittings:
         for check in checks:
             if check.id not in out and claims(sitting, check, surfaces):
                 out[check.id] = sitting.name
+    #: The inputs are kept alive with the answer, so their ids cannot be
+    #: reused by other objects while the entry exists.
+    _PLACEMENTS[key] = (dict(out), sittings, surfaces)
     return out
 
 
@@ -2576,8 +2591,8 @@ def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
         problems.extend(found)
         remarks.extend(said)
     if read.procedures:
-        uncovered = sorted({placement(owed, read.sittings, read.surfaces).get(c.id, "")
-                            for c in owed} - seen - {""})
+        placed_all = placement(owed, read.sittings, read.surfaces)
+        uncovered = sorted({placed_all.get(c.id, "") for c in owed} - seen - {""})
         if uncovered:
             remarks.append("no procedure yet for: %s" % ", ".join(uncovered))
     #: **Every change note, not only the ones this release surveys.** The
@@ -2627,7 +2642,7 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
         except WalkError as exc:
             #: Everything else `read_repo` refuses is a broken ledger, and
             #: `--check` is the only thing that reads one on every commit.
-            print("walk-sheet --check (%s): %s" % (name, exc), file=sys.stderr)
+            print("ERROR [WALK] walk-sheet --check (%s): %s" % (name, exc), file=sys.stderr)
             status = 2
             continue
         for problem in problems:
@@ -2636,7 +2651,9 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
             if problem in printed:
                 continue
             printed.add(problem)
-            print("walk-sheet --check (%s): %s" % (name, problem), file=sys.stderr)
+            #: `ERROR [WALK]`: the validator's line shape, so a reader
+            #: filtering for ERROR finds it (project-os-dev ISS-0089).
+            print("ERROR [WALK] walk-sheet --check (%s): %s" % (name, problem), file=sys.stderr)
         #: Remarks are printed when something is wrong, or when a person
         #: asked. `validate-docs.sh` runs this on every commit, and a repo
         #: with procedures would otherwise print its coverage shortfall to
