@@ -59,6 +59,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 
@@ -732,6 +733,8 @@ _CHECKED_TABLE_NAMES = frozenset({
 #: own coverage claim false in the same way ISS-0012 did. Type and case are not
 #: what makes something a status table.
 _NON_STATUS_COLLECTIONS = frozenset({
+    "RULE_ARRIVED",         # the day each content rule arrived (ISS-0094)
+    "TOOL_WRITTEN_FIELDS",  # frontmatter fields the tools write into old notes (ISS-0097)
     "_OPTIONAL_CITATIONS",  # files a citation may name before a repo has them (ISS-0052)
     "INDEX_COVERAGE",       # index files and the directories they list (ISS-0052)
     # ADR-0037: the acceptance LEDGER's outcome vocabulary, its reason-bearing
@@ -1840,16 +1843,101 @@ def count_acceptance_boxes(path, heading=r"Acceptance\b", require_heading=False,
     return counts
 
 
+#: The day each content rule reached the template (its first commit in
+#: project-os). A note that was finished before its rule arrived is not judged
+#: by it: nobody goes back to rewrite a closed note for a later rule, so every
+#: run printed those findings and every reader learned to skip them. On
+#: your-trainer they were 315 of 1,139 findings (project-os-dev ISS-0094,
+#: ADR-0048). Structural checks are not listed and judge every note.
+RULE_ARRIVED = {
+    "REQ-BOXES": "2026-07-24",
+    "FEATURE-REQ": "2026-07-24",
+    "VERIFY-ACCEPTANCE": "2026-08-18",
+    "FEATURE-UNCOVERED": "2026-08-25",
+    "REVIEW-STALE": "2026-09-18",
+}
+_FINDING_ID = re.compile(r"^([A-Z]+-\d+[A-Za-z]?)\b")
+
+
 class Report:
     def __init__(self):
         self.errors = []
         self.warnings = []
+        #: Set by validate() once the notes are read: (code, msg) -> True when
+        #: the finding is about a note finished before its rule arrived.
+        self.predates = None
+        self.predating = {}
+
+    def _skip(self, code, msg):
+        if self.predates is not None and self.predates(code, msg):
+            self.predating[code] = self.predating.get(code, 0) + 1
+            return True
+        return False
 
     def error(self, code, msg):
+        if self._skip(code, msg):
+            return
         self.errors.append("ERROR [%s] %s" % (code, msg))
 
     def warn(self, code, msg):
+        if self._skip(code, msg):
+            return
         self.warnings.append("WARN  [%s] %s" % (code, msg))
+
+
+def rule_arrived_here(root, code):
+    """The day `code` reached this repo: the later of the template's date and
+    the first commit of this repo's own validate-docs.py that contains it.
+
+    A rule reaches a repo when the template is synced there, often weeks after
+    it was written. The git lookup is cached with this file, so it runs once
+    per template update.
+    """
+    template = RULE_ARRIVED.get(code, "")
+    script = Path(root) / "tools" / "scripts" / "validate-docs.py"
+    if not script.is_file():
+        return template
+
+    def first_commit(_path):
+        out = _git_out(root, "log", "-S", '"%s"' % code, "--reverse", "--format=%ad",
+                       "--date=short", "--", "tools/scripts/validate-docs.py")
+        return (out or "").split("\n", 1)[0].strip()
+    here = cached_note_value(script, "arrived-" + code, first_commit)
+    return max(template, here) if here else template
+
+
+def predates_rule(note_index, root=None):
+    """A judge for Report: is this finding about a note finished before its rule?
+
+    Every rule in RULE_ARRIVED names its note first. A note is finished when its
+    status resolves it for its type (PHASE_RESOLVED), and it was finished by
+    the date in its `updated:` field, the last day anyone changed it. The rule
+    arrived on the later of its template date and the day it reached this repo.
+    """
+    arrived_at = {}
+
+    def judge(code, msg):
+        if code not in RULE_ARRIVED:
+            return False
+        if code not in arrived_at:
+            arrived_at[code] = rule_arrived_here(root, code) if root is not None else RULE_ARRIVED[code]
+        arrived = arrived_at[code]
+        if not arrived:
+            return False
+        m = _FINDING_ID.match(msg)
+        entry = note_index.get(m.group(1)) if m else None
+        if entry is None:
+            return False
+        fm = entry[1] or {}
+        if str(fm.get("status", "")).strip() not in PHASE_RESOLVED.get(note_type(fm), ()):
+            return False
+        updated = str(fm.get("updated") or fm.get("created") or "")[:10]
+        #: On or before: a note last touched on the day its rule arrived was
+        #: touched by that rule's own rollout. your-trainer's REQ-0142 was
+        #: implemented on 2026-07-05, and its `updated:` is 2026-07-24, the
+        #: day REQ-BOXES arrived there with a bulk edit of every requirement.
+        return bool(re.match(r"^\d{4}-\d{2}-\d{2}$", updated)) and updated <= arrived
+    return judge
 
 
 # ------------------------------------------------------------------ checks
@@ -3262,6 +3350,152 @@ def validate_ledgers(root, report, note_index):
 
 
 
+#: Fields the tools write into old notes (derive-pointers.py, derive-lists.py).
+#: A diff that touches only these is the tooling at work, not an edit.
+TOOL_WRITTEN_FIELDS = ("superseded", "superseded_by", "amended_by", "tasks",
+                       "features", "issues", "requirements")
+
+
+def _git_out(root, *args):
+    try:
+        r = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def release_boundary(root):
+    """The git tag of the newest release that is out, or "".
+
+    From the release notes first: a `released` REL-* note says which tag it
+    shipped as, which a tag pattern can only guess (walk-sheet.py's
+    `last_release` reads them the same way). A repo with no such note falls
+    back to the newest tag git can reach from HEAD.
+    """
+    found = []
+    rel = root / "docs" / "releases"
+    if rel.is_dir():
+        for path in sorted(rel.glob("*.md")):
+            fm = parse_frontmatter(path)
+            if not isinstance(fm, dict) or note_type(fm) != "release":
+                continue
+            if str(fm.get("status", "")).strip() != "released":
+                continue
+            tag = str(fm.get("tag", "") or "").strip()
+            if tag:
+                found.append((str(fm.get("date", "") or ""), tag))
+    if found:
+        return sorted(found)[-1][1]
+    out = _git_out(root, "describe", "--tags", "--abbrev=0", "HEAD")
+    return (out or "").strip()
+
+
+def _split_note(text):
+    """(frontmatter dict, body text) of a note's text."""
+    if not text.startswith("---"):
+        return {}, text
+    end = text.find("\n---", 3)
+    if end == -1:
+        return {}, text
+    fm = load_yaml(text[4:end])
+    return (fm if isinstance(fm, dict) else {}), text[end + 4:]
+
+
+def _only_tool_written(before, after):
+    """True when the two versions differ only in what the tools write:
+    a supersession or amendment pointer, the `superseded` status that comes
+    with it, or a reverse list derive-lists.py keeps."""
+    fm_a, body_a = _split_note(before)
+    fm_b, body_b = _split_note(after)
+    if body_a != body_b:
+        return False
+    keys = (set(fm_a) | set(fm_b)) - set(TOOL_WRITTEN_FIELDS)
+    for key in keys:
+        if fm_a.get(key) == fm_b.get(key):
+            continue
+        if key == "status" and str(fm_b.get(key, "")).strip() == "superseded":
+            continue
+        return False
+    return True
+
+
+def changed_since_head(root):
+    """Repo-relative paths changed since HEAD (staged, unstaged or new), and
+    the note ids their file names carry."""
+    paths = set()
+    for args in (("diff", "--name-only", "HEAD"), ("ls-files", "--others", "--exclude-standard")):
+        out = _git_out(root, *args)
+        if out:
+            paths.update(l.strip() for l in out.splitlines() if l.strip())
+    ids = set()
+    for rel in paths:
+        m = ID_RE.match(Path(rel).name)
+        if m:
+            ids.add("%s-%s" % (m.group(1), m.group(2)))
+    return paths, ids
+
+
+def _mentions(line, about):
+    paths, ids = about
+    if any(p in line for p in paths):
+        return True
+    m = re.match(r"^(?:ERROR|WARN)\s+\[[A-Z0-9-]+\]\s+([A-Z]+-\d+[A-Za-z]?)\b", line)
+    return bool(m and m.group(1) in ids)
+
+
+def validate_frozen_edits(root, report):
+    """FROZEN-EDIT: a released ticket was edited (ISS-0097, ADR-0048).
+
+    A warning, never an error, as Edwin decided on 2026-09-26: "I think warning
+    we need to allow editing frozen tickets for unforeseen circumstances". The
+    warning names the ticket, so the edit is a visible choice rather than
+    routine upkeep. A pure rename is not an edit: that is how the archive
+    moves a note (ISS-0091). Nor is a diff that touches only the fields the
+    tools write, such as a supersession pointer.
+    """
+    #: A ticket is a record of an event, and once the release that shipped it
+    #: is out it is frozen: a task or issue finished by then, and every change
+    #: note, which is a record from the day it is written. Built from the
+    #: registered tables, so a new terminal status needs no second edit here.
+    frozen = {"task": PHASE_RESOLVED["task"], "issue": PHASE_RESOLVED["issue"],
+              "change": ALLOWED_STATUS["change"]}
+    if _git_out(root, "rev-parse", "--git-dir") is None:
+        return
+    tag = release_boundary(root)
+    if not tag or _git_out(root, "rev-parse", "--verify", "--quiet", tag + "^{commit}") is None:
+        return
+    out = _git_out(root, "diff", "--name-status", "-M", "HEAD", "--", "docs")
+    if not out:
+        return
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        code, path = parts[0], parts[-1]
+        if code.startswith("R100") or code.startswith("A") or code.startswith("D"):
+            continue
+        before = parts[1]
+        old = _git_out(root, "show", "%s:%s" % (tag, before))
+        if old is None:
+            continue
+        fm = _split_note(old)[0]
+        ntype = note_type(fm)
+        if ntype not in frozen or str(fm.get("status", "")).strip() not in frozen[ntype]:
+            continue
+        head = _git_out(root, "show", "HEAD:%s" % before)
+        try:
+            now = (root / path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if head is not None and _only_tool_written(head, now):
+            continue
+        the_id = str(fm.get("id", "") or "").strip() or Path(path).stem
+        report.warn("FROZEN-EDIT", "%s was %s when %s was released, so it is a record now; "
+                    "this edit changes it. Keep it if it corrects something nobody foresaw, "
+                    "otherwise record the new fact in a new note (ADR-0048) (%s)"
+                    % (the_id, str(fm.get("status", "")).strip(), tag, path))
+
+
 def validate(root, report):
     # Self-check first: it needs no repo state, and a validator whose own status
     # tables disagree cannot be trusted to report on anything else.
@@ -3353,6 +3587,7 @@ def validate(root, report):
         if item_id in grandfathered.get(gate, ()):
             return report.warn
         return report.error
+    report.predates = predates_rule(note_index, root)
     validate_unregistered_notes(root, items, note_index, note_claimants, allowed_status, report)
     NOTE_INDEX_FOR_PLANS.clear()
     NOTE_INDEX_FOR_PLANS.update(note_index)
@@ -3408,6 +3643,7 @@ def validate(root, report):
     validate_design_notes(root, docs_dir, report)
     validate_release_contents(note_index, report)
     validate_review_and_issue_fields(note_index, grandfathered, report)
+    validate_frozen_edits(root, report)
     validate_plan_notes(root, docs_dir, allowed_status, grandfathered, report)
 
     def resolves(ref_id):
@@ -4495,6 +4731,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Validate project-os SNAPSHOT.yaml <-> docs/ consistency.")
     ap.add_argument("--repo-root", default=None, help="Repo root (default: nearest ancestor with SNAPSHOT.yaml)")
     ap.add_argument("--quiet", action="store_true", help="Suppress warnings and the success line")
+    ap.add_argument("--changed", action="store_true",
+                    help="Print only findings about files changed since HEAD, with a count of the rest; "
+                         "the exit status still counts every error")
     ap.add_argument("--fix-metrics", action="store_true", help="Rewrite metrics.counts to the computed counts before validating")
     ap.add_argument("--self-check", action="store_true", help="Run only the validator's internal consistency checks (STATUS-TABLE) and exit; needs no repo")
     args = ap.parse_args(argv)
@@ -4545,11 +4784,29 @@ def main(argv=None):
         print("validate-docs: internal error: %s" % exc, file=sys.stderr)
         return 2
 
-    for line in report.errors:
+    errors, warnings = report.errors, report.warnings
+    hidden_errors = hidden_warnings = 0
+    if args.changed:
+        #: project-os-dev ISS-0091/ISS-0094: while working, show what this
+        #: change is about. The exit status still counts every error, so a
+        #: hidden one cannot make a commit pass.
+        about = changed_since_head(root)
+        errors = [l for l in report.errors if _mentions(l, about)]
+        warnings = [l for l in report.warnings if _mentions(l, about)]
+        hidden_errors = len(report.errors) - len(errors)
+        hidden_warnings = len(report.warnings) - len(warnings)
+    for line in errors:
         print(line)
     if not args.quiet:
-        for line in report.warnings:
+        for line in warnings:
             print(line)
+        if hidden_errors or hidden_warnings:
+            print("validate-docs: %d error(s) and %d warning(s) about files not changed since HEAD "
+                  "are not shown (--changed); run without it to see them" % (hidden_errors, hidden_warnings))
+        if report.predating:
+            print("validate-docs: %d finding(s) not shown, about notes finished before their rule "
+                  "arrived (%s); ADR-0048" % (sum(report.predating.values()), ", ".join(
+                      "%s %d" % kv for kv in sorted(report.predating.items()))))
     # Run from validate-docs.sh, this is one step of several, and the script
     # prints the verdict for all of them last. A line reading "validate-docs:
     # OK" here was taken for the whole answer while a later step failed

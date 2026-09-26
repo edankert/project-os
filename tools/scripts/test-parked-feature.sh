@@ -36,7 +36,7 @@ out="$(cd "$R" && python3 tools/scripts/validate-docs.py 2>&1)"; code=$?
 check "a parked feature with its note only validates" "$code" "$out"
 check "nothing is asked of it: no finding names FEAT-0001" "$(! printf '%s' "$out" | grep -q 'FEAT-0001'; echo $?)" "$out"
 
-sed -i.bak 's/^status: backlog$/status: done/' "$R/docs/features/later/FEAT-0001-Later.md"; rm -f "$R/docs/features/later/FEAT-0001-Later.md.bak"
+sed -i.bak 's/^status: backlog$/status: done/; s/^updated: .*$/updated: 2099-01-01/' "$R/docs/features/later/FEAT-0001-Later.md"; rm -f "$R/docs/features/later/FEAT-0001-Later.md.bak"
 (cd "$R" && python3 tools/scripts/sync-snapshot.py >/dev/null 2>&1)
 out="$(cd "$R" && python3 tools/scripts/validate-docs.py 2>&1)"
 check "the same feature, done, is asked for its acceptance check" "$(printf '%s' "$out" | grep -q 'FEATURE-UNCOVERED.*FEAT-0001'; echo $?)" "$out"
