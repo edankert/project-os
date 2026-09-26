@@ -92,7 +92,7 @@ Six more words, used on the sheet and below:
 
 - **sitting** — a group of checks that share one setup state, such as one build, one account tier, or one piece of hardware on the bench. They are walked in one go.
 - **survey** — the sheet's first section: the screens this release changed, and what changed on each.
-- **walk order** — `docs/tests/acceptance/WALK.md`, one file per project, authored by the person who knows the product. It lists the sittings in product-state order. Its shape is `../../docs/__templates__/walk.md` and its keys are in `SCHEMAS.md`, "Walk order (`WALK.md`)".
+- **walk order** — `docs/tests/acceptance/WALK.md`, one file per project, authored by the person who knows the product. It lists the sittings in product-state order. Its shape is `../../docs/__templates__/walk.md` and its keys are in `SCHEMAS.md`, "`walk.md` — the walk order (`WALK.md`)".
 - **procedure** — a written script for one whole sitting: the setup stated once, then numbered steps. One file per sitting, under `docs/tests/acceptance/walk/`. Rule 9.
 - **owed part** — the unit a procedure is counted against: one numbered step of a check this platform still owes. A check whose steps are not numbered is one part. Rule 9.
 - **expectation tag** — a label such as `TST-0648.4` on a line of a procedure step, saying that the line satisfies step 4 of check TST-0648.
