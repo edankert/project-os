@@ -331,6 +331,12 @@ def sync_derived_fields(lines, fields, enabled):
                 continue
             body = lines[i].rstrip("\n")
             have_raw = body[span[0]:span[1]]
+            if have_raw == _yaml_quote(value):
+                #: What this script writes, character for character, so it
+                #: already holds the value. Parsing each of your-trainer's 722
+                #: titles and goals to find that out was a quarter of a
+                #: warm sync (project-os-dev ISS-0093).
+                continue
             try:
                 have = load_yaml("v: " + have_raw).get("v") if have_raw else None
             except Exception:

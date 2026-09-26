@@ -117,6 +117,8 @@ def apply(root, changes, write):
             _set_field(lines, end, "status", ch["status"])
         if write:
             ch["path"].write_text("".join(lines), encoding="utf-8")
+    if write and changes:
+        validator().invalidate_note_index()
     return changes
 
 

@@ -1964,7 +1964,30 @@ def predates_rule(note_index, root=None):
 NOTE_INDEX_FOR_PLANS = {}
 
 
+_NOTE_INDEX_MEMO = {}
+
+
+def invalidate_note_index():
+    """Forget the per-process note index; a tool that writes notes calls this."""
+    _NOTE_INDEX_MEMO.clear()
+
+
 def build_note_index(docs_dir):
+    """build_note_index, once per process until a writer invalidates it.
+
+    sync-snapshot.py asked for it five times in one run (statuses twice,
+    titles, the reverse lists, the back-pointers): 0.5 s of a warm run on
+    your-trainer (project-os-dev ISS-0093). The dicts are copied, so a caller
+    that edits them edits its own.
+    """
+    key = str(Path(docs_dir).resolve())
+    if key not in _NOTE_INDEX_MEMO:
+        _NOTE_INDEX_MEMO[key] = _build_note_index(docs_dir)
+    index, claimants = _NOTE_INDEX_MEMO[key]
+    return dict(index), {k: list(v) for k, v in claimants.items()}
+
+
+def _build_note_index(docs_dir):
     """Map ID -> (path, frontmatter) for every note in docs/ with an ID.
 
     Also returns claimants: ID -> [paths], every file declaring that ID. The

@@ -386,6 +386,8 @@ def apply_note_edits(root, p, write):
         new_text = "".join(lines)
         if write and new_text != text:
             path.write_text(new_text, encoding="utf-8")
+    if write and changes:
+        validator().invalidate_note_index()
     return changes
 
 
