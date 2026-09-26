@@ -14,6 +14,10 @@ Usage:
   snapshot-query.py ID [ID ...]            one line per item
   snapshot-query.py --status doing          filter; combine with --collection, --phase
   snapshot-query.py --in-flight             items at doing/review, open/triage or active, focus included
+  snapshot-query.py --search TEXT           notes whose text contains TEXT (case-insensitive)
+  snapshot-query.py --links-to ID           notes that link to ID
+      both: live notes first, labelled with id and status; finished notes folded
+      into a count unless --all; docs/archive/ read only with --all
   add --json for machine-readable output, --repo-root to point at another repo
 
 JSON shape, version 1 (kept stable; a change bumps `version`):
@@ -140,6 +144,81 @@ def from_note(root, item_id, path):
     return record(item_id, kind + "s" if kind else "", fields, "note")
 
 
+#: Statuses that finish a note: a hit on one is history, not the answer.
+FINISHED = {"done", "fixed", "cancelled", "superseded", "declined", "merged", "reverted",
+            "implemented", "retired", "released", "closed", "deferred"}
+
+
+def _search_paths(root, text, include_archive):
+    """Notes under docs/ whose text contains `text`, case-insensitive.
+
+    ripgrep when it is installed, which honours `.gitignore` and `.ignore`
+    (project-os-dev ISS-0102); otherwise a plain scan that skips the same
+    `docs/archive/` the repo's `.ignore` names, so a machine without rg gets
+    the same answer, if slower.
+    """
+    import shutil
+    import subprocess
+    docs = root / "docs"
+    rg = shutil.which("rg")
+    if rg:
+        cmd = [rg, "-l", "-i", "-F", "--glob", "*.md"]
+        if include_archive:
+            cmd.append("--no-ignore")
+        r = subprocess.run(cmd + ["--", text, str(docs)], capture_output=True, text=True)
+        found = [Path(line) for line in r.stdout.splitlines() if line.strip()]
+    else:
+        needle = text.lower()
+        found = []
+        for path in docs.rglob("*.md"):
+            rel = path.relative_to(root).as_posix()
+            if not include_archive and rel.startswith("docs/archive/"):
+                continue
+            try:
+                if needle in path.read_text(encoding="utf-8", errors="replace").lower():
+                    found.append(path)
+            except OSError:
+                continue
+    return sorted(p for p in found if "__templates__" not in p.parts and "__bases__" not in p.parts)
+
+
+def _label(root, paths):
+    """[(id, status, path, finished)] for note paths."""
+    vd = validator()
+    out = []
+    for path in paths:
+        path = path if path.is_absolute() else root / path
+        fm = vd.parse_frontmatter(path) or {}
+        fm = fm if isinstance(fm, dict) else {}
+        the_id = canonical(fm.get("id")) or canonical(path.stem) or path.stem
+        status = str(fm.get("status", "") or "").strip()
+        rel = path.relative_to(root).as_posix()
+        out.append((the_id, status, rel, status in FINISHED or rel.startswith("docs/archive/")))
+    return out
+
+
+def list_view(root, labelled, show_all, as_json, what):
+    live = [x for x in labelled if not x[3]]
+    done = [x for x in labelled if x[3]]
+    if as_json:
+        print(json.dumps({"version": 1, "query": what, "live": [
+            {"id": i, "status": s, "file": f} for i, s, f, _ in live],
+            "finished": [{"id": i, "status": s, "file": f} for i, s, f, _ in done] if show_all else [],
+            "finished_count": len(done)}, indent=2))
+        return 0
+    for i, s, f, _ in live:
+        print("%s %s %s" % (i, s or "?", f))
+    if show_all:
+        for i, s, f, _ in done:
+            print("%s %s %s (finished)" % (i, s or "?", f))
+    elif done:
+        print("... and %d finished note(s) that also match, not listed: %s%s; --all lists them"
+              % (len(done), ", ".join(i for i, _s, _f, _ in done[:8]), ", ..." if len(done) > 8 else ""))
+    if not labelled:
+        print("no note matches %s" % what)
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("ids", nargs="*", help="item ids, such as TASK-0081")
@@ -149,7 +228,26 @@ def main(argv=None):
     ap.add_argument("--in-flight", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--repo-root", default=".")
+    ap.add_argument("--search", default="", metavar="TEXT")
+    ap.add_argument("--links-to", default="", metavar="ID")
+    ap.add_argument("--all", action="store_true", help="with --search or --links-to: list finished and archived notes too")
     args = ap.parse_args(argv)
+    if args.search or args.links_to:
+        #: project-os-dev ISS-0101: a search put finished notes in front of the
+        #: agent mixed in with live ones, and each had to be opened to find out.
+        root = Path(args.repo_root).resolve()
+        if args.search:
+            paths = _search_paths(root, args.search, args.all)
+            what = "%r" % args.search
+        else:
+            ni = _module("note_index_for_query", "note-index.py")
+            ni._VD = validator()
+            index = ni.build(root)
+            target = canonical(args.links_to)
+            paths = [root / index[i]["path"] for i in ni.backlinks(index).get(target, [])
+                     if args.all or not index[i]["archived"]]
+            what = "a link to %s" % target
+        return list_view(root, _label(root, paths), args.all, args.json, what)
     filters = args.status or args.collection or args.phase or args.in_flight
     if not (args.ids or filters) or (args.ids and filters):
         ap.print_usage(sys.stderr)

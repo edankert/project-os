@@ -733,6 +733,7 @@ _CHECKED_TABLE_NAMES = frozenset({
 #: own coverage claim false in the same way ISS-0012 did. Type and case are not
 #: what makes something a status table.
 _NON_STATUS_COLLECTIONS = frozenset({
+    "STRUCTURAL_CODES",     # the checks that still judge an archived note (ISS-0091)
     "RULE_ARRIVED",         # the day each content rule arrived (ISS-0094)
     "TOOL_WRITTEN_FIELDS",  # frontmatter fields the tools write into old notes (ISS-0097)
     "_OPTIONAL_CITATIONS",  # files a citation may name before a repo has them (ISS-0052)
@@ -1857,6 +1858,15 @@ RULE_ARRIVED = {
     "REVIEW-STALE": "2026-09-18",
 }
 _FINDING_ID = re.compile(r"^([A-Z]+-\d+[A-Za-z]?)\b")
+#: What the validator still says about an archived note (ISS-0091): whether it
+#: parses, whether its id is unique and counted, and whether links resolve.
+#: Everything else about a finished, released ticket is history.
+STRUCTURAL_CODES = frozenset({
+    "NOTE-FRONTMATTER", "NOTE-DUP-ID", "NOTE-STATUS", "STATUS-VALUE", "COUNTER",
+    "LINK", "DANGLING-LINK", "ITEM-FILE", "ITEM-ID", "ITEM-TYPE", "ITEM-SHAPE",
+    "FRONTMATTER-TYPO",
+})
+ARCHIVE_DIR = "docs/archive/"
 
 
 class Report:
@@ -1867,8 +1877,16 @@ class Report:
         #: the finding is about a note finished before its rule arrived.
         self.predates = None
         self.predating = {}
+        #: Ids of notes under docs/archive/, set by validate() (ISS-0091).
+        self.archived = set()
+        self.archived_hidden = 0
 
     def _skip(self, code, msg):
+        if code not in STRUCTURAL_CODES and (self.archived or ARCHIVE_DIR in msg):
+            m = _FINDING_ID.match(msg)
+            if ARCHIVE_DIR in msg or (m and m.group(1) in self.archived):
+                self.archived_hidden += 1
+                return True
         if self.predates is not None and self.predates(code, msg):
             self.predating[code] = self.predating.get(code, 0) + 1
             return True
@@ -3588,6 +3606,8 @@ def validate(root, report):
             return report.warn
         return report.error
     report.predates = predates_rule(note_index, root)
+    report.archived = {i for i, (p, _fm) in note_index.items()
+                       if p.relative_to(root).as_posix().startswith(ARCHIVE_DIR)}
     validate_unregistered_notes(root, items, note_index, note_claimants, allowed_status, report)
     NOTE_INDEX_FOR_PLANS.clear()
     NOTE_INDEX_FOR_PLANS.update(note_index)
@@ -4803,6 +4823,9 @@ def main(argv=None):
         if hidden_errors or hidden_warnings:
             print("validate-docs: %d error(s) and %d warning(s) about files not changed since HEAD "
                   "are not shown (--changed); run without it to see them" % (hidden_errors, hidden_warnings))
+        if report.archived_hidden:
+            print("validate-docs: %d finding(s) about archived notes not shown; only structural "
+                  "checks judge docs/archive/ (ISS-0091)" % report.archived_hidden)
         if report.predating:
             print("validate-docs: %d finding(s) not shown, about notes finished before their rule "
                   "arrived (%s); ADR-0048" % (sum(report.predating.values()), ", ".join(

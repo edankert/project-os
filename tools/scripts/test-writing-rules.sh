@@ -21,5 +21,12 @@ check "the feature template points at rule 11" \
 check "the rules are numbered 1 to 12 with no gap" \
   "$([[ "$(grep -oE '^[0-9]+\. \*\*' "$W" | cut -d. -f1 | tr '\n' ' ')" == "1 2 3 4 5 6 7 8 9 10 11 12 " ]]; echo $?)"
 
+# project-os-dev ISS-0102 (TASK-0182): search with the Grep tool or rg, which
+# honour .gitignore and .ignore, and no instruction teaches `grep -r`.
+check "LIFECYCLE says to search with the Grep tool or rg, not grep -r" \
+  "$(grep -q '^- Search with the Grep tool or `rg`, not `grep -r`' "$ROOT/tools/instructions/LIFECYCLE.md"; echo $?)"
+taught="$(cd "$ROOT" && grep -rnE 'grep -[a-zA-Z]*[rR]' tools/instructions tools/skills 2>/dev/null | grep -v 'not `grep -r`' || true)"
+check "no instruction or skill tells an agent to run grep -r" "$([[ -z "$taught" ]]; echo $?)" "$taught"
+
 echo "test-writing-rules: $assertions assertions, $failures failure(s)"
 [[ "$failures" -eq 0 ]]
