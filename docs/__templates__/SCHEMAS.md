@@ -75,6 +75,7 @@ Fields:
 - (optional) `commit` (string): Commit hash.
 - (optional) `pr` (string): PR/MR identifier or link.
 - (recommended) `impacts` (list of strings): Affected areas/paths/flows (keep short).
+- (required when the Impact list names a screen and the project keeps ledgers for more than one platform) `platforms` (list of strings): the platforms this change altered, such as `[android]`, `[ios]` or `[android, ios]`, each a platform with a ledger. A release test lists the change only on these platforms. A note without it is listed on every platform; `release-test.py --check` warns about one created before 2026-09-28 and refuses one created on or after it (project-os-dev REQ-0035).
 - (optional) `issues` (list of links): Issues associated with the change.
 - (optional) `features` (list of links): Features associated with the change.
 - (optional) `reviewed_by` (string): Independent reviewer identity (`model:...` or `user:...`) when a change note was reviewed; it owes none (`tools/instructions/QUALITY.md`, "Independent review (clean-context)").
@@ -82,7 +83,7 @@ Fields:
 - (optional) `review_verdict` (string): `approved | changes-requested`.
 
 Body sections:
-- **`## Impact` is a list of the screens this change altered**, and `tools/scripts/release-test.py` parses it to build a release test's what-changed list (project-os-dev ADR-0045 decision 2). The shape a parser reads: one list item per screen, beginning with a `[[SUR-####]]` link or a bare `SUR-####` id, then a separator (`:`, `—` or `-`), then one sentence in the words a person using the product would use. Everything after the separator is printed verbatim on the sheet. An item may name more than one screen, joined by `and`, `,`, `&` or `+` before the separator, and every screen it names gets that one sentence. Lines inside a fenced block are examples and are not read.
+- **`## Impact` is a list of the screens this change altered**, and `tools/scripts/release-test.py` parses it to build a release test's what-changed list (project-os-dev ADR-0045 decision 2). The shape a parser reads: one list item per screen, beginning with a `[[SUR-####]]` link or a bare `SUR-####` id, then a separator (`:`, `—` or `-`), then one sentence in the words a person using the product would use. Everything after the separator is printed verbatim on the sheet. An item may name more than one screen, joined by `and`, `,`, `&` or `+` before the separator, and every screen it names gets that one sentence. An item may start with a platform in square brackets, such as `[ios]`, where one note changed the platforms differently; it is then listed on that platform only. Lines inside a fenced block are examples and are not read.
 - A change that altered no screen writes one item reading **`No screen changed`** followed by the reason. The parser recognises that phrase and asks for nothing else. A change note with no Impact list at all contributes nothing to the what-changed list and is reported by `release-test.py --check`.
 - ~~`## Acceptance checks reopened`~~ — **removed (ADR-0045 decision 1).** The what-changed list no longer reads it. Why a check was reopened is the `reason:` on the ledger's invalidation event, which the ledger refuses to accept without. Old change notes keep the section; nothing parses it.
 
@@ -297,6 +298,16 @@ Body: prose the tester reads once, then **one `### ` heading per section with on
 | `bench` (list) | recommended | What must be physically present, signed in or installed before the section starts, one line each. |
 
 A section block with neither `surfaces` nor `checks` claims nothing, and the generator reports it. No key carries a duration.
+
+## `what-changed.md` — the short what-changed lines (`docs/tests/acceptance/release-test/what-changed-<platform>.md`)
+
+Purpose: one short line per change and screen, for one platform, written at release preparation by the `release-test-prep` skill. A release test prints these lines in place of the change notes' longer Impact sentences. Instantiated from `what-changed.md`, typed `[[reference]]`. It is not a procedure, and the generator does not read it as one.
+
+Frontmatter: the standing-document fields, plus:
+
+- (required) `tag` (string): the release tag the lines were written against. The release test uses the lines only while this is the platform's last release tag. Otherwise it prints the Impact sentences and one line saying the short lines are out of date.
+
+Body: list items in the Impact shape: a `[[SUR-####]]` link or a bare id, a separator, one sentence, and the change note it summarises as a `[[CHG-...]]` link or a `` `CHG-...` `` id. The reference is taken off the printed line. `release-test.py --check` warns about a change since the tag with no line for one of its screens, and about a line that names no change note.
 
 ## `procedure.md` — a section's procedure (`docs/tests/acceptance/release-test/`)
 
