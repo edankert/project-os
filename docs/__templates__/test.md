@@ -47,6 +47,8 @@ after: []            # optional: checks that should have passed before this one 
 
 ## Expect
 - <What must be observable, one line per assertion, in the words the surface uses. A code symbol may follow the observable name; it may not replace it.>
+- [android] <Where the result differs by platform, one line per platform, starting with the platform's name in brackets. A line with no name holds on every platform.>
+- [ios] <The same assertion as the iOS page must print it.>
 
 ## Not this check
 - <The boundary. What a reader might reasonably think this covers, and which check actually covers it.>
