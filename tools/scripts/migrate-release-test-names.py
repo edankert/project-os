@@ -52,8 +52,9 @@ SKILL_NEW = "tools/skills/release-test-procedure/"
 SKILL_LINE_RE = re.compile(r"^(\s*-\s*)Walk procedure:(\s*)tools/skills/walk-procedure/SKILL\.md\s*$", re.M)
 #: A top-level frontmatter key, at the start of its line.
 KEY_RE = "^%s:(?=\\s|$)"
-#: `"mark":` as a JSON key. The lookbehind skips `\"mark\":` inside a string.
-MARK_KEY_RE = re.compile(r'(?<!\\)"mark"(\s*):')
+#: `"mark":` as a JSON key. Inside a JSON string every quote is escaped, so
+#: the pattern cannot match string content; the edit is re-parsed anyway.
+MARK_KEY_RE = re.compile(r'"mark"(\s*):')
 
 
 class Plan:

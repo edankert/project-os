@@ -67,7 +67,22 @@ walk_readiness_for:
 
 Its body mentions walk_readiness_for: and keeps it.
 MD
-printf -- '- Walk procedure: tools/skills/walk-procedure/SKILL.md\n- Other skill: tools/skills/close-out/SKILL.md\n' > "$R/CLAUDE.md"
+# A key name at the start of a body line is prose, not frontmatter.
+cat > "$A/TST-0002-Fixture.md" <<'MD'
+---
+type: "[[test]]"
+id: TST-0002
+title: "Another check"
+status: active
+level: acceptance
+area: "Bench"
+---
+
+# Another check
+
+walk_readiness_for: is how this note's author once wrote it, and it stays.
+MD
+printf -- '- Walk procedure: tools/skills/walk-procedure/SKILL.md\n- Other skill: tools/skills/close-out/SKILL.md\nSee tools/skills/walk-procedure/SKILL.md for procedures.\n' > "$R/CLAUDE.md"
 cat > "$L/WORKING-app.json" <<'JSON'
 {
   "platform": "app",
@@ -105,10 +120,10 @@ check "a dry run changes nothing" "$( [[ -z "$(git -C "$R" status --porcelain)" 
 python3 "$MIGRATE" --repo-root "$R" --check >/dev/null; code=$?
 check "--check exits 1 while there is work" "$( [[ $code -eq 1 ]]; echo $?)" "exit $code"
 
-# --- apply
+# --- apply. The moves are read before anything is staged: `git mv` stages a
+# rename itself, while a plain rename would show a deletion and a new file.
 out="$(python3 "$MIGRATE" --repo-root "$R" --apply 2>&1)"; code=$?
 check "--apply exits 0" "$code" "$out"
-git_do add -A
 status="$(git -C "$R" status --porcelain)"
 check "WALK.md moves to RELEASE-TEST.md as a git rename" \
   "$(printf '%s' "$status" | grep -qE '^R  docs/tests/acceptance/WALK\.md -> docs/tests/acceptance/RELEASE-TEST\.md'; echo $?)" "$status"
@@ -123,8 +138,12 @@ C="$A/TST-0001-Fixture.md"
 check "the check's walk_readiness_for: becomes readiness_for:" \
   "$( { grep -qx 'readiness_for:' "$C" && ! grep -q '^walk_readiness_for:' "$C"; }; echo $?)" "$(cat "$C")"
 check "the check's body is left as written" "$(grep -qF 'Its body mentions walk_readiness_for: and keeps it.' "$C"; echo $?)"
+check "a body line that starts with the old key is left as written" \
+  "$(grep -qx 'walk_readiness_for: is how this note.s author once wrote it, and it stays.' "$A/TST-0002-Fixture.md"; echo $?)"
 check "CLAUDE.md's skill line names the new skill" \
   "$( { grep -qx -- '- Release test procedure: tools/skills/release-test-procedure/SKILL.md' "$R/CLAUDE.md" && grep -qx -- '- Other skill: tools/skills/close-out/SKILL.md' "$R/CLAUDE.md"; }; echo $?)" "$(cat "$R/CLAUDE.md")"
+check "and any other mention of the old skill path names the new one" \
+  "$(grep -qx 'See tools/skills/release-test-procedure/SKILL.md for procedures.' "$R/CLAUDE.md"; echo $?)" "$(cat "$R/CLAUDE.md")"
 ledger="$(python3 - "$L/WORKING-app.json" <<'PY'
 import json, sys
 text = open(sys.argv[1]).read()
@@ -146,7 +165,7 @@ out="$(python3 "$R/tools/scripts/release-test.py" --check --platform app --repo-
 check "the generator finds the section by its new key" "$(! printf '%s' "$out" | grep -qE 'no .section:|old name'; echo $?)" "$out"
 
 # --- a second run changes nothing
-git_do commit -qm migrated
+git_do add -A; git_do commit -qm migrated
 out="$(python3 "$MIGRATE" --repo-root "$R" --apply 2>&1)"; code=$?
 check "a second run says there is nothing to do" "$( { [[ $code -eq 0 ]] && printf '%s' "$out" | grep -q 'nothing to do'; }; echo $?)" "$out"
 check "and changes nothing" "$( [[ -z "$(git -C "$R" status --porcelain)" ]]; echo $?)" "$(git -C "$R" status --porcelain)"
