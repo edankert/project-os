@@ -502,6 +502,32 @@ class Change:
     screens: list[tuple[str, str]] = field(default_factory=list)
     #: The note said, in as many words, that it altered no screen.
     no_screen: bool = False
+    #: `platforms:` from the frontmatter (project-os-dev REQ-0035). Empty
+    #: means the note did not say, and it is then listed on every platform.
+    platforms: list[str] = field(default_factory=list)
+    #: The platform each entry of `screens` is marked for, "" for none: an
+    #: Impact line may start `[ios]` where one note changed the platforms
+    #: differently. Same length and order as `screens`.
+    marks: list[str] = field(default_factory=list)
+    #: `created:`, or the date in the file name, for the rule that a note
+    #: written before `platforms:` existed is warned rather than refused.
+    created: str = ""
+
+    def on(self, platform: str) -> list[tuple[str, str]]:
+        """The `(screen, sentence)` pairs this change made on ``platform``.
+
+        An Impact line marked for a platform counts there only. An unmarked
+        line counts where the note's `platforms:` says, and everywhere when
+        the note declares none.
+        """
+        out = []
+        for (surface_id, sentence), mark in zip(self.screens, self.marks or [""] * len(self.screens)):
+            if mark:
+                if not platform or mark == platform:
+                    out.append((surface_id, sentence))
+            elif not self.platforms or not platform or platform in self.platforms:
+                out.append((surface_id, sentence))
+        return out
 
     @property
     def silent(self) -> bool:
@@ -510,17 +536,33 @@ class Change:
 
 
 def parse_impact(body: str) -> tuple[list[tuple[str, str]], bool]:
-    """`## Impact` -> the screens it names with their sentences, and "none".
+    """`## Impact` -> the screens it names with their sentences, and "none"."""
+    entries, none = parse_impact_marked(body)
+    return [(surface_id, sentence) for surface_id, sentence, _mark in entries], none
+
+
+def parse_impact_marked(body: str) -> tuple[list[tuple[str, str, str]], bool]:
+    """`## Impact` -> `(screen, sentence, platform or "")` per screen, and "none".
 
     The sentence is everything after the id and its separator, printed
     verbatim on the sheet. A line naming a screen and saying nothing about it
     keeps an empty sentence rather than being dropped: the screen still has
     to be looked at, and the silence is visible on the sheet.
     """
-    screens: list[tuple[str, str]] = []
+    return _screen_items(under_heading(body, IMPACT_HEADING).splitlines())
+
+
+def _screen_items(lines: list[str]) -> tuple[list[tuple[str, str, str]], bool]:
+    """List items that start with screen ids, as `(screen, sentence, platform)`.
+
+    The shape of an Impact line, which the short what-changed lines reuse. A
+    `[android]` or `[ios]` before the first id limits the line to that
+    platform (project-os-dev REQ-0035).
+    """
+    screens: list[tuple[str, str, str]] = []
     none = False
     in_fence = False
-    for line in under_heading(body, IMPACT_HEADING).splitlines():
+    for line in lines:
         if FENCE_RE.match(line):
             in_fence = not in_fence
             continue
@@ -534,6 +576,7 @@ def parse_impact(body: str) -> tuple[list[tuple[str, str]], bool]:
         if not item:
             continue
         text = item.group(1).strip()
+        mark, text = _split_mark(text)
         if _NO_SCREEN_RE.match(text):
             none = True
             continue
@@ -567,7 +610,7 @@ def parse_impact(body: str) -> tuple[list[tuple[str, str]], bool]:
             continue
         sentence = _SEP_RE.sub("", rest, count=1).strip()
         for surface_id in found:
-            screens.append((surface_id, sentence))
+            screens.append((surface_id, sentence, mark))
     return screens, none
 
 
@@ -596,10 +639,91 @@ def load_changes(docs_root: Path, repo_root: Path | None = None,
         fm = vd.parse_frontmatter(path)
         if not isinstance(fm, dict):
             continue
-        screens, none = parse_impact(body_of(path))
+        entries, none = parse_impact_marked(body_of(path))
+        raw = fm.get("platforms")
+        declared = [_text(p) for p in (raw if isinstance(raw, list) else [raw]) if _text(p)]
+        dated = re.match(r"CHG-(\d{4})(\d{2})(\d{2})", path.stem)
+        created = _text(fm.get("created")) or ("%s-%s-%s" % dated.groups() if dated else "")
         out.append(Change(id=_text(fm.get("id")) or path.stem,
                           title=_text(fm.get("title")), path=str(shown),
-                          screens=screens, no_screen=none))
+                          screens=[(s, sentence) for s, sentence, _m in entries],
+                          marks=[m for _s, _sentence, m in entries],
+                          no_screen=none, platforms=declared, created=created))
+    return out
+
+
+# ------------------------------------------------ the short what-changed lines
+
+#: One file per platform, `what-changed-<platform>.md`, beside the procedures
+#: (project-os-dev REQ-0035). Its shape is SCHEMAS.md, "`what-changed.md`".
+WHAT_CHANGED_PREFIX = "what-changed-"
+#: A change note named on a short line: a wikilink, or the id in backticks.
+_CHANGE_REF_RE = re.compile(r"\[\[(CHG-\d{8}[^\]|]*)(?:\|[^\]]*)?\]\]|`(CHG-\d{8}[^`]*)`")
+_EMPTY_HOLDER_RE = re.compile(r"\s*\(\s*[,;]?\s*(?:[,;]\s*)*\)")
+
+
+@dataclass
+class ShortLines:
+    """`what-changed-<platform>.md`: one short line per change and screen."""
+
+    path: str
+    tag: str
+    #: `(change id, screen id) -> the short line`, in file order.
+    lines: dict[tuple[str, str], str] = field(default_factory=dict)
+    #: A line naming no change note, or no screen: nothing can be done with it.
+    problems: list[str] = field(default_factory=list)
+
+
+def what_changed_path(docs_root: Path, platform: str) -> Path:
+    return docs_root / PROCEDURES_REL / ("%s%s.md" % (WHAT_CHANGED_PREFIX, platform))
+
+
+def load_short_lines(docs_root: Path, platform: str,
+                     repo_root: Path | None = None) -> ShortLines | None:
+    """The platform's short what-changed lines, or None when there is no file.
+
+    Written at release preparation, by an agent, against one release tag
+    (project-os-dev ADR-0050 D3). Each line is an Impact-shaped item, a
+    screen and a sentence, that also names the change note it summarises.
+    """
+    path = what_changed_path(docs_root, platform)
+    if not path.is_file():
+        return None
+    shown = path
+    if repo_root is not None:
+        try:
+            shown = path.relative_to(repo_root)
+        except ValueError:
+            pass
+    fm = _validator().parse_frontmatter(path)
+    fm = fm if isinstance(fm, dict) else {}
+    out = ShortLines(path=str(shown), tag=_text(fm.get("tag")))
+    body = body_of(path)
+    entries, _none = _screen_items(body.splitlines())
+    for surface_id, sentence, _mark in entries:
+        refs = [a or b for a, b in _CHANGE_REF_RE.findall(sentence)]
+        text = _WS_RE.sub(" ", _CHANGE_REF_RE.sub("", sentence))
+        #: What held the reference: "()", "( , )" or a trailing dash.
+        text = _EMPTY_HOLDER_RE.sub("", text).strip()
+        text = re.sub(r"\s*[\u2014\u2013-]\s*$", "", text).strip()
+        if not refs:
+            out.problems.append("%s: the line for %s names no change note: %s"
+                                % (out.path, surface_id, text))
+            continue
+        for ref in refs:
+            out.lines.setdefault((ref.strip(), surface_id), text)
+    in_fence = False
+    for line in body.splitlines():
+        if FENCE_RE.match(line):
+            in_fence = not in_fence
+            continue
+        item = _LIST_ITEM_RE.match(line)
+        if in_fence or not item:
+            continue
+        _mark, text = _split_mark(item.group(1).strip())
+        if not _SUR_RE.match(text) and _CHANGE_REF_RE.search(text):
+            out.problems.append("%s: a line names a change note and no screen: %s"
+                                % (out.path, text))
     return out
 
 
@@ -1247,7 +1371,11 @@ def unknown_platforms(procedure: Procedure, known: list[str],
 
 
 def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Procedure]:
-    """Every file under `docs/tests/acceptance/release-test/`, parsed."""
+    """Every procedure under `docs/tests/acceptance/release-test/`, parsed.
+
+    The short what-changed lines live in the same folder and are not
+    procedures (`load_short_lines`).
+    """
     root = docs_root / PROCEDURES_REL
     if not root.is_dir():
         return []
@@ -1255,6 +1383,8 @@ def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Proc
     known_platforms = platforms(docs_root)
     out: list[Procedure] = []
     for path in sorted(root.glob("*.md")):
+        if path.name.startswith(WHAT_CHANGED_PREFIX):
+            continue
         fm = vd.parse_frontmatter(path)
         fm = fm if isinstance(fm, dict) else {}
         body = body_of(path)
@@ -1824,6 +1954,12 @@ class Capture:
     state: str = ""
     before: str = ""
     after: str = ""
+    #: The date of the candidate picture's last commit, set only when that is
+    #: before the change that altered its screen: the picture cannot show the
+    #: change (project-os-dev REQ-0035).
+    stale: str = ""
+    #: The change the picture is older than.
+    stale_against: str = ""
 
     @property
     def new(self) -> bool:
@@ -1843,6 +1979,9 @@ class Screen:
     captures: list[Capture] = field(default_factory=list)
     #: Named by a change note and matched by no `SUR-*` note.
     unresolved: bool = False
+    #: Per entry of `sentences`: True when the sentence is the short line from
+    #: `what-changed-<platform>.md` rather than the Impact sentence.
+    short: list[bool] = field(default_factory=list)
 
 
 @dataclass
@@ -1859,6 +1998,9 @@ class Placed:
     omitted: int = 0
     #: Owed checks the procedure covers, for the tick list under it.
     owed_checks: list[Check] = field(default_factory=list)
+    #: The changed screens this section tests, on this platform
+    #: (project-os-dev REQ-0035).
+    what_changed: list[Screen] = field(default_factory=list)
 
     @property
     def tested_from_procedure(self) -> bool:
@@ -1884,6 +2026,14 @@ class ReleaseTest:
     what_changed_release: str = ""
     what_changed_tag: str = ""
     what_changed_problem: str = ""
+    #: The changed screens no printed section tests. `what_changed` is every
+    #: changed screen on this platform; each section carries its own share.
+    what_changed_overview: list[Screen] = field(default_factory=list)
+    #: Why the short what-changed lines were not used, "" when they were.
+    short_lines_problem: str = ""
+    #: Change notes in range that declare no `platforms:`, listed on every
+    #: platform. Empty for a project with one platform.
+    undeclared: list[str] = field(default_factory=list)
 
     @property
     def rows(self) -> int:
@@ -1931,16 +2081,28 @@ def owed_checks(checks: dict[str, Check], events: list[Event]) -> list[Check]:
 
 
 def build_what_changed(changes: list[Change], surfaces: dict[str, Surface],
-                 captures=None) -> list[Screen]:
+                       captures=None, platform: str = "", keep=None,
+                       short: dict[tuple[str, str], str] | None = None,
+                       stale=None) -> list[Screen]:
     """The screens a release changed, from the change notes that named them.
 
     Order is the top-level screens by title, each followed by its children.
     That is the order a person navigates in, and it is why a dialog never
     appears above the screen it opens from ("The release test", rule 2).
+
+    ``platform`` keeps what each change did on that platform (`Change.on`).
+    ``keep`` is a predicate on a screen id, for one section's share. ``short``
+    maps `(change id, screen id)` to the short line written at release
+    preparation, used in place of the Impact sentence. ``stale`` is
+    `(picture path, [change]) -> (date, change id)`, for a candidate picture
+    older than the change it should show.
     """
     found: dict[str, Screen] = {}
+    altered: dict[str, list[Change]] = {}
     for change in changes:
-        for surface_id, sentence in change.screens:
+        for surface_id, sentence in change.on(platform):
+            if keep is not None and not keep(surface_id):
+                continue
             screen = found.get(surface_id)
             if screen is None:
                 known = surfaces.get(surface_id)
@@ -1952,7 +2114,10 @@ def build_what_changed(changes: list[Change], surfaces: dict[str, Surface],
                 if screen.parent == surface_id:
                     screen.parent = ""
                 found[surface_id] = screen
-            screen.sentences.append((change.id, change.title, sentence))
+            line = (short or {}).get((change.id, surface_id), "")
+            screen.sentences.append((change.id, change.title, line or sentence))
+            screen.short.append(bool(line))
+            altered.setdefault(surface_id, []).append(change)
     # A changed dialog still needs its containing screen in the list, even
     # when no change note names that screen directly.
     for screen in list(found.values()):
@@ -1969,8 +2134,10 @@ def build_what_changed(changes: list[Change], surfaces: dict[str, Surface],
             for key, state in (known.gallery if known else []):
                 before, after = captures(key)
                 if before or after:
-                    screen.captures.append(
-                        Capture(key=key, state=state, before=before, after=after))
+                    capture = Capture(key=key, state=state, before=before, after=after)
+                    if stale is not None and after and altered.get(screen.id):
+                        capture.stale, capture.stale_against = stale(after, altered[screen.id])
+                    screen.captures.append(capture)
     tops = sorted((s for s in found.values() if not s.parent),
                   key=lambda s: (s.title.lower(), s.id))
     out: list[Screen] = []
@@ -1987,6 +2154,77 @@ def build_what_changed(changes: list[Change], surfaces: dict[str, Surface],
     return out
 
 
+def screen_homes(sections: list[Section], surface_notes: dict[str, Surface],
+                 surfaces: dict[str, str], checks: dict[str, Check]) -> dict[str, str]:
+    """`screen id -> section name`: the section whose what-changed list shows it.
+
+    A section tests the screens its `surfaces:` names and the screens of the
+    checks its `checks:` names. A section that claims its checks by id alone,
+    such as a bench section, would otherwise show no change at all. The first
+    section in order that tests a screen keeps it. A child screen no section
+    names goes with its top-level screen (project-os-dev REQ-0035).
+    """
+    def as_id(name: str) -> str:
+        if name in surface_notes:
+            return name
+        return surfaces.get(name, "")
+
+    tested: list[tuple[str, set[str]]] = []
+    for section in sections:
+        ids = {as_id(name) for name in section.surfaces}
+        ids |= {as_id(checks[c].area) for c in section.checks if c in checks}
+        tested.append((section.name, ids - {""}))
+    homes: dict[str, str] = {}
+    for surface_id in surface_notes:
+        for candidate in (surface_id, top_screen(surface_id, surface_notes)):
+            home = next((name for name, ids in tested if candidate in ids), "")
+            if home:
+                homes[surface_id] = home
+                break
+    return homes
+
+
+def stale_finder(repo_root: Path | None):
+    """`(picture, changes) -> (date, change id)` for a picture older than a change.
+
+    A picture is older than a change when the commit that last touched it
+    comes before the commit that added the change note. That is a question of
+    commit order, not of clock time, so two commits in the same second still
+    compare. A picture with uncommitted edits is new, and a change note not
+    yet committed is newer than every committed picture. Without git nothing
+    is flagged, because nothing can be dated.
+    """
+    if repo_root is None or _git(repo_root, "rev-parse", "--git-dir")[0] != 0:
+        return None
+    seen: dict[tuple, tuple[int, str]] = {}
+
+    def run(*args: str) -> tuple[int, str]:
+        if args not in seen:
+            seen[args] = _git(repo_root, *args)
+        return seen[args]
+
+    def last_commit(path: str, *how: str) -> str:
+        code, out = run("log", "-1", "--format=%H", *how, "--", path)
+        return out.splitlines()[0] if code == 0 and out.strip() else ""
+
+    def stale(picture: str, changes: list[Change]) -> tuple[str, str]:
+        taken = last_commit(picture)
+        code, dirty = run("status", "--porcelain", "--", picture)
+        if not taken or (code == 0 and dirty.strip()):
+            return "", ""
+        for change in changes:
+            added = last_commit(change.path, "--diff-filter=A")
+            later = (not added
+                     or (added != taken
+                         and run("merge-base", "--is-ancestor", taken, added)[0] == 0))
+            if later:
+                _code, when = run("log", "-1", "--format=%cs", taken)
+                return when, change.id
+        return "", ""
+
+    return stale
+
+
 def build_release_test(checks: dict[str, Check], events: list[Event], sections: list[Section],
                *, release: str, platform: str, surfaces=None,
                surface_notes=None, changes=None, captures=None,
@@ -1994,12 +2232,17 @@ def build_release_test(checks: dict[str, Check], events: list[Event], sections: 
                gallery: str = "", generated: str = "",
                warnings=None, notices=None, authored_order: bool = True,
                what_changed_release: str = "", what_changed_tag: str = "",
-               what_changed_problem: str = "") -> ReleaseTest:
+               what_changed_problem: str = "", short_lines: ShortLines | None = None,
+               stale=None, known_platforms=None) -> ReleaseTest:
     """The sheet as data: what changed, the sections and the unplaced rows.
 
     Takes plain values rather than a repo path, so a host with its own note
     index (the cockpit's `release_test_payload`) computes the same release test from the same
     rules without a second implementation of any of them.
+
+    ``short_lines`` is this platform's `what-changed-<platform>.md`, or None
+    when there is none. ``known_platforms`` is every platform with a ledger;
+    with more than one, a change note declaring no `platforms:` is named.
     """
     surfaces = surfaces or {}
     surface_notes = surface_notes or {}
@@ -2007,7 +2250,15 @@ def build_release_test(checks: dict[str, Check], events: list[Event], sections: 
     owed = owed_checks(checks, events)
     owed_ids = {c.id for c in owed}
 
-    what_changed = build_what_changed(list(changes or []), surface_notes, captures)
+    changes = list(changes or [])
+    short, short_problem = short_lines_for(short_lines, what_changed_tag)
+    if what_changed_problem or not any(c.on(platform) for c in changes):
+        short_problem = ""
+    undeclared = sorted(c.id for c in changes
+                        if not c.platforms and c.screens and len(known_platforms or []) > 1)
+    what_changed = build_what_changed(changes, surface_notes, captures, platform,
+                                      short=short, stale=stale)
+    homes = screen_homes(sections, surface_notes, surfaces, checks)
 
     # --- placement: the first section that claims a check keeps it
     placed: list[Placed] = []
@@ -2020,6 +2271,9 @@ def build_release_test(checks: dict[str, Check], events: list[Event], sections: 
             continue
         rows = order_rows(claimed, warnings, section.name)
         entry = Placed(section=section, rows=rows)
+        entry.what_changed = build_what_changed(
+            changes, surface_notes, captures, platform, short=short, stale=stale,
+            keep=lambda s, name=section.name: homes.get(s) == name)
         procedure = by_section.get(section.name)
         if procedure is not None:
             attach_procedure(entry, procedure, checks, owed_ids, sections,
@@ -2027,12 +2281,42 @@ def build_release_test(checks: dict[str, Check], events: list[Event], sections: 
         placed.append(entry)
     unplaced = order_rows([c for c in owed if c.id not in taken],
                           warnings, "Unplaced")
+    printed = {entry.section.name for entry in placed}
+    overview = build_what_changed(
+        changes, surface_notes, captures, platform, short=short, stale=stale,
+        keep=lambda s: homes.get(s) not in printed)
     return ReleaseTest(release=release, platform=platform,
                 generated=generated or date.today().isoformat(),
                 what_changed=what_changed, sections=placed, unplaced=unplaced,
                 gallery=gallery, warnings=warnings, notices=list(notices or []),
                 authored_order=authored_order, what_changed_release=what_changed_release,
-                what_changed_tag=what_changed_tag, what_changed_problem=what_changed_problem)
+                what_changed_tag=what_changed_tag, what_changed_problem=what_changed_problem,
+                what_changed_overview=overview, short_lines_problem=short_problem,
+                undeclared=undeclared)
+
+
+def short_lines_for(short_lines: ShortLines | None, tag: str
+                    ) -> tuple[dict[tuple[str, str], str], str]:
+    """(the short lines to use, why none are used) for the last release tag.
+
+    The lines are used only when the file names the tag this sheet compared
+    against. Otherwise every screen prints its Impact sentences, and one line
+    says why (project-os-dev REQ-0035).
+    """
+    if short_lines is None:
+        return {}, ("no short lines are written for this platform, so each "
+                    "screen shows the change notes' Impact sentences; "
+                    "`tools/skills/release-test-prep/SKILL.md` writes them")
+    if not tag:
+        return {}, ""
+    if short_lines.tag != tag:
+        return {}, ("the short lines in `%s` were written against %s and the "
+                    "last release is `%s`, so each screen shows the change "
+                    "notes' Impact sentences instead"
+                    % (short_lines.path,
+                       "`%s`" % short_lines.tag if short_lines.tag else "no tag",
+                       tag))
+    return dict(short_lines.lines), ""
 
 
 def attach_procedure(entry: Placed, procedure: Procedure, checks: dict[str, Check],
@@ -2534,7 +2818,11 @@ def _plural(n: int, one: str, many: str = "") -> str:
 
 
 def render_what_changed(sheet: ReleaseTest, out: list[str]) -> None:
-    """The screens this release changed ("The release test", rule 2).
+    """What changed on this platform, before any section ("The release test", rule 2).
+
+    Each section prints the changes to its own screens at its head
+    (`render_screens`). This part says what the list was compared against,
+    and prints the changed screens that no section on this sheet tests.
 
     No check id appears here, and that is the rule rather than an oversight:
     the what-changed list is a list of places to open and look at. The previous version
@@ -2542,7 +2830,7 @@ def render_what_changed(sheet: ReleaseTest, out: list[str]) -> None:
     run, and a person read it as the start of the release test instead of as the look
     around before it.
     """
-    out.append("## What changed — the screens this release changed")
+    out.append("## What changed on %s" % sheet.platform)
     out.append("")
     if sheet.gallery:
         out.append("Regenerate and compare before testing anything: `%s`" % sheet.gallery)
@@ -2554,38 +2842,74 @@ def render_what_changed(sheet: ReleaseTest, out: list[str]) -> None:
         out.append("")
     elif sheet.what_changed_tag:
         out.append("Compared against **%s**, tagged `%s`. Every change note added "
-                   "since that tag is read for the screens it says it altered."
-                   % (sheet.what_changed_release or "the last release", sheet.what_changed_tag))
+                   "since that tag is read for the screens it says it altered on %s."
+                   % (sheet.what_changed_release or "the last release",
+                      sheet.what_changed_tag, sheet.platform))
+        out.append("")
+    if sheet.short_lines_problem:
+        out.append("**Short lines not used:** %s." % sheet.short_lines_problem)
+        out.append("")
+    if sheet.undeclared:
+        out.append("**Listed on every platform:** %s %s no `platforms:`, so "
+                   "nothing says which platform %s changed: %s."
+                   % (len(sheet.undeclared),
+                      _plural(len(sheet.undeclared), "change note declares",
+                              "change notes declare"),
+                      _plural(len(sheet.undeclared), "it", "they"),
+                      ", ".join(sheet.undeclared)))
         out.append("")
     if not sheet.what_changed:
-        out.append("No change note names a screen. Either this release altered no "
-                   "screen, or its change notes have no `## Impact` list — the "
-                   "close-out step that writes one is in "
-                   '`tools/instructions/TESTING.md`, "The release test", rule 8.')
-        out.append("")
+        if not sheet.what_changed_problem:
+            out.append("No change note names a screen on %s. Either this release "
+                       "altered no screen there, or its change notes have no "
+                       "`## Impact` list — the close-out step that writes one is in "
+                       '`tools/instructions/TESTING.md`, "The release test", rule 8.'
+                       % sheet.platform)
+            out.append("")
         return
-    out.append("Open these screens and look at them before testing a single "
-               "scripted step. Each line under a screen is what one change says "
-               "it altered there.")
+    out.append("Each section starts with the changes to the screens it tests. "
+               "Open those screens and look at them before its first check.")
     out.append("")
-    for screen in sheet.what_changed:
-        depth = "####" if screen.parent else "###"
+    if sheet.what_changed_overview:
+        out.append("No section on this sheet tests these changed screens. Open "
+                   "them and look at them too:")
+        out.append("")
+        render_screens(sheet.what_changed_overview, out, "###")
+
+
+def render_screens(screens: list[Screen], out: list[str], depth: str) -> None:
+    """Changed screens, each with its lines and pictures; a child one level down.
+
+    ``depth`` is the heading level of a top-level screen, such as `###`.
+    """
+    for screen in screens:
+        level = depth + "#" if screen.parent else depth
         label = "%s (%s)" % (screen.title, screen.id) if screen.title != screen.id else screen.id
-        out.append("%s %s" % (depth, label))
+        out.append("%s %s" % (level, label))
         out.append("")
         if screen.unresolved:
             out.append("**No surface note carries this id.** A change note names "
                        "it, so something was altered, and nobody reading this "
                        "sheet can tell which screen to open.")
             out.append("")
-        for change_id, title, sentence in screen.sentences:
+        shorts = screen.short or [False] * len(screen.sentences)
+        for (change_id, title, sentence), short in zip(screen.sentences, shorts):
+            if short:
+                out.append("- %s" % sentence)
+                continue
             said = sentence or "_that change names this screen and says nothing about it_"
             out.append("- %s — %s" % (said, title or change_id))
-        out.append("")
+        if screen.sentences:
+            out.append("")
         for capture in screen.captures:
             name = "`%s`" % capture.key
             if capture.state:
                 name += " (%s)" % capture.state
+            if capture.stale:
+                out.append("%s — **this picture is older than the change**: it was "
+                           "committed on %s, before %s, so it cannot show it. "
+                           "Capture it again." % (name, capture.stale, capture.stale_against))
+                out.append("")
             if capture.new:
                 out.append("%s — **new**, captured now and not at the last release:"
                            % name)
@@ -2795,6 +3119,14 @@ def render(sheet: ReleaseTest) -> str:
         section = placed.section if placed is not None else None
         out.append("## %s" % title)
         out.append("")
+        if placed is not None and placed.what_changed:
+            out.append("### What changed on the screens this section tests")
+            out.append("")
+            render_screens(placed.what_changed, out, "####")
+        elif placed is not None and sheet.what_changed_tag:
+            out.append("Nothing changed on %s since `%s` on the screens this "
+                       "section tests." % (sheet.platform, sheet.what_changed_tag))
+            out.append("")
         if section is not None and section.state:
             out.append("**State this section needs:** %s" % section.state)
             out.append("")
@@ -2876,6 +3208,8 @@ class Reading:
     what_changed_tag: str = ""
     what_changed_problem: str = ""
     changes: list[Change] = field(default_factory=list)
+    short_lines: ShortLines | None = None
+    platforms: list[str] = field(default_factory=list)
 
 
 def read_repo(repo_root: Path, platform: str) -> Reading:
@@ -2926,7 +3260,8 @@ def read_repo(repo_root: Path, platform: str) -> Reading:
         events=load_events(docs_root, platform), sections=sections,
         procedures=procedures, gallery=gallery, warnings=warnings,
         authored=authored, what_changed_release=release_id,
-        what_changed_tag="" if problem else tag, what_changed_problem=problem, changes=changes)
+        what_changed_tag="" if problem else tag, what_changed_problem=problem, changes=changes,
+        short_lines=load_short_lines(docs_root, platform, repo_root), platforms=known)
 
 
 def generate(repo_root: Path, release: str, platform: str) -> ReleaseTest:
@@ -2946,7 +3281,9 @@ def generate(repo_root: Path, release: str, platform: str) -> ReleaseTest:
         captures=capture_finder(read.docs_root, repo_root, read.what_changed_tag),
         gallery=read.gallery, warnings=read.warnings, notices=notices,
         authored_order=read.authored, what_changed_release=read.what_changed_release,
-        what_changed_tag=read.what_changed_tag, what_changed_problem=read.what_changed_problem)
+        what_changed_tag=read.what_changed_tag, what_changed_problem=read.what_changed_problem,
+        short_lines=read.short_lines, stale=stale_finder(repo_root),
+        known_platforms=read.platforms)
 
 
 def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
@@ -3022,7 +3359,58 @@ def check_repo_findings(repo_root: Path, platform: str
             remarks.append("%s has no `## Impact` list, so it tells the what-changed list "
                            "nothing; write the screens it altered, or "
                            '"No screen changed" and why' % change.path)
+        found, warned = platform_findings(change, read.platforms)
+        problems.extend(found)
+        warnings.extend(warned)
+    warnings.extend(short_line_findings(read, platform))
     return problems, warnings, remarks
+
+
+#: A change note created on or after this date that names a screen must say
+#: which platforms it changed, in a project with more than one. Earlier notes
+#: are warned: they were written before `platforms:` existed
+#: (project-os-dev REQ-0035, TASK-0191).
+PLATFORMS_REQUIRED_FROM = "2026-09-28"
+
+
+def platform_findings(change: Change, known: list[str]
+                      ) -> tuple[list[str], list[tuple[str, str]]]:
+    """(problems, warnings) for one change note's `platforms:` and Impact marks."""
+    problems: list[str] = []
+    warnings: list[tuple[str, str]] = []
+    named = set(change.platforms) | {m for m in change.marks if m}
+    for name in sorted(named - set(known)):
+        if known:
+            problems.append("%s names the platform `%s`, and this project keeps a "
+                            "ledger only for: %s" % (change.path, name, ", ".join(known)))
+    if len(known) > 1 and change.screens and not change.platforms:
+        message = ("%s names a screen in its Impact list and declares no "
+                   "`platforms:`, so it is listed on every platform" % change.path)
+        if change.created and change.created >= PLATFORMS_REQUIRED_FROM:
+            problems.append(message + "; add `platforms: [%s]` with the ones it "
+                            "changed" % ", ".join(known))
+        else:
+            warnings.append(("platforms", message))
+    return problems, warnings
+
+
+def short_line_findings(read: Reading, platform: str) -> list[tuple[str, str]]:
+    """Warnings for `what-changed-<platform>.md` when it names the last release tag.
+
+    A file written against an older tag is not checked line by line: the
+    sheet already says it is out of date and does not use it.
+    """
+    short = read.short_lines
+    if short is None or not read.what_changed_tag or short.tag != read.what_changed_tag:
+        return []
+    out = [("short_lines", problem) for problem in short.problems]
+    for change in read.changes:
+        for surface_id, _sentence in change.on(platform):
+            if (change.id, surface_id) not in short.lines:
+                out.append(("short_lines", "%s has no short line for %s on %s, "
+                            "which %s changed" % (short.path, surface_id,
+                                                   platform, change.id)))
+    return out
 
 
 def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
@@ -3105,6 +3493,10 @@ WARNING_KINDS = {
               "giving tags alone (project-os-dev ADR-0050 D2)",
     "state_for": "procedure(s) still declare `state_for:`, which a `Start:` line under a "
                  "group heading replaces (project-os-dev REQ-0033)",
+    "platforms": "change note(s) name a screen and declare no `platforms:`, so they "
+                 "are listed on every platform (project-os-dev REQ-0035)",
+    "short_lines": "change(s) since the last release have no short what-changed line, "
+                   "or a line names no change or no screen (project-os-dev REQ-0035)",
 }
 
 

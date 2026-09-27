@@ -347,6 +347,62 @@ class ReleaseTestPreparationTest(unittest.TestCase):
         self.assertEqual([], changed[0].sentences)
         self.assertEqual("SUR-0001", changed[1].parent)
 
+    def test_a_section_tests_the_screens_of_the_checks_it_names(self):
+        # REQ-0035: a bench section claims its checks by id and names no
+        # surface; its checks' screens are still the ones it tests, and the
+        # first section in order keeps a screen.
+        surfaces = {
+            "SUR-0001": rt.Surface("SUR-0001", "Equipment panel"),
+            "SUR-0002": rt.Surface("SUR-0002", "Cadence scanner", "SUR-0001"),
+            "SUR-0003": rt.Surface("SUR-0003", "Ride cockpit"),
+        }
+        by_title = {s.title: s.id for s in surfaces.values()}
+        checks = {"TST-1001": rt.Check("TST-1001", "Hub", "c.md", "Equipment panel")}
+        sections = [rt.Section("The bench", checks=["TST-1001"]),
+                    rt.Section("Compatibility", surfaces=["Equipment panel", "Ride cockpit"])]
+        homes = rt.screen_homes(sections, surfaces, by_title, checks)
+        self.assertEqual("The bench", homes["SUR-0001"])
+        self.assertEqual("The bench", homes["SUR-0002"])
+        self.assertEqual("Compatibility", homes["SUR-0003"])
+
+    def test_a_changed_screen_whose_section_prints_nothing_is_on_the_overview(self):
+        surfaces = {"SUR-0001": rt.Surface("SUR-0001", "Equipment panel"),
+                    "SUR-0003": rt.Surface("SUR-0003", "Ride cockpit")}
+        by_title = {s.title: s.id for s in surfaces.values()}
+        checks = {"TST-1001": rt.Check("TST-1001", "Hub", "c.md", "Equipment panel")}
+        sections = [rt.Section("Panel", surfaces=["Equipment panel"]),
+                    rt.Section("Rides", surfaces=["Ride cockpit"])]
+        change = rt.Change("CHG-1", "Both", "change.md",
+                           screens=[("SUR-0001", "A slot."), ("SUR-0003", "A lap.")])
+        sheet = rt.build_release_test(checks, [], sections, release="REL-1",
+                                      platform="android", surfaces=by_title,
+                                      surface_notes=surfaces, changes=[change],
+                                      what_changed_tag="v1")
+        self.assertEqual(["SUR-0001"], [s.id for s in sheet.sections[0].what_changed])
+        self.assertEqual(["SUR-0003"], [s.id for s in sheet.what_changed_overview])
+        rendered = rt.render(sheet)
+        self.assertIn("No section on this sheet tests these changed screens", rendered)
+
+    def test_a_section_with_no_changed_screen_says_so(self):
+        surfaces = {"SUR-0001": rt.Surface("SUR-0001", "Equipment panel")}
+        checks = {"TST-1001": rt.Check("TST-1001", "Hub", "c.md", "Equipment panel")}
+        sheet = rt.build_release_test(checks, [], [rt.Section("Panel", surfaces=["Equipment panel"])],
+                                      release="REL-1", platform="android",
+                                      surfaces={"Equipment panel": "SUR-0001"},
+                                      surface_notes=surfaces, changes=[],
+                                      what_changed_tag="v1")
+        self.assertIn("Nothing changed on android since `v1` on the screens this section tests.",
+                      rt.render(sheet))
+
+    def test_an_undeclared_change_is_named_only_with_more_than_one_platform(self):
+        change = rt.Change("CHG-1", "Slot", "change.md", screens=[("SUR-0001", "A slot.")])
+        one = rt.build_release_test({}, [], [], release="R", platform="android",
+                                    changes=[change], known_platforms=["android"])
+        two = rt.build_release_test({}, [], [], release="R", platform="android",
+                                    changes=[change], known_platforms=["android", "ios"])
+        self.assertEqual([], one.undeclared)
+        self.assertEqual(["CHG-1"], two.undeclared)
+
     def test_unscripted_check_readiness_is_platform_specific(self):
         declared, problems = rt.parse_check_readiness({
             "ios": {"kind": "decision", "reason": "Choose the iOS scope.",

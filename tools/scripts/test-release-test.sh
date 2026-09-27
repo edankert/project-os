@@ -835,20 +835,31 @@ git_do commit -m "after the tag"
 
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$CHANGED" 2>&1)"; code=$?
 check "the what-changed fixture generates a sheet" "$code" "$OUT"
-# What changed is everything between its heading and the first section.
+# What changed on the platform is everything between its heading and the
+# first section; each section's own list runs from its heading to its row count.
 CHANGED_TEXT="$(printf '%s' "$OUT" | awk '/^## What changed/{on=1} on&&/^## Section/{on=0} on')"
+SECTION_CHANGED="$(printf '%s' "$OUT" | awk '/^### What changed on the screens/{on=1} on&&/^[0-9]+ rows?\./{on=0} on')"
 has "what changed says which release and tag it compared against" 'Compared against \*\*REL-0010\*\*, tagged `v1.0`'
-has "a screen a change note named since the tag is listed"  '^### Equipment panel \(SUR-0001\)'
+# REQ-0035: a changed screen is listed at the head of the section that tests
+# it, and a screen no section tests is listed once before the sections.
+has "a screen a change note named since the tag is listed"  '^#### Equipment panel \(SUR-0001\)'
 has "so is a screen named by the other change note"         '^### Ride cockpit \(SUR-0002\)'
+check "the screen its section tests is listed in that section, not before it" \
+  "$(printf '%s' "$SECTION_CHANGED" | grep -q '^#### Equipment panel' && ! printf '%s' "$CHANGED_TEXT" | grep -q 'Equipment panel' && echo 0 || echo 1)" "$CHANGED_TEXT"
+check "the screen no section tests is listed before the sections, and only there" \
+  "$(printf '%s' "$CHANGED_TEXT" | grep -q '^### Ride cockpit' && [[ $(printf '%s' "$OUT" | grep -c 'Ride cockpit (SUR-0002)') -eq 1 ]] && echo 0 || echo 1)" "$CHANGED_TEXT"
+has "and the part before the sections says why it is there" '^No section on this sheet tests these changed screens'
+has "the section's list says what it is"                    '^### What changed on the screens this section tests$'
+has "a repo with no short lines says the Impact sentences are shown" '^\*\*Short lines not used:\*\* no short lines are written for this platform'
 has "each screen carries the sentence its change wrote"     '^- a third slot appears, for a power meter\. — The panel gains a slot'
 has "a bare SUR id in an Impact line is read too"           '^- the cadence number sits beside the power number\.'
 has "a wikilink with display text is cut off the sentence"  '^- the sensor name is shown under the slot\. — The panel names the sensor'
 hasnt "a change note added BEFORE the tag is not under what changed" 'lap counter'
 # A dialog is a child surface (ADR-0044 rule 2) and prints under its parent.
-has "a child surface prints one level under its parent"     '^#### Sensor dialog \(SUR-0003\)'
-parent_line=$(line_of '^### Equipment panel'); child_line=$(line_of '^#### Sensor dialog')
-next_top=$(line_of '^### Ride cockpit')
-check "and prints between its parent and the next screen" \
+has "a child surface prints one level under its parent"     '^##### Sensor dialog \(SUR-0003\)'
+parent_line=$(line_of '^#### Equipment panel'); child_line=$(line_of '^##### Sensor dialog')
+next_top=$(line_of '^### \[TST-0501\]')
+check "and prints between its parent and the section's first check" \
   "$( { [[ -n "$parent_line" && -n "$child_line" && -n "$next_top" && "$parent_line" -lt "$child_line" && "$child_line" -lt "$next_top" ]]; }; echo $?)" \
   "parent=$parent_line child=$child_line next=$next_top"
 has "a screen with both pictures shows the one from the last release" '^!\[equipment-hub, at the last release\]\(docs/tests/acceptance/gallery/v1\.0/equipment-hub\.png\)'
@@ -861,14 +872,14 @@ hasnt "an Impact list inside a fenced block is an example, not a screen" 'inside
 # [[SUR-...]]:" -- raw markup -- and the second was dropped in silence.
 has   "both screens on one Impact line reach what changed"     '^- both gained a gradient arrow\. — Two screens on one line'
 check "and that sentence appears under each of them" \
-  "$(printf '%s' "$CHANGED_TEXT" | grep -c 'both gained a gradient arrow' | grep -q '^2$' && echo 0 || echo 1)" \
-  "$(printf '%s' "$CHANGED_TEXT" | grep -c 'both gained a gradient arrow')"
+  "$(printf '%s' "$OUT" | grep -c 'both gained a gradient arrow' | grep -q '^2$' && echo 0 || echo 1)" \
+  "$(printf '%s' "$OUT" | grep -c 'both gained a gradient arrow')"
 hasnt "and neither sentence carries the markup between the two ids" 'and \[\[SUR-'
 hasnt "an Impact line that only mentions an id is not a screen" 'which is where the old label went'
 hasnt "a paragraph under Impact is not read as a screen either"  'also gained a tab'
 check "what changed names no check at all" \
-  "$(printf '%s' "$CHANGED_TEXT" | grep -q 'TST-' && echo 1 || echo 0)" \
-  "$(printf '%s' "$CHANGED_TEXT" | grep -n 'TST-' | head -2 | tr '\n' ' ')"
+  "$(printf '%s%s' "$CHANGED_TEXT" "$SECTION_CHANGED" | grep -q 'TST-' && echo 1 || echo 0)" \
+  "$(printf '%s%s' "$CHANGED_TEXT" "$SECTION_CHANGED" | grep -n 'TST-' | head -2 | tr '\n' ' ')"
 has "the rest of the sheet still prints its rows" '^### \[TST-0501\]'
 
 # A shallow clone has the commits and not the tag. What changed must say so and
@@ -878,7 +889,92 @@ git clone -q --depth 1 "file://$CHANGED" "$SHALLOW" 2>/dev/null
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$SHALLOW" 2>&1)"
 has "a shallow clone says the tag is not in this checkout" 'the tag `v1.0` is not in this checkout'
 has "and still prints the rows below it"                   '^### \[TST-0501\]'
-hasnt "and lists no screen it cannot vouch for"            '^### Equipment panel'
+hasnt "and lists no screen it cannot vouch for"            'Equipment panel \(SUR-0001\)'
+
+# ---------------------------------------------------------------------------
+# REQ-0035 (TASK-0191): what changed is for one platform, a picture older than
+# its change is flagged, and short lines written at release preparation
+# replace the Impact sentences while they match the last release tag.
+# ---------------------------------------------------------------------------
+PLAT="$TMP/what-changed-platforms"; rm -rf "$PLAT"; cp -R "$CHANGED" "$PLAT"
+gp() { git -C "$PLAT" -c user.email=f@f -c user.name=fixture "$@" >/dev/null 2>&1; }
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
+# The fixture's candidate pictures were committed before the tag, and the
+# change notes after it, so neither picture can show its change.
+has "a candidate picture committed before its change is flagged, with its date" \
+  '^`equipment-hub` — \*\*this picture is older than the change\*\*: it was committed on [0-9]{4}-[0-9]{2}-[0-9]{2}, before CHG-20260902-The-Panel-Gains-A-Slot'
+printf 'recaptured\n' > "$PLAT/docs/tests/acceptance/gallery/candidate/equipment-hub.png"
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
+hasnt "a picture recaptured and not yet committed is not flagged" '^`equipment-hub` — \*\*this picture is older'
+gp add -A; gp commit -m "recapture the panel"
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
+hasnt "nor is one committed after the change" '^`equipment-hub` — \*\*this picture is older'
+has   "while the picture nobody recaptured still is" '^`cockpit` — \*\*this picture is older than the change\*\*'
+
+# A second platform, and change notes that say which platform they changed.
+printf '{"platform": "other", "entries": [], "evidence": []}\n' > "$PLAT/docs/releases/ledgers/WORKING-other.json"
+plat_note() { # plat_note <id> <frontmatter line or -> <impact body>
+  {
+    printf -- '---\ntype: "[[change]]"\nid: %s\ntitle: "%s"\nstatus: merged\nowner: user:fixture\n' "$1" "$1"
+    [[ "$2" != "-" ]] && printf '%s\n' "$2"
+    printf -- '---\n\n# %s\n\n## Impact\n\n%s\n' "$1" "$3"
+  } > "$PLAT/docs/changes/$1.md"
+}
+plat_note CHG-20260910-Only-On-Other 'platforms: [other]' \
+  '- [[SUR-0002]]: the other build gained a menu.'
+plat_note CHG-20260911-Marked-Lines 'platforms: [testbed, other]' \
+  '- [other] [[SUR-0001]]: only the other build moved the slot.
+- [testbed] [[SUR-0001]]: the testbed build renamed the slot.'
+plat_note CHG-20261001-After-The-Rule - \
+  '- [[SUR-0002]]: a note written after platforms: became required.'
+plat_note CHG-20260912-An-Unknown-Platform 'platforms: [desktop]' \
+  '- [[SUR-0002]]: a platform this project keeps no ledger for.'
+gp add -A; gp commit -m "notes that name their platforms"
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
+hasnt "a change declared for another platform is not listed" 'gained a menu'
+has   "an Impact line marked for this platform is listed"      '^- the testbed build renamed the slot\.'
+hasnt "an Impact line marked for another platform is not"      'only the other build moved the slot'
+has   "change notes declaring no platforms: are named, once, as listed everywhere" \
+  '^\*\*Listed on every platform:\*\* [0-9]+ change notes declare no `platforms:`.*CHG-20260902-The-Panel-Gains-A-Slot'
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$PLAT" 2>&1)"; code=$?
+check "--check fails when a new change note declares no platforms:" "$([[ $code -eq 1 ]]; echo $?)" "exit $code"
+has   "and names that note as an error"   '^ERROR \[RELEASE-TEST\] .*CHG-20261001-After-The-Rule\.md names a screen .* declares no `platforms:`'
+has   "an older note without platforms: is only a warning" '^WARN  \[RELEASE-TEST\] .*CHG-20260902-The-Panel-Gains-A-Slot\.md names a screen .* declares no `platforms:`'
+has   "a platform with no ledger is an error" '^ERROR \[RELEASE-TEST\] .*CHG-20260912-An-Unknown-Platform\.md names the platform `desktop`'
+
+# The short lines, written against the last release tag.
+mkdir -p "$PLAT/docs/tests/acceptance/release-test"
+cat > "$PLAT/docs/tests/acceptance/release-test/what-changed-testbed.md" <<'MD'
+---
+type: "[[reference]]"
+title: "What changed on testbed since v1.0"
+status: active
+owner: user:fixture
+tag: "v1.0"
+---
+
+# What changed on testbed since v1.0
+
+- [[SUR-0001]]: A third slot, for a power meter. ([[CHG-20260902-The-Panel-Gains-A-Slot]])
+- [[SUR-0002]]: This line names no change note.
+MD
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
+has   "a short line replaces its change's Impact sentence" '^- A third slot, for a power meter\.$'
+hasnt "and the Impact sentence is not printed as well"      'a third slot appears, for a power meter'
+has   "a change with no short line keeps its Impact sentence" '^- the sensor name is shown under the slot\. — The panel names the sensor'
+hasnt "short lines that match the tag draw no notice"       'Short lines not used'
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$PLAT" 2>&1)"
+has   "--check warns about a change with no short line" \
+  '^WARN  \[RELEASE-TEST\] .*what-changed-testbed\.md has no short line for SUR-0003 on testbed, which CHG-20260902-The-Panel-Gains-A-Slot changed'
+has   "and about a line that names no change note" '^WARN  \[RELEASE-TEST\] .*the line for SUR-0002 names no change note'
+hasnt "the short lines file is not read as a procedure" 'what-changed-testbed\.md: no `section:`'
+sed -i.bak 's/^tag: "v1.0"/tag: "v0.9"/' "$PLAT/docs/tests/acceptance/release-test/what-changed-testbed.md"; rm -f "$PLAT"/docs/tests/acceptance/release-test/*.bak
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
+has   "short lines written against an older tag are not used, and the sheet says why" \
+  '^\*\*Short lines not used:\*\* the short lines in `docs/tests/acceptance/release-test/what-changed-testbed\.md` were written against `v0\.9` and the last release is `v1\.0`'
+hasnt "and none of them is printed" '^- A third slot, for a power meter\.$'
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$PLAT" 2>&1)"
+hasnt "--check does not hold out-of-date short lines to this release" 'has no short line for'
 
 # A released note with no tag: the other way what changed loses its anchor.
 python3 - "$CHANGED/docs/releases/REL-0010-v1.0.md" <<'NOTAG'
