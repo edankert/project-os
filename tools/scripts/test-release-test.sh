@@ -1479,5 +1479,136 @@ check "--refresh re-quotes it from the check's current Expect" \
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$RF" 2>&1)"; code=$?
 check "after which --check passes again" "$code" "$OUT"
 
+# ---------------------------------------------------------------------------
+# Expect lines marked for one platform (project-os-dev TASK-0188, REQ-0034).
+# A line starting `[testbed]` or `[bench]` prints only on that platform, a tag
+# `.N` pairs with the Nth line that applies there, a bracketed platform with
+# no ledger is refused, and a quoted procedure line is a warning.
+# ---------------------------------------------------------------------------
+PLAT="$TMP/proc-platforms"; rm -rf "$PLAT"; cp -R "$PROC" "$PLAT"
+cp "$PLAT/docs/releases/ledgers/WORKING-testbed.json" "$PLAT/docs/releases/ledgers/WORKING-bench.json"
+sed -i.bak 's/"platform": "testbed"/"platform": "bench"/' "$PLAT/docs/releases/ledgers/WORKING-bench.json"; rm -f "$PLAT"/docs/releases/ledgers/*.bak
+python3 - "$PLAT" <<'PY'
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+def edit(rel, old, new):
+    p = root / rel; t = p.read_text(encoding="utf-8")
+    assert old in t, (rel, old)
+    p.write_text(t.replace(old, new, 1), encoding="utf-8")
+# Four Expect lines for three steps; on each platform three apply, so step N
+# still pairs with line N there.
+edit("docs/tests/acceptance/TST-0401-Fixture.md", "- The target power is shown.\n",
+     "- [testbed] The target power is shown.\n- [bench] The target power reads in watts.\n")
+edit("docs/tests/acceptance/release-test/the-bench.md",
+     "   - The target power is shown. `TST-0401.2`", "   - `TST-0401.2`")
+edit("docs/tests/acceptance/release-test/the-bench.md",
+     "   - The trainer holds the target. `TST-0401.3`", "   - `TST-0401.3`")
+# A section with no procedure prints per-check rows; one line is for bench only.
+edit("docs/tests/acceptance/TST-0405-Fixture.md", "- It opens.", "- It opens.\n- [bench] It opens slowly.")
+PY
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$PLAT" 2>&1)"; code=$?
+check "--check passes a check whose Expect lines are marked per platform (testbed)" "$code" "$OUT"
+OUT="$(python3 "$SHEET" --check --platform bench --repo-root "$PLAT" 2>&1)"; code=$?
+check "and on the other platform (bench)" "$code" "$OUT"
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
+has   "a line marked [testbed] prints on testbed, without its mark" '^   - The target power is shown\. `TST-0401\.2`$'
+hasnt "a line marked [bench] does not print on testbed"             'reads in watts'
+hasnt "no platform mark reaches the page"                           '\[(testbed|bench)\]'
+has   "an unmarked line prints on testbed"                          'The panel lists the trainer\. `TST-0401\.1`'
+# Four lines, three steps: without counting per platform the tag names all four.
+check "tag .3 pairs with the third line that applies on testbed, and only that line" \
+  "$( { printf '%s\n' "$OUT" | grep -qx '   - The trainer holds the target\. `TST-0401\.3`' && [[ $(printf '%s\n' "$OUT" | grep -c '`TST-0401\.3`') -eq 1 ]]; } && echo 0 || echo 1)" "$OUT"
+has   "a per-check row prints its unmarked Expect line on testbed"  '^- It opens\.$'
+hasnt "and leaves out the line marked for bench"                    'It opens slowly'
+OUT="$(python3 "$SHEET" --release REL-0011 --platform bench --repo-root "$PLAT" 2>&1)"
+has   "a line marked [bench] prints on bench, without its mark"     '^   - The target power reads in watts\. `TST-0401\.2`$'
+hasnt "a line marked [testbed] does not print on bench"             'The target power is shown'
+has   "an unmarked line prints on bench too"                        'The panel lists the trainer\. `TST-0401\.1`'
+has   "a per-check row prints the bench line on bench, mark removed" '^- It opens slowly\.$'
+# A bracketed platform with no ledger prints nowhere, so it is refused, naming
+# the check and the line.
+TYPO="$TMP/proc-platform-typo"; rm -rf "$TYPO"; cp -R "$PLAT" "$TYPO"
+python3 - "$TYPO/docs/tests/acceptance/TST-0405-Fixture.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+p.write_text(t.replace("- [bench] It opens slowly.", "- [bench] It opens slowly.\n- [andriod] It opens on the phone."))
+PY
+procfail "an Expect line marked for a platform with no ledger is refused, naming the check and the line" "$TYPO" \
+  'TST-0405: an Expect line is marked \[andriod\], and this repo keeps ledgers only for bench, testbed: - \[andriod\] It opens on the phone\.'
+# A quoted procedure line is a warning: it prints, and --check still passes.
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$PLAT" 2>&1)"; code=$?
+check "a quoted expectation line is reported as a warning and does not fail --check" \
+  "$( { [[ $code -eq 0 ]] && printf '%s' "$OUT" | grep -q "^WARN  \[RELEASE-TEST\] .*step 1 of .*the-bench\.md quotes an expectation instead of giving its tags alone: 'The panel lists the trainer\.'"; }; echo $?)" "exit $code: $OUT"
+check "a tag-only line draws no such warning" \
+  "$(printf '%s' "$OUT" | grep -q 'quotes an expectation.*TST-0401\.2\|target power' && echo 1 || echo 0)" "$OUT"
+QUIETW="$(python3 "$SHEET" --check --quiet --repo-root "$PLAT" 2>&1)"; code=$?
+check "under --quiet the quoted lines are one line with their count, printed once for both platforms" \
+  "$( { [[ $code -eq 0 ]] && [[ $(printf '%s\n' "$QUIETW" | grep -c 'WARN') -eq 1 ]] && printf '%s' "$QUIETW" | grep -q '^WARN  \[RELEASE-TEST\] release-test --check: 6 procedure line(s) state an expectation in their own words'; }; echo $?)" "exit $code: $QUIETW"
+ACTIONTAG="$(variant actiontag '4. **Equipment panel (SUR-0001).** Unpair everything.
+   - The panel is empty again. `TST-0404.1`' '4. **Equipment panel (SUR-0001).** Unpair everything. `TST-0404.1`')"
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$ACTIONTAG" 2>&1)"
+check "tags on an action line are reported too" \
+  "$(printf '%s' "$OUT" | grep -q 'step 4 of .*carries tags on its action line' && echo 0 || echo 1)" "$OUT"
+# The switch that turns the warning into an error, once consumers have moved.
+refused="$(SHEET_PATH="$SHEET" REPO_ROOT="$PLAT" python3 - <<'PY'
+import importlib.util as ilu, os, pathlib, sys
+spec = ilu.spec_from_file_location("release_test", os.environ["SHEET_PATH"])
+rt = ilu.module_from_spec(spec); sys.modules["release_test"] = rt
+spec.loader.exec_module(rt)
+root = pathlib.Path(os.environ["REPO_ROOT"])
+before = rt.check_repo(root, "testbed")[0]
+rt.QUOTED_EXPECTATIONS_REFUSED = True
+after = rt.check_repo(root, "testbed")[0]
+print("before=%d after=%d" % (sum("quotes an expectation" in p for p in before),
+                              sum("quotes an expectation" in p for p in after)))
+PY
+)"
+check "with QUOTED_EXPECTATIONS_REFUSED on, a quoted line is a problem" \
+  "$(printf '%s' "$refused" | grep -qx 'before=0 after=6' && echo 0 || echo 1)" "$refused"
+# release-test-tags.py --all rewrites every quoted line, so the warnings go.
+ALL="$TMP/proc-platform-all"; rm -rf "$ALL"; cp -R "$PLAT" "$ALL"
+cp "$ACTIONTAG/docs/tests/acceptance/release-test/the-bench.md" "$ALL/docs/tests/acceptance/release-test/the-bench.md"
+python3 - "$ALL/docs/tests/acceptance/release-test/the-bench.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+for old, new in (("   - The target power is shown. `TST-0401.2`", "   - `TST-0401.2`"),
+                 ("   - The trainer holds the target. `TST-0401.3`", "   - `TST-0401.3`")):
+    t = t.replace(old, new)
+p.write_text(t)
+PY
+allout="$(python3 "$HERE/release-test-tags.py" --repo-root "$ALL" --all --apply 2>&1)"
+proc="$(cat "$ALL/docs/tests/acceptance/release-test/the-bench.md")"
+check "--all rewrites a quoted line as its tags alone" \
+  "$(printf '%s\n' "$proc" | grep -qx '   - `TST-0401.1`' && echo 0 || echo 1)" "$allout"
+check "--all moves an action line's tags to a line of their own under it" \
+  "$( { printf '%s\n' "$proc" | grep -qx '4. \*\*Equipment panel (SUR-0001).\*\* Unpair everything.' && printf '%s\n' "$proc" | grep -qx '   - `TST-0404.1`'; } && echo 0 || echo 1)" "$allout
+$proc"
+check "--all reports a line whose page text changes" \
+  "$(printf '%s' "$allout" | grep -q "Nothing in this line is in any Expect section" && echo 1 || echo 0)" "$allout"
+OUT="$(python3 "$SHEET" --check --repo-root "$ALL" 2>&1)"; code=$?
+check "after --all, --check passes with no quoted-line warning on either platform" \
+  "$( { [[ $code -eq 0 ]] && ! printf '%s' "$OUT" | grep -q 'quotes an expectation\|carries tags on its action line'; }; echo $?)" "exit $code: $OUT"
+# The lossless rewrite counts per platform: a quote of the testbed line is
+# exactly what testbed prints and not what bench prints, so it stays quoted.
+LOSS="$TMP/proc-platform-loss"; rm -rf "$LOSS"; cp -R "$PLAT" "$LOSS"
+python3 - "$LOSS/docs/tests/acceptance/release-test/the-bench.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+p.write_text(t.replace("   - `TST-0401.2`", "   - The target power is shown. `TST-0401.2`"))
+PY
+lossout="$(python3 "$HERE/release-test-tags.py" --repo-root "$LOSS" 2>&1)"
+check "the lossless rewrite keeps a quote that one platform would print differently" \
+  "$(printf '%s' "$lossout" | grep -q "keep  .*step 2: TST-0401's tags print 1 Expect line(s) on bench, 'The target power reads in watts\.'" && echo 0 || echo 1)" "$lossout"
+# ...and rewrites it when the step runs on testbed alone, where it is exactly
+# what the page prints.
+python3 - "$LOSS/docs/tests/acceptance/release-test/the-bench.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+p.write_text(t.replace('section: "The bench"\n', 'section: "The bench"\nstep_platforms:\n  2: [testbed]\n', 1))
+PY
+lossout="$(python3 "$HERE/release-test-tags.py" --repo-root "$LOSS" 2>&1)"
+check "and rewrites it when the step runs only on the platform that prints those words" \
+  "$(printf '%s' "$lossout" | grep -q 'the-bench.md: - `TST-0401.2`' && echo 0 || echo 1)" "$lossout"
+
 echo "test-release-test: $assertions assertions, $failures failure(s)"
 [[ "$failures" -eq 0 ]]

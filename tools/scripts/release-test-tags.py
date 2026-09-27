@@ -19,6 +19,19 @@ author wrote. A line whose
 tags name several checks stays quoted too, for the same reason. Each kept line
 is reported with its reason.
 
+"What its tag would print" is counted on every platform the step runs on: a
+check may mark an Expect line `[android]` or `[ios]` (project-os-dev
+REQ-0034), and a quote is only lossless when each of those platforms' pages
+would print exactly the quoted words.
+
+--all converts the rest as well, because a procedure line is its tags alone
+(project-os-dev ADR-0050 D2; `release-test.py --check` warns about every
+quoted line). Each quoted line becomes its tags; a tag already given earlier in
+the same step is not given again, and a line left with none is removed. An
+action line that carries tags keeps its words and gets its tags on a line of
+their own under it. Every line whose page text changes is reported with what
+it will print instead.
+
 --refresh does the other half, for a line that must stay quoted. When a check's
 Expect line has been reworded, every procedure quoting the old words fails. For each
 such quote, it finds the check's last version in git (the working tree's edit
@@ -31,6 +44,7 @@ Usage:
     release-test-tags.py [--repo-root .]      # dry run: what would change, and what stays
     release-test-tags.py --apply
     release-test-tags.py --refresh [--apply]  # re-quote lines a reworded check broke
+    release-test-tags.py --all [--apply]      # every quoted line to tags alone
 """
 
 from __future__ import annotations
@@ -51,15 +65,31 @@ def release_test_module():
     return mod
 
 
-def plan(repo_root: Path):
+def _wants(rt, check, tags, platforms) -> list[list[str]]:
+    """What the tags would print, once per platform the step runs on."""
+    out = []
+    for platform in platforms:
+        want: list[str] = []
+        for _c, n in tags:
+            want += [x for x in rt.expect_for(check, n, platform) if x not in want]
+        out.append(want)
+    return out
+
+
+def plan(repo_root: Path, everything: bool = False):
     rt = release_test_module()
     docs = repo_root / "docs"
     checks = rt.load_checks(docs, repo_root=repo_root)
+    known = rt.platforms(docs) or [""]
     out = []
     for procedure in rt.load_procedures(docs, repo_root):
         path = repo_root / procedure.path
         edits, kept = [], []
         for step in procedure.steps:
+            if everything:
+                convert_all(rt, step, checks, sorted(step.platforms) or known, edits, kept)
+                continue
+            runs_on = sorted(step.platforms) or known
             quoted = [e for e in step.expectations if e.quote and e.raw != step.body[0]]
             by_check: dict[tuple, list] = {}
             for e in quoted:
@@ -73,9 +103,7 @@ def plan(repo_root: Path):
                 if check is None:
                     kept.append((step.number, lines[0].raw, "%s is not an acceptance check here" % cid))
                     continue
-                want = []
-                for _c, n in tags:
-                    want += [x for x in rt.expect_for(check, n) if x not in want]
+                wants = _wants(rt, check, tags, runs_on)
                 have = [e.quote for e in lines]
                 if not rt.expect_text(check):
                     for e in lines:
@@ -85,10 +113,15 @@ def plan(repo_root: Path):
                     for e in lines:
                         kept.append((step.number, e.raw, "it does not quote %s's current Expect" % cid))
                     continue
-                if sorted(set(have)) != sorted(want):
+                differs = [(p, w) for p, w in zip(runs_on, wants) if sorted(set(have)) != sorted(w)]
+                if differs:
+                    platform, want = differs[0]
                     for e in lines:
-                        kept.append((step.number, e.raw, "%s has %d Expect lines and this step quotes %d"
-                                     % (cid, len(want), len(set(have)))))
+                        kept.append((step.number, e.raw, "%s's tags print %d Expect line(s)%s, %s, and "
+                                     "this step quotes %d" % (cid, len(want),
+                                                              " on %s" % platform if platform else "",
+                                                              "; ".join(repr(w) for w in want),
+                                                              len(set(have)))))
                     continue
                 first = lines[0].raw
                 m = rt._MARKER_RE.match(first)
@@ -98,6 +131,47 @@ def plan(repo_root: Path):
         if edits or kept:
             out.append({"path": path, "shown": procedure.path, "edits": edits, "kept": kept})
     return out
+
+
+def convert_all(rt, step, checks, runs_on, edits, kept) -> None:
+    """Every quoted line of one step to its tags alone (`--all`).
+
+    ``kept`` receives, for each converted line whose page text changes, what
+    the page will print instead, so the author can see what the conversion
+    did; nothing is left quoted.
+    """
+    head = step.body[0] if step.body else ""
+    given: set = set()
+    for e in step.expectations:
+        if not e.quote:
+            given.update(e.tags)
+            continue
+        new_tags = [tag for tag in e.tags if tag not in given]
+        given.update(e.tags)
+        tag_text = " ".join("`%s%s`" % (c, "." + n if n else "") for c, n in new_tags)
+        if e.raw == head:
+            found = rt._STEP_RE.match(head)
+            indent = " " * (head.index(found.group(2)) if found else 3)
+            action = rt._TAG_RE.sub("", head).rstrip()
+            new = action + ("\n%s- %s" % (indent, tag_text) if new_tags else "")
+            edits.append((head, new, []))
+            kept.append((step.number, head, "the action line's tags moved to a line of their own"))
+            continue
+        if not new_tags:
+            edits.append((e.raw, None, []))
+            continue
+        m = rt._MARKER_RE.match(e.raw)
+        prefix = e.raw[:m.end()] if m else e.raw[:len(e.raw) - len(e.raw.lstrip())]
+        edits.append((e.raw, prefix + tag_text, []))
+        for platform in runs_on:
+            shown: list[str] = []
+            for c, n in new_tags:
+                check = checks.get(c)
+                shown += [x for x in (rt.expect_for(check, n, platform) if check else []) if x not in shown]
+            if shown != [e.quote]:
+                kept.append((step.number, e.raw, "%sprints %s instead" % (
+                    "on %s " % platform if platform else "",
+                    "; ".join(repr(x) for x in shown) or "the line as written, because no check states Expect text for it")))
 
 
 def _git(repo_root: Path, *args: str) -> str:
@@ -170,10 +244,13 @@ def apply(item) -> None:
     lines = item["path"].read_text(encoding="utf-8").split("\n")
     for first, new, drop in item["edits"]:
         i = lines.index(first)
-        lines[i] = new
         for raw in drop:
             j = lines.index(raw, i + 1)
             del lines[j]
+        if new is None:
+            del lines[i]
+        else:
+            lines[i:i + 1] = new.split("\n")
     item["path"].write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -185,9 +262,14 @@ def main(argv=None):
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--refresh", action="store_true",
                     help="re-quote lines whose check's Expect was reworded")
+    ap.add_argument("--all", action="store_true",
+                    help="rewrite every quoted line as its tags alone, and move tags "
+                         "off action lines (project-os-dev ADR-0050 D2)")
     args = ap.parse_args(argv)
+    if args.all and args.refresh:
+        ap.error("--all and --refresh do opposite things; choose one")
     root = Path(args.repo_root).resolve()
-    items = refresh_plan(root) if args.refresh else plan(root)
+    items = refresh_plan(root) if args.refresh else plan(root, everything=args.all)
     if args.apply:
         #: Write first, report after: a reader that closes the pipe early
         #: (`| head`) must not stop the rewrite half way (TASK-0186).
@@ -199,15 +281,20 @@ def main(argv=None):
     if args.refresh:
         print("release-test-tags: %s %d stale quote(s) from the check's current Expect; %d need a person"
               % ("re-quoted" if args.apply else "would re-quote", n_edit, n_kept))
+    elif args.all:
+        print("release-test-tags: %s %d line(s) to tags only; %d of them print different words"
+              % ("rewrote" if args.apply else "would rewrite", n_edit, n_kept))
     else:
         print("release-test-tags: %s %d line(s) to tags only; %d quoted line(s) stay quoted"
               % ("rewrote" if args.apply else "would rewrite", n_edit, n_kept))
     for item in items:
         for first, new, drop in item["edits"]:
-            print("   %s: %s%s" % (item["shown"], new.strip(),
+            print("   %s: %s%s" % (item["shown"], "(removed: its tags are given above it)"
+                                   if new is None else new.strip().replace("\n", " / "),
                                    " (replaces %d lines)" % (1 + len(drop)) if drop else ""))
         for number, raw, why in item["kept"]:
-            print("   keep  %s step %d: %s" % (item["shown"], number, why))
+            print("   %s  %s step %d: %s" % ("note" if args.all else "keep",
+                                           item["shown"], number, why))
     return 0
 
 

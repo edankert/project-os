@@ -232,6 +232,10 @@ class Check:
     #: can owe a check even when its action is not currently possible there.
     readiness_for: dict[str, dict[str, str]] = field(default_factory=dict)
     readiness_problems: list[str] = field(default_factory=list)
+    #: An Expect line marked for a platform this repo keeps no ledger for
+    #: (project-os-dev REQ-0034). The line prints on no platform, so it is
+    #: refused rather than lost.
+    expect_problems: list[str] = field(default_factory=list)
 
     @property
     def kind(self) -> str:
@@ -303,6 +307,12 @@ def load_checks(docs_root: Path, index=None, repo_root: Path | None = None) -> d
         readiness_problems += ["%s: `readiness_for` names platform %s, and this repo "
                                "keeps ledgers only for %s" % (shown, name, ", ".join(known_platforms))
                                for name in sorted(readiness) if known_platforms and name not in known_platforms]
+        expect = under_heading(body, "Expect", "Expected results")
+        expect_problems = [
+            "%s: an Expect line is marked [%s], and this repo keeps ledgers only for %s: %s"
+            % (note_id, name, ", ".join(known_platforms), line.strip())
+            for name, line in expect_marks(expect)
+            if known_platforms and name not in known_platforms]
         out[note_id] = Check(
             id=note_id,
             title=_text(fm.get("title")),
@@ -317,10 +327,11 @@ def load_checks(docs_root: Path, index=None, repo_root: Path | None = None) -> d
             #: yields a row a person can test. Setup has no fallback, and that absence
             #: is the point of the "not stated" label.
             steps=under_heading(body, "Steps", "Procedure"),
-            expect=under_heading(body, "Expect", "Expected results"),
+            expect=expect,
             lead=lead_paragraph(body),
             readiness_for=readiness,
             readiness_problems=readiness_problems,
+            expect_problems=expect_problems,
         )
     return out
 
@@ -738,6 +749,9 @@ class Expectation:
     tags: list[tuple[str, str]] = field(default_factory=list)
     #: Filled by `build_release_test`: which of this line's tags the release owes.
     owed: set[tuple[str, str]] = field(default_factory=set)
+    #: Written by `expand_tag_only` from the check's own words, not by the
+    #: procedure's author, so it is not a quote the author has to remove.
+    expanded: bool = False
 
 
 @dataclass
@@ -809,6 +823,11 @@ class Procedure:
     #: The value of `sitting:`, the old name of `section:`, so the refusal
     #: can name what to change (project-os-dev ADR-0050).
     old_section: str = ""
+    #: `(kind, message)` for a form this procedure should leave, found while
+    #: reading it. Nobody's mistake yet, so it never fails `--check`.
+    parse_warnings: list[tuple[str, str]] = field(default_factory=list)
+    #: The same, plus what `audit_procedure` found on its last run.
+    warnings: list[tuple[str, str]] = field(default_factory=list)
 
 
 _SETUP_ITEM_RE = re.compile(r"^- \[([a-z][a-z0-9_-]*)\] (.+)$")
@@ -1259,9 +1278,59 @@ def parts_of(check: Check) -> list[tuple[str, str]]:
     return [(check.id, str(n)) for n in numbered_steps(check)] or [(check.id, "")]
 
 
-def expect_lines(check: Check) -> set[str]:
-    """The check's `## Expect` section, one normalised line per assertion."""
-    return {q for q in (normalise(l) for l in (check.expect or "").splitlines()) if q}
+#: `[android] ` or `[ios] ` at the start of an Expect line, after its list
+#: marker: the line holds on that platform only (project-os-dev REQ-0034,
+#: ADR-0050 D2). Lower case, like a ledger's platform name, so a bracketed
+#: word in ordinary prose, such as `[Save]`, is not read as a platform.
+_PLATFORM_MARK_RE = re.compile(r"^\[([a-z][a-z0-9_-]*)\]\s+")
+
+
+def _split_mark(display: str) -> tuple[str, str]:
+    """(platform or "", the line without its platform mark)."""
+    found = _PLATFORM_MARK_RE.match(display)
+    if not found:
+        return "", display
+    return found.group(1), display[found.end():]
+
+
+def expect_marks(expect: str) -> list[tuple[str, str]]:
+    """Every `(platform, line)` an Expect section marks for one platform."""
+    out = []
+    for line in (expect or "").splitlines():
+        platform, _rest = _split_mark(_MARKER_RE.sub("", line).strip())
+        if platform:
+            out.append((platform, line))
+    return out
+
+
+def expect_entries(check: Check) -> list[tuple[str, str, str]]:
+    """Each Expect line as `(platform or "", normalised text, text as written)`.
+
+    The platform mark is not part of what the line asserts, so it is removed
+    from both texts; the list marker goes from the written text and nothing
+    else does (`expect_display`).
+    """
+    out = []
+    for line in (check.expect or "").splitlines():
+        platform, display = _split_mark(_MARKER_RE.sub("", line).strip())
+        text = normalise(display)
+        if text:
+            out.append((platform, text, display.strip()))
+    return out
+
+
+def _applies(mark: str, platform: str) -> bool:
+    """An unmarked line holds everywhere; a marked one on its platform only.
+
+    With no platform named, every line applies: that is a reader asking what
+    the note says, not what one platform's page prints.
+    """
+    return not mark or not platform or mark == platform
+
+
+def expect_lines(check: Check, platform: str = "") -> set[str]:
+    """The check's `## Expect` lines on ``platform``, one normalised line per assertion."""
+    return {text for mark, text, _shown in expect_entries(check) if _applies(mark, platform)}
 
 
 def claims(section: Section, check: Check, surfaces: dict[str, str]) -> bool:
@@ -2026,12 +2095,14 @@ def validate_preparation(procedure: Procedure, platform: str = "") -> list[str]:
     return problems
 
 
-def expect_text(check: Check) -> list[str]:
-    """The check's `## Expect` lines, normalised, in the order the note writes them."""
+def expect_text(check: Check, platform: str = "") -> list[str]:
+    """The check's `## Expect` lines on ``platform``, normalised, in the note's order.
+
+    A line marked for another platform is left out (project-os-dev REQ-0034).
+    """
     out: list[str] = []
-    for line in (check.expect or "").splitlines():
-        text = normalise(line)
-        if text and text not in out:
+    for mark, text, _shown in expect_entries(check):
+        if _applies(mark, platform) and text not in out:
             out.append(text)
     return out
 
@@ -2045,14 +2116,31 @@ def expect_display(check: Check) -> dict[str, str]:
     can still be submitted.**` lost its closing `**` (TASK-0186).
     """
     out: dict[str, str] = {}
-    for line in (check.expect or "").splitlines():
-        key = normalise(line)
-        if key and key not in out:
-            out[key] = _MARKER_RE.sub("", line).strip()
+    for _mark, key, shown in expect_entries(check):
+        if key not in out:
+            out[key] = shown
     return out
 
 
-def expect_for(check: Check, number: str) -> list[str]:
+def expect_block(check: Check, platform: str = "") -> str:
+    """The `## Expect` section as a per-check row prints it on ``platform``.
+
+    Verbatim, except that a line marked for another platform is left out and
+    a line marked for this one loses its mark (project-os-dev REQ-0034).
+    """
+    out = []
+    for line in (check.expect or "").splitlines():
+        found = _MARKER_RE.match(line)
+        head, rest = (line[:found.end()], line[found.end():]) if found else ("", line)
+        mark, text = _split_mark(rest.strip())
+        if not mark:
+            out.append(line)
+        elif _applies(mark, platform):
+            out.append(head + text)
+    return "\n".join(out).strip("\n")
+
+
+def expect_for(check: Check, number: str, platform: str = "") -> list[str]:
     """The Expect lines a tag names: line N for step N when the check pairs them.
 
     A check whose `## Expect` has exactly one line per numbered step pairs
@@ -2060,15 +2148,19 @@ def expect_for(check: Check, number: str) -> list[str]:
     on your-trainer, 204 of 211 quotes citing such a check quote line N for
     `.N` (2026-09-26). Any other check has no pairing, so a tag names all of
     its Expect lines.
+
+    **Counted per platform** (project-os-dev REQ-0034): the lines are the ones
+    that apply on ``platform``, so a check writing `[android]` and `[ios]`
+    versions of line 2 still pairs step 2 with line 2 on each platform.
     """
-    lines = expect_text(check)
+    lines = expect_text(check, platform)
     steps = numbered_steps(check)
     if number and lines and len(lines) == len(steps) and 1 <= int(number) <= len(lines):
         return [lines[int(number) - 1]]
     return lines
 
 
-def expand_tag_only(procedure: Procedure, checks: dict[str, Check]) -> None:
+def expand_tag_only(procedure: Procedure, checks: dict[str, Check], platform: str = "") -> None:
     """Give each tag-only expectation line the check's current words.
 
     project-os-dev ISS-0088, ADR-0049. A line may be only its tags,
@@ -2079,10 +2171,11 @@ def expand_tag_only(procedure: Procedure, checks: dict[str, Check]) -> None:
     verdict on the check (ADR-0045), and editing the check no longer breaks
     the procedure: it only changes what the next sheet prints.
 
-    A tag names the Expect lines `expect_for` gives: line N of a check that
-    pairs its steps with its Expect lines, else all of them. A check with no
-    Expect text, or a tag naming no check, leaves the line as written; the
-    audit reports the second.
+    A tag names the Expect lines `expect_for` gives on ``platform``: line N
+    of a check that pairs its steps with its Expect lines, else all of them.
+    A line marked for another platform never prints (project-os-dev
+    REQ-0034). A check with no Expect text on this platform, or a tag naming
+    no check, leaves the line as written; the audit reports the second.
     """
     for step in procedure.steps:
         replaced = False
@@ -2109,7 +2202,7 @@ def expand_tag_only(procedure: Procedure, checks: dict[str, Check]) -> None:
                     lines: list[str] = []
                     for c, n in found.tags:
                         if c == cid:
-                            lines += [x for x in expect_for(checks[cid], n) if x not in lines]
+                            lines += [x for x in expect_for(checks[cid], n, platform) if x not in lines]
                     texts[cid] = lines
             if i == 0 or found.quote or not texts or not all(texts.get(cid) for cid in owners):
                 body.append(line)
@@ -2123,11 +2216,47 @@ def expand_tag_only(procedure: Procedure, checks: dict[str, Check]) -> None:
                 for text in texts[cid]:
                     raw = "%s%s %s" % (prefix, shown.get(text, text), tag_text)
                     body.append(raw)
-                    expectations.append(Expectation(quote=text, raw=raw, tags=list(tags)))
+                    expectations.append(Expectation(quote=text, raw=raw, tags=list(tags),
+                                                    expanded=True))
             replaced = True
         if replaced:
             step.body = body
             step.expectations = expectations + list(pending.values())
+
+
+#: Whether a quoted expectation line is refused. **A warning until the
+#: consumers have moved to tags alone, then an error** (project-os-dev
+#: REQ-0034, ADR-0050 D2). your-trainer's procedures held 724 quoted lines on
+#: 2026-09-27; `release-test-tags.py --all --apply` rewrites them. Turning this
+#: on refuses such a procedure, so its section falls back to per-check rows.
+QUOTED_EXPECTATIONS_REFUSED = False
+
+
+def quoted_expectations(procedure: Procedure) -> list[str]:
+    """Each procedure line that states an expectation in its own words.
+
+    ADR-0050 D2: a check's expected result is written once, in the check's
+    `## Expect`, and a procedure line is its tags alone. A quote is a second
+    copy that drifts, and an action line carrying tags makes the action stand
+    in for the expected result.
+    """
+    out = []
+    for step in procedure.steps:
+        for expectation in step.expectations:
+            if expectation.expanded or not expectation.quote:
+                continue
+            if step.body and expectation.raw == step.body[0]:
+                out.append("step %d of %s carries tags on its action line; put them on a "
+                           "line of their own under it, where the page prints the check's "
+                           "own Expect line (project-os-dev ADR-0050 D2)"
+                           % (step.number, procedure.path))
+            else:
+                out.append("step %d of %s quotes an expectation instead of giving its tags "
+                           "alone: %r; the page prints the check's own Expect line for a tag "
+                           "(project-os-dev ADR-0050 D2), and `python3 "
+                           "tools/scripts/release-test-tags.py --all --apply` rewrites it"
+                           % (step.number, procedure.path, expectation.quote))
+    return out
 
 
 def audit_procedure(procedure: Procedure, section: Section, owed: list[Check],
@@ -2143,10 +2272,20 @@ def audit_procedure(procedure: Procedure, section: Section, owed: list[Check],
     something true that is not a disagreement -- a step that names no screen,
     or a live check the procedure has not reached yet. Coverage of the owed
     parts is the requirement; coverage of everything live is the aim.
+
+    A warning is a form the procedure should leave, such as a quoted
+    expectation, and goes to ``procedure.warnings`` so the return shape stays
+    the one the cockpit already calls.
     """
     problems: list[str] = validate_preparation(procedure, platform)
     remarks: list[str] = []
     retired = retired or set()
+    procedure.warnings = list(procedure.parse_warnings)
+    for message in quoted_expectations(procedure):
+        if QUOTED_EXPECTATIONS_REFUSED:
+            problems.append(message)
+        else:
+            procedure.warnings.append(("quoted", message))
     #: **Every check a tag may legally name, not only the owed ones.** A
     #: procedure covers its whole section and prints the owed part of itself,
     #: so it cites checks that have already passed. A host that passed only
@@ -2155,7 +2294,7 @@ def audit_procedure(procedure: Procedure, section: Section, owed: list[Check],
     #: corpus disagreed about one procedure. That is exactly what rule 7 says
     #: bundling this module prevents. Found by independent review, 2026-09-14.
     known = known or checks
-    expand_tag_only(procedure, known)
+    expand_tag_only(procedure, known, platform)
     where = placement(sorted(known.values(), key=lambda c: c.id), sections, surfaces)
     want: dict[tuple[str, str], Check] = {}
     for check in owed:
@@ -2192,7 +2331,8 @@ def audit_procedure(procedure: Procedure, section: Section, owed: list[Check],
             for tag in expectation.tags:
                 cited.setdefault(tag, set()).add(step.number)
                 problems.extend(_audit_tag(procedure, step, expectation, tag,
-                                           known, retired, where, section.name))
+                                           known, retired, where, section.name,
+                                           platform))
     for part in sorted(want):
         if part not in cited:
             check = want[part]
@@ -2224,7 +2364,8 @@ def _part_name(part: tuple[str, str]) -> str:
 
 def _audit_tag(procedure: Procedure, step: Step, expectation: Expectation,
                tag: tuple[str, str], checks: dict[str, Check], retired: set[str],
-               where: dict[str, str], section_name: str) -> list[str]:
+               where: dict[str, str], section_name: str,
+               platform: str = "") -> list[str]:
     """Everything wrong with one tag on one line."""
     check_id, number = tag
     at = "step %d of %s" % (step.number, procedure.path)
@@ -2248,7 +2389,7 @@ def _audit_tag(procedure: Procedure, step: Step, expectation: Expectation,
     if not number and numbers:
         return ["%s cites %s with no step number, and that check numbers %d "
                 "steps; cite the step" % (at, check_id, len(numbers))]
-    wanted = expect_lines(check)
+    wanted = expect_lines(check, platform)
     if not wanted:
         #: **Silence is not a mismatch.** The check states no expected result,
         #: so there is nothing to compare the quote against and no evidence
@@ -2400,7 +2541,12 @@ def render_check(check: Check, out: list[str], platform: str = "") -> None:
     out.append("")
     out.append("**Expect:**")
     out.append("")
-    out.append(check.expect if check.expect
+    #: Only this platform's lines, and a marked line without its mark
+    #: (project-os-dev REQ-0034). A check whose Expect holds only for other
+    #: platforms says so rather than printing nothing.
+    shown = expect_block(check, platform)
+    out.append(shown if shown
+               else "_The note states no expected result for this platform._" if check.expect
                else "_The note states no expected result._")
     out.append("")
 
@@ -2689,10 +2835,23 @@ def generate(repo_root: Path, release: str, platform: str) -> ReleaseTest:
 
 def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
     """(problems, remarks) for every procedure in a repo, on one platform."""
+    problems, _warnings, remarks = check_repo_findings(repo_root, platform)
+    return problems, remarks
+
+
+def check_repo_findings(repo_root: Path, platform: str
+                        ) -> tuple[list[str], list[tuple[str, str]], list[str]]:
+    """(problems, warnings, remarks) for a repo on one platform.
+
+    A warning is `(kind, message)`: a form the notes should leave, which does
+    not fail `--check` (`run_check` prints it, summarised under `--quiet`).
+    """
     read = read_repo(repo_root, platform)
     problems: list[str] = []
+    warnings: list[tuple[str, str]] = []
     for check in read.checks.values():
         problems.extend(check.readiness_problems)
+        problems.extend(check.expect_problems)
     remarks: list[str] = []
     owed = owed_checks(read.checks, read.events)
     owed_ids = {c.id for c in owed}
@@ -2726,6 +2885,7 @@ def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
                                       platform=platform,
                                       retired=read.retired)
         problems.extend(found)
+        warnings.extend(procedure.warnings)
         remarks.extend(said)
     if read.procedures:
         placed_all = placement(owed, read.sections, read.surfaces)
@@ -2746,7 +2906,7 @@ def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
             remarks.append("%s has no `## Impact` list, so it tells the what-changed list "
                            "nothing; write the screens it altered, or "
                            '"No screen changed" and why' % change.path)
-    return problems, remarks
+    return problems, warnings, remarks
 
 
 def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
@@ -2767,9 +2927,15 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
     wanted = [platform] if platform else platforms(docs_root)
     status = 0
     printed: set[str] = set()
+    #: A warning holds for the file, whichever platform found it, so it prints
+    #: once. Under `--quiet`, which is how `validate-docs.sh` runs this on
+    #: every commit, each kind prints as one line with its count: 724 quoted
+    #: lines on your-trainer (2026-09-27) would otherwise bury everything else.
+    seen_warnings: set[tuple[str, str]] = set()
+    warned: dict[str, int] = {}
     for name in wanted:
         try:
-            problems, remarks = check_repo(repo_root, name)
+            problems, warnings, remarks = check_repo_findings(repo_root, name)
         except NothingToTest as exc:
             #: No live acceptance check means no procedure to hold to anything.
             if not quiet:
@@ -2791,6 +2957,15 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
             #: `ERROR [RELEASE-TEST]`: the validator's line shape, so a reader
             #: filtering for ERROR finds it (project-os-dev ISS-0089).
             print("ERROR [RELEASE-TEST] release-test --check (%s): %s" % (name, problem), file=sys.stderr)
+        for kind, warning in warnings:
+            if (kind, warning) in seen_warnings:
+                continue
+            seen_warnings.add((kind, warning))
+            if quiet:
+                warned[kind] = warned.get(kind, 0) + 1
+            else:
+                print("WARN  [RELEASE-TEST] release-test --check (%s): %s" % (name, warning),
+                      file=sys.stderr)
         #: Remarks are printed when something is wrong, or when a person
         #: asked. `validate-docs.sh` runs this on every commit, and a repo
         #: with procedures would otherwise print its coverage shortfall to
@@ -2800,7 +2975,19 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
                 print("release-test --check (%s): note: %s" % (name, remark))
         if problems:
             status = 1
+    for kind in sorted(warned):
+        print("WARN  [RELEASE-TEST] release-test --check: %d %s; `python3 "
+              "tools/scripts/release-test.py --check` lists them"
+              % (warned[kind], WARNING_KINDS.get(kind, "warning(s) of kind " + kind)),
+              file=sys.stderr)
     return status
+
+
+#: What each kind of warning is, for the one-line count `--quiet` prints.
+WARNING_KINDS = {
+    "quoted": "procedure line(s) state an expectation in their own words instead of "
+              "giving tags alone (project-os-dev ADR-0050 D2)",
+}
 
 
 def main(argv=None):
