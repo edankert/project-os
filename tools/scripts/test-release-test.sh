@@ -1888,8 +1888,22 @@ t = t.replace("- The slot reads empty.",
               "- The slot reads empty, and it stays empty for the whole ride, whatever the trainer does and however often the rider opens and closes the panel.", 1)
 chk.write_text(t)
 PY
+# The limits and the budget are set in the section order file's frontmatter.
+limits() { # limits <dir> <yaml map>
+  python3 - "$1/docs/tests/acceptance/RELEASE-TEST.md" "$2" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+p.write_text(t.replace('type: "[[reference]]"\n', 'type: "[[reference]]"\nlength_limits: %s\n' % sys.argv[2], 1))
+PY
+}
+# By default the reports are errors (project-os-dev TASK-0196).
+DEF="$TMP/proc-length-default"; rm -rf "$DEF"; cp -R "$LEN" "$DEF"
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$DEF" 2>&1)"; code=$?
+check "by default an over-long line fails --check" "$([[ $code -eq 1 ]]; echo $?)" "exit $code: $OUT"
+has   "and is printed as an error" '^ERROR \[RELEASE-TEST\] .*check 2 .*the action is'
+limits "$LEN" '{error: false}'
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$LEN" 2>&1)"; code=$?
-check "an over-long line is a warning, and --check still passes" "$code" "$OUT"
+check "with error: false an over-long line is a warning, and --check still passes" "$code" "$OUT"
 has "an action over 20 words is reported with its section, check number and tag" \
   '^WARN  \[RELEASE-TEST\] .*section 1, "The bench", check 2 \(`TST-0401\.2` `TST-0402\.2`\): the action is 2[0-9] words, over the limit of 20: "Start the workout from the list of workouts ...'
 has "an expected line over 25 words is reported with its own tag" \
@@ -1899,22 +1913,14 @@ hasnt "a section inside its budget is not reported" 'over its budget'
 QUIETLEN="$(python3 "$SHEET" --check --quiet --platform testbed --repo-root "$LEN" 2>&1)"
 check "under --quiet the length warnings are one counted line" \
   "$(printf '%s' "$QUIETLEN" | grep -q '^WARN  \[RELEASE-TEST\] release-test --check: 2 line(s) or section(s) are longer than their word limit' && echo 0 || echo 1)" "$QUIETLEN"
-# The limits and the budget are set in the section order file's frontmatter.
-limits() { # limits <dir> <yaml map>
-  python3 - "$1/docs/tests/acceptance/RELEASE-TEST.md" "$2" <<'PY'
-import pathlib, sys
-p = pathlib.Path(sys.argv[1]); t = p.read_text()
-p.write_text(t.replace('type: "[[reference]]"\n', 'type: "[[reference]]"\nlength_limits: %s\n' % sys.argv[2], 1))
-PY
-}
-BUDGET="$TMP/proc-length-budget"; rm -rf "$BUDGET"; cp -R "$LEN" "$BUDGET"
-limits "$BUDGET" '{action: 40, expected: 40, section_base: 10, section_per_check: 5}'
+BUDGET="$TMP/proc-length-budget"; rm -rf "$BUDGET"; cp -R "$DEF" "$BUDGET"
+limits "$BUDGET" '{action: 40, expected: 40, section_base: 10, section_per_check: 5, error: false}'
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$BUDGET" 2>&1)"; code=$?
 hasnt "a raised action limit lets the long action through" 'the action is'
 hasnt "and a raised expected limit the long line"            'an expected line is'
 has   "a section over its budget is reported with the sum" \
   '^WARN  \[RELEASE-TEST\] .*Section 1, "The bench" prints [0-9]+ words, over its budget of 30 \(10 \+ 5 for each of its 4 checks\)'
-STRICT="$TMP/proc-length-strict"; rm -rf "$STRICT"; cp -R "$LEN" "$STRICT"
+STRICT="$TMP/proc-length-strict"; rm -rf "$STRICT"; cp -R "$DEF" "$STRICT"
 limits "$STRICT" '{error: true}'
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$STRICT" 2>&1)"; code=$?
 check "with error: true an over-long line fails --check" "$([[ $code -eq 1 ]]; echo $?)" "exit $code: $OUT"

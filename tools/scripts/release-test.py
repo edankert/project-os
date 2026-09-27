@@ -3619,19 +3619,20 @@ class LengthLimits:
 
     The defaults are the one place the limits are set. A project overrides
     them in its section order file's frontmatter, `length_limits:`, with the
-    same keys. `error` turns the reports from warnings into errors.
+    same keys. The reports are errors; `error: false` turns them back into
+    warnings, for a project still shortening its sections.
 
     The section budget is `section_base` words plus `section_per_check` words
-    for each owed check. The approved Equipment Hub example printed about
-    1,000 words for 28 checks; these defaults allow it about 1,420 until
-    your-trainer's pilot measures a rewritten section (TASK-0975).
+    for each owed check. Measured on your-trainer's 27 rewritten sections on
+    2026-09-27 (project-os-dev TASK-0195): every one fits these defaults,
+    and 300 plus 30 would fail 17 of them.
     """
 
     action: int = 20
     expected: int = 25
     section_base: int = 300
     section_per_check: int = 40
-    error: bool = False
+    error: bool = True
 
 
 _LIMIT_KEYS = {"action", "expected", "section_base", "section_per_check", "error"}
