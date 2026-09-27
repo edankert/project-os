@@ -1092,6 +1092,7 @@ JSON
 cat > "$PROC/docs/tests/acceptance/RELEASE-TEST.md" <<'MD'
 ---
 type: "[[reference]]"
+quoted_lines: warning
 title: "Section order"
 status: active
 owner: user:fixture
@@ -1386,7 +1387,7 @@ sheet = rt.build_release_test(
     thin, read.events, read.sections, release="REL-0011", platform="testbed",
     surfaces=read.surfaces, surface_notes=read.surface_notes,
     procedures=read.procedures, known=read.checks, retired=read.retired,
-    authored_order=read.authored)
+    authored_order=read.authored, quoted_refused=read.quoted_refused)
 bench = [p for p in sheet.sections if p.section.name == "The bench"][0]
 print("problems=%d tested=%s" % (len(bench.procedure.problems),
                                  bench.tested_from_procedure))
@@ -1648,7 +1649,7 @@ p.write_text(t.replace("- [bench] It opens slowly.", "- [bench] It opens slowly.
 PY
 procfail "an Expect line marked for a platform with no ledger is refused, naming the check and the line" "$TYPO" \
   'TST-0405: an Expect line is marked \[andriod\], and this repo keeps ledgers only for bench, testbed: - \[andriod\] It opens on the phone\.'
-# A quoted procedure line is a warning: it prints, and --check still passes.
+# With `quoted_lines: warning`, a quoted procedure line prints and --check still passes.
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$PLAT" 2>&1)"; code=$?
 check "a quoted expectation line is reported as a warning and does not fail --check" \
   "$( { [[ $code -eq 0 ]] && printf '%s' "$OUT" | grep -q "^WARN  \[RELEASE-TEST\] .*step 1 of .*the-bench\.md quotes an expectation instead of giving its tags alone: 'The panel lists the trainer\.'"; }; echo $?)" "exit $code: $OUT"
@@ -1662,7 +1663,8 @@ ACTIONTAG="$(variant actiontag '4. **Equipment panel (SUR-0001).** Unpair everyt
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$ACTIONTAG" 2>&1)"
 check "tags on an action line are reported too" \
   "$(printf '%s' "$OUT" | grep -q 'step 4 of .*carries tags on its action line' && echo 0 || echo 1)" "$OUT"
-# The switch that turns the warning into an error, once consumers have moved.
+# By default a quoted line is refused (the consumers have moved to tags alone);
+# `quoted_lines: warning` in the section order file makes it a warning.
 refused="$(SHEET_PATH="$SHEET" REPO_ROOT="$PLAT" python3 - <<'PY'
 import importlib.util as ilu, os, pathlib, sys
 spec = ilu.spec_from_file_location("release_test", os.environ["SHEET_PATH"])
@@ -1670,13 +1672,15 @@ rt = ilu.module_from_spec(spec); sys.modules["release_test"] = rt
 spec.loader.exec_module(rt)
 root = pathlib.Path(os.environ["REPO_ROOT"])
 before = rt.check_repo(root, "testbed")[0]
-rt.QUOTED_EXPECTATIONS_REFUSED = True
+order = root / "docs/tests/acceptance/RELEASE-TEST.md"
+order.write_text(order.read_text().replace("quoted_lines: warning\n", "", 1))
 after = rt.check_repo(root, "testbed")[0]
+order.write_text(order.read_text().replace('type: "[[reference]]"\n', 'type: "[[reference]]"\nquoted_lines: warning\n', 1))
 print("before=%d after=%d" % (sum("quotes an expectation" in p for p in before),
                               sum("quotes an expectation" in p for p in after)))
 PY
 )"
-check "with QUOTED_EXPECTATIONS_REFUSED on, a quoted line is a problem" \
+check "without quoted_lines: warning, a quoted line is refused by default" \
   "$(printf '%s' "$refused" | grep -qx 'before=0 after=6' && echo 0 || echo 1)" "$refused"
 # release-test-tags.py --all rewrites every quoted line, so the warnings go.
 ALL="$TMP/proc-platform-all"; rm -rf "$ALL"; cp -R "$PLAT" "$ALL"
