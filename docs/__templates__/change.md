@@ -25,7 +25,7 @@ related: []
 
 ## Impact
 
-<One line per screen this change altered: a `[[SUR-####]]` link, then a colon, then one sentence someone using the product would understand. A release walk's survey is built from these lines and reads nothing else (`tools/instructions/TESTING.md`, "The walk", rule 2). Draft them with an LLM from the diff and the repo's surface notes, then check that every id resolves.>
+<One line per screen this change altered: a `[[SUR-####]]` link, then a colon, then one sentence someone using the product would understand. A release test's what-changed list is built from these lines and reads nothing else (`tools/instructions/TESTING.md`, "The release test", rule 2). Draft them with an LLM from the diff and the repo's surface notes, then check that every id resolves.>
 
 - [[SUR-0000]]: <what the screen now shows or does, in the words a person using it would use>
 

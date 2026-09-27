@@ -24,9 +24,9 @@ review_verdict: ""
 review_round: ""
 related: []
 # level: acceptance only; delete on an executable test. Fields explained in SCHEMAS.md, test.md ("Acceptance fields").
-area: ""             # the human grouping, one walk's worth of related checks; the verdict lives in the release ledger, not here (ADR-0037)
-after: []            # optional: checks that should have passed before this one is walked; orders the walk sheet and gates nothing (tools/instructions/TESTING.md, "The walk", rule 4)
-# walk_readiness_for: # optional on an acceptance check without a usable sitting procedure; name platforms with a preparation or decision reason (TESTING.md, "The walk", rule 5)
+area: ""             # the human grouping, one section's worth of related checks; the verdict lives in the release ledger, not here (ADR-0037)
+after: []            # optional: checks that should have passed before this one is tested; orders the release test sheet and gates nothing (tools/instructions/TESTING.md, "The release test", rule 4)
+# readiness_for:     # optional on an acceptance check without a usable section procedure; name platforms with a preparation or decision reason (TESTING.md, "The release test", rule 5)
 #   ios: { kind: decision, reason: "Name the missing action or decision.", issue: "ISS-0000" }
 ---
 
@@ -37,10 +37,10 @@ after: []            # optional: checks that should have passed before this one 
 
 > **Status is evidence, not intent.** Who writes a test's status, and what a `command:` changes, is stated once in `tools/instructions/STATUSES.md` `[[test]]`; `python3 tools/scripts/run-tests.py --filter TST-####` reproduces an executable test's run locally without writing anything.
 
-<!-- level: acceptance ONLY — delete these four headings on any other test, and delete Procedure/Expected results below on an acceptance check. The shape and the reason are stated once in tools/instructions/TESTING.md, "A check is walkable by a stranger". -->
+<!-- level: acceptance ONLY — delete these four headings on any other test, and delete Procedure/Expected results below on an acceptance check. The shape and the reason are stated once in tools/instructions/TESTING.md, "A check is testable by a stranger". -->
 
 ## Setup
-<The state the walk needs, and *the cheapest way to reach it*. If a developer toggle, a mock, or a bundled fixture produces the state, name it. This is the line that decides whether the check ever gets walked.>
+<The state the test needs, and *the cheapest way to reach it*. If a developer toggle, a mock, or a bundled fixture produces the state, name it. This is the line that decides whether the check ever gets tested.>
 
 ## Steps
 1. <Numbered, one action each, in the order a person performs them.>
@@ -51,7 +51,7 @@ after: []            # optional: checks that should have passed before this one 
 ## Not this check
 - <The boundary. What a reader might reasonably think this covers, and which check actually covers it.>
 
-<!-- end of the acceptance-only block. Provenance — where the check came from, what migration moved it, which audit split it out — goes BELOW the procedure under its own heading, or into frontmatter. It is about the note, not about the walk. -->
+<!-- end of the acceptance-only block. Provenance — where the check came from, what migration moved it, which audit split it out — goes BELOW the procedure under its own heading, or into frontmatter. It is about the note, not about the release test. -->
 
 ## Procedure
 - <step-by-step>
