@@ -1122,13 +1122,13 @@ TWOFILES="$TMP/proc-twofiles"; rm -rf "$TWOFILES"; cp -R "$PROC" "$TWOFILES"
 cp "$TWOFILES/docs/tests/acceptance/release-test/the-bench.md" "$TWOFILES/docs/tests/acceptance/release-test/the-bench-again.md"
 procfail "a second procedure for one section is refused" "$TWOFILES" \
   'a second procedure for "The bench"'
-# A step that says where it happens is a rule; a step that does not is reported
-# and does not fail the release, because no owed part goes untested for it.
+# A step no longer has to name its screen: the action line alone is enough
+# (project-os-dev REQ-0033, TASK-0189). It used to draw a remark.
 NOSCREEN="$(variant noscreen '2. **Ride cockpit (SUR-0002).** Start the workout.' '2. Start the workout.')"
 out_noscreen="$(python3 "$SHEET" --check --platform testbed --repo-root "$NOSCREEN" 2>&1)"; code=$?
-check "a step naming no screen is reported and does not fail the check" "$code" "$out_noscreen"
-check "and the report names the step" \
-  "$(printf '%s' "$out_noscreen" | grep -Eq 'step 2 names no screen' && echo 0 || echo 1)" "$out_noscreen"
+check "a step naming no screen passes the check" "$code" "$out_noscreen"
+check "and draws no remark about a screen" \
+  "$(printf '%s' "$out_noscreen" | grep -Eq 'names no screen' && echo 1 || echo 0)" "$out_noscreen"
 
 # --- steps 6 and 7 of TST-0010: what the sheet prints
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PROC" 2>&1)"
@@ -1609,6 +1609,129 @@ PY
 lossout="$(python3 "$HERE/release-test-tags.py" --repo-root "$LOSS" 2>&1)"
 check "and rewrites it when the step runs only on the platform that prints those words" \
   "$(printf '%s' "$lossout" | grep -q 'the-bench.md: - `TST-0401.2`' && echo 0 || echo 1)" "$lossout"
+
+# ---------------------------------------------------------------------------
+# Groups (project-os-dev TASK-0189, REQ-0033). A `### ` heading under
+# `## Steps` starts a group and a `Start:` line under it is the group's start
+# state. `state_for:` is still read, with a warning. `readiness_for:` may name
+# the result the tester is offered, and only a stored result value.
+# ---------------------------------------------------------------------------
+GRPS="$TMP/proc-groups"; rm -rf "$GRPS"; cp -R "$PROC" "$GRPS"
+cp "$GRPS/docs/releases/ledgers/WORKING-testbed.json" "$GRPS/docs/releases/ledgers/WORKING-bench.json"
+sed -i.bak 's/"platform": "testbed"/"platform": "bench"/' "$GRPS/docs/releases/ledgers/WORKING-bench.json"; rm -f "$GRPS"/docs/releases/ledgers/*.bak
+cat > "$GRPS/docs/tests/acceptance/release-test/the-bench.md" <<'MD'
+---
+type: "[[reference]]"
+title: "Procedure — The bench"
+status: active
+owner: user:fixture
+created: 2026-09-27
+updated: 2026-09-27
+section: "The bench"
+step_platforms:
+  2: [bench]
+action_for:
+  1: {testbed: "Open the panel from the top bar."}
+readiness_for:
+  6: {kind: decision, reason: "Waits for a product call.", result: question}
+---
+
+# Procedure — The bench
+
+## Setup
+
+The bench powered and the tablet awake.
+
+## Steps
+
+### The panel
+
+Start: The trainer connected, nothing else bound.
+
+1. Open the panel.
+   - `TST-0401.1`
+   - `TST-0402.1`
+
+### Riding
+
+Start: A ride running on the trainer.
+
+2. Plug in the bench trainer.
+3. Start the workout.
+   - `TST-0401.2`
+   - `TST-0402.2`
+4. Swap the trainer and read the panel.
+   - `TST-0401.3`
+   - `TST-0403` `TST-0404.2`
+5. Unpair everything.
+   - `TST-0404.1`
+6. Reboot the tablet.
+   - `TST-0407.1`
+MD
+OUT="$(python3 "$SHEET" --check --repo-root "$GRPS" 2>&1)"; code=$?
+check "--check passes a grouped procedure with Start lines and actions that name no screen" \
+  "$( { [[ $code -eq 0 ]] && ! printf '%s' "$OUT" | grep -q 'WARN\|ERROR'; }; echo $?)" "exit $code: $OUT"
+groups="$(SHEET_PATH="$SHEET" REPO_ROOT="$GRPS" python3 - <<'PY'
+import importlib.util as ilu, os, pathlib, sys
+spec = ilu.spec_from_file_location("release_test", os.environ["SHEET_PATH"])
+rt = ilu.module_from_spec(spec); sys.modules["release_test"] = rt
+spec.loader.exec_module(rt)
+root = pathlib.Path(os.environ["REPO_ROOT"])
+proc = rt.load_procedures(root / "docs", root)[0]
+for g in proc.groups:
+    print("%s|%s|%s" % (g.title, g.start, ",".join(str(n) for n in g.steps)))
+print("step4=%s" % [s.group for s in proc.steps if s.number == 4][0])
+PY
+)"
+check "the generator reads each group's heading, Start line and steps" \
+  "$(printf '%s\n' "$groups" | tr '\n' '#' | grep -qx 'The panel|The trainer connected, nothing else bound.|1#Riding|A ride running on the trainer.|2,3,4,5,6#step4=Riding#' && echo 0 || echo 1)" "$groups"
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$GRPS" 2>&1)"
+has "a group's Start line is the state its first step needs" '^\*\*Required state:\*\* The trainer connected, nothing else bound\.$'
+# Step 2, the first of "Riding", runs on bench only; on testbed the group
+# starts at step 3, and the Start line must reach it rather than the last one.
+s3="$(printf '%s\n' "$OUT" | awk '/^#### Step 3/{on=1;next} on&&/^#### /{exit} on')"
+check "a group whose first step is on the other platform states its start at its first step here" \
+  "$(printf '%s' "$s3" | grep -qx '\*\*Required state:\*\* A ride running on the trainer\.' && echo 0 || echo 1)" "$s3"
+has   "action_for replaces the whole action when the step names no screen" '^Open the panel from the top bar\.$'
+hasnt "and the authored action is not printed beside it"                    '^Open the panel\.$'
+has   "a declared readiness result is printed as the suggested result"      'Waits for a product call\. Suggested result: question\.'
+# state_for still works on a procedure that has not moved to groups, and warns.
+OLDSTATE="$(variant oldstate 'section: "The bench"' 'section: "The bench"
+state_for:
+  2: "The workout is running."')"
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$OLDSTATE" 2>&1)"; code=$?
+check "a procedure keeping state_for: passes and is warned that Start: replaces it" \
+  "$( { [[ $code -eq 0 ]] && printf '%s' "$OUT" | grep -q '^WARN  \[RELEASE-TEST\] .*the-bench\.md: `state_for:` is replaced by a `Start:` line'; }; echo $?)" "exit $code: $OUT"
+QUIETS="$(python3 "$SHEET" --check --quiet --platform testbed --repo-root "$OLDSTATE" 2>&1)"
+check "under --quiet the state_for warning is one counted line" \
+  "$(printf '%s' "$QUIETS" | grep -q '^WARN  \[RELEASE-TEST\] release-test --check: 1 procedure(s) still declare `state_for:`' && echo 0 || echo 1)" "$QUIETS"
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$OLDSTATE" 2>&1)"
+has "and its state_for is still printed" '^\*\*Required state:\*\* The workout is running\.$'
+# A Start line and state_for on the same step are two instructions for one thing.
+TWICE_START="$TMP/proc-groups-twice"; rm -rf "$TWICE_START"; cp -R "$GRPS" "$TWICE_START"
+python3 - "$TWICE_START/docs/tests/acceptance/release-test/the-bench.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+p.write_text(t.replace('section: "The bench"\n', 'section: "The bench"\nstate_for:\n  1: "Something else."\n', 1))
+PY
+procfail "a Start line and state_for on the same step are refused" "$TWICE_START" \
+  'step 1 has a start state twice, from the `Start:` line of "The panel" and from `state_for`'
+# result: must be a stored result value, on a procedure step and on a check.
+BADRESULT="$TMP/proc-groups-badresult"; rm -rf "$BADRESULT"; cp -R "$GRPS" "$BADRESULT"
+sed -i.bak 's/result: question}/result: maybe}/' "$BADRESULT/docs/tests/acceptance/release-test/the-bench.md"; rm -f "$BADRESULT"/docs/tests/acceptance/release-test/*.bak
+procfail "a procedure readiness result that is not a stored value is refused" "$BADRESULT" \
+  "readiness_for. entry '6' has .result: maybe.; a result is one of pass, partial, na, excused, blocked, fail, question"
+CHKRESULT="$TMP/proc-groups-checkresult"; rm -rf "$CHKRESULT"; cp -R "$GRPS" "$CHKRESULT"
+python3 - "$CHKRESULT/docs/tests/acceptance/TST-0405-Fixture.md" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+p.write_text(t.replace("level: acceptance\n", 'level: acceptance\nreadiness_for:\n  testbed: {kind: preparation, reason: "Bring the meter.", result: blocked}\n', 1))
+PY
+OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$CHKRESULT" 2>&1)"
+has "a check's readiness result is printed on its row" 'Bring the meter\. Suggested result: blocked\.'
+sed -i.bak 's/result: blocked}/result: skipped}/' "$CHKRESULT/docs/tests/acceptance/TST-0405-Fixture.md"; rm -f "$CHKRESULT"/docs/tests/acceptance/*.bak
+procfail "a check readiness result that is not a stored value is refused" "$CHKRESULT" \
+  "readiness_for. entry 'testbed' has .result: skipped."
 
 echo "test-release-test: $assertions assertions, $failures failure(s)"
 [[ "$failures" -eq 0 ]]

@@ -355,9 +355,14 @@ def parse_check_readiness(raw, path: str) -> tuple[dict[str, dict[str, str]], li
             problems.append("%s: `readiness_for` entry %r needs a platform, "
                             "kind preparation or decision, and a plain reason" % (path, platform))
             continue
+        if _result_problem(value):
+            problems.append("%s: `readiness_for` entry %r %s"
+                            % (path, platform, _result_problem(value)))
+            continue
         out[platform] = {"kind": value["kind"],
                          "reason": value["reason"].strip(),
-                         "issue": value.get("issue", "").strip()}
+                         "issue": value.get("issue", "").strip(),
+                         "result": value.get("result", "")}
     return out, problems
 
 
@@ -789,6 +794,9 @@ class Step:
     readiness_declared: dict[str, object] = field(default_factory=dict)
     #: Platform-specific action prose after the unchanged bold surface name.
     action_for: dict[str, str] = field(default_factory=dict)
+    #: The `### ` heading under `## Steps` this step sits under, "" before the
+    #: first one (project-os-dev REQ-0033).
+    group: str = ""
 
     @property
     def parts(self) -> set[tuple[str, str]]:
@@ -805,6 +813,21 @@ class SetupItem:
 
 
 @dataclass
+class Group:
+    """A run of steps under one `### ` heading in `## Steps`.
+
+    The heading names what the steps have in common, and the `Start:` line
+    under it is the state the app and the bench must be in before the first
+    of them (project-os-dev REQ-0033). It replaces `state_for:`.
+    """
+
+    title: str
+    start: str = ""
+    #: Step positions, in order.
+    steps: list[int] = field(default_factory=list)
+
+
+@dataclass
 class Procedure:
     """One section's written script."""
 
@@ -814,6 +837,9 @@ class Procedure:
     steps: list[Step] = field(default_factory=list)
     setup_items: list[SetupItem] = field(default_factory=list)
     requires: dict[int, list[int]] = field(default_factory=dict)
+    #: The `### ` headings under `## Steps`, in order. Empty for a procedure
+    #: written before groups existed.
+    groups: list[Group] = field(default_factory=list)
     parse_problems: list[str] = field(default_factory=list)
     #: Why this procedure cannot be printed. Non-empty means the section falls
     #: back to per-check rows ("The release test", rule 9).
@@ -907,6 +933,24 @@ def _duration_map(raw, path: str) -> tuple[dict[str, int], list[str]]:
     return out, problems
 
 
+def _results() -> tuple[str, ...]:
+    """The seven result values a ledger stores, read from the validator's list."""
+    return tuple(_validator().LEDGER_MARKS)
+
+
+def _result_problem(value) -> str:
+    """Why a readiness `result:` is not usable, or "".
+
+    `result:` is the result the tester is offered for a check that cannot be
+    done yet (project-os-dev REQ-0033). It has to be one the ledger stores,
+    or the page would offer a result nobody can record.
+    """
+    if "result" not in value or value["result"] in _results():
+        return ""
+    return ("has `result: %s`; a result is one of %s"
+            % (value["result"], ", ".join(_results())))
+
+
 def _readiness_map(raw, path: str) -> tuple[dict[str, dict[str, object]], list[str]]:
     if raw in (None, ""):
         return {}, []
@@ -926,10 +970,13 @@ def _readiness_map(raw, path: str) -> tuple[dict[str, dict[str, object]], list[s
                     for item in value["platforms"])))):
             problems.append("%s: `readiness_for` entry %r needs a step number, "
                             "kind preparation or decision, and a plain reason" % (path, key))
+        elif _result_problem(value):
+            problems.append("%s: `readiness_for` entry %r %s" % (path, key, _result_problem(value)))
         else:
             out[str(key)] = {"kind": value["kind"], "reason": value["reason"].strip(),
                              "issue": value.get("issue", "").strip(),
-                             "platforms": list(value.get("platforms", []))}
+                             "platforms": list(value.get("platforms", [])),
+                             "result": value.get("result", "")}
     return out, problems
 
 
@@ -1008,7 +1055,15 @@ def parse_setup_items(setup: str, scope, platforms, path: str) -> tuple[list[Set
     return items, problems
 
 
+_START_RE = re.compile(r"^\s*Start:\s*(.*?)\s*$")
+
+
 def parse_steps(body: str) -> list[Step]:
+    """`## Steps` -> its numbered items. `parse_groups` also returns the groups."""
+    return parse_groups(body)[0]
+
+
+def parse_groups(body: str) -> tuple[list[Step], list[Group]]:
     """`## Steps` -> the numbered items under it, each with its own lines.
 
     **A step's number is its position, not the digit written.** Markdown
@@ -1023,21 +1078,45 @@ def parse_steps(body: str) -> list[Step]:
     finding where a step begins and not when collecting what it claims, so a
     worked example in ``` satisfied coverage on its own, and could equally
     refuse a correct procedure for citing one part twice. Same review.
+
+    **A `### ` heading starts a group** (project-os-dev REQ-0033). The first
+    line under it that is not blank may be `Start:` and the group's start
+    state. Steps keep counting across groups, because a tag's `.N` and
+    `requires:` name positions in the whole procedure.
     """
     steps: list[Step] = []
+    groups: list[Group] = []
     current: Step | None = None
     in_fence = False
+    #: The group whose heading was the last thing read, until its first
+    #: non-blank line, which is the only place a `Start:` line counts.
+    opened: Group | None = None
     for line in under_heading(body, "Steps").splitlines():
         if FENCE_RE.match(line):
             in_fence = not in_fence
             if current is not None:
                 current.body.append(line)
             continue
+        heading = None if in_fence else HEADING_RE.match(line)
+        if heading and len(heading.group(1)) == 3:
+            opened = Group(title=heading.group(2).strip())
+            groups.append(opened)
+            current = None
+            continue
+        if opened is not None and not in_fence and line.strip():
+            start = _START_RE.match(line)
+            waiting, opened = opened, None
+            if start:
+                waiting.start = start.group(1)
+                continue
         found = None if in_fence else _STEP_RE.match(line)
         if found:
             current = Step(number=len(steps) + 1, head=found.group(2).strip(),
                            authored_head=found.group(2).strip(),
-                           written=int(found.group(1)), body=[line])
+                           written=int(found.group(1)), body=[line],
+                           group=groups[-1].title if groups else "")
+            if groups:
+                groups[-1].steps.append(current.number)
             steps.append(current)
             tags = parse_tags(line)
             if tags:
@@ -1053,7 +1132,7 @@ def parse_steps(body: str) -> list[Step]:
         if tags:
             current.expectations.append(
                 Expectation(quote=quote_of(line), raw=line, tags=tags))
-    return steps
+    return steps, groups
 
 
 def name_surfaces(steps: list[Step], surfaces: dict[str, Surface]) -> None:
@@ -1187,7 +1266,7 @@ def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Proc
                 pass
         shown_path = str(shown)
         setup = under_heading(body, "Setup")
-        steps = parse_steps(body)
+        steps, groups = parse_groups(body)
         requires, require_problems = _number_map(fm.get("requires"), "requires", shown_path)
         step_platforms, step_problems = _platform_map(
             fm.get("step_platforms"), "step_platforms", shown_path)
@@ -1217,6 +1296,19 @@ def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Proc
             step_problems.append("%s: `step_platforms` names absent step %s" % (shown_path, number))
         for number in sorted(set(step_states) - {str(step.number) for step in steps}):
             state_problems.append("%s: `state_for` names absent step %s" % (shown_path, number))
+        #: Two start states for one step is the contradiction ADR-0046 says the
+        #: validator can see: which one the tester reads would be an accident.
+        for group in groups:
+            if group.start and group.steps and str(group.steps[0]) in step_states:
+                state_problems.append(
+                    '%s: step %d has a start state twice, from the `Start:` line of "%s" '
+                    "and from `state_for`; keep the `Start:` line"
+                    % (shown_path, group.steps[0], group.title))
+        warnings: list[tuple[str, str]] = []
+        if step_states:
+            warnings.append(("state_for", "%s: `state_for:` is replaced by a `Start:` line under "
+                             "each group's `### ` heading in `## Steps` (project-os-dev "
+                             "REQ-0033); it is still read" % shown_path))
         for label, mapping, target in (("capture_for", capture_prompts, capture_problems),
                                        ("timer_for", timers, timer_problems),
                                        ("readiness_for", readiness, readiness_problems),
@@ -1231,6 +1323,7 @@ def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Proc
             path=shown_path, section=_text(fm.get("section")),
             old_section=_text(fm.get("sitting")), setup=setup,
             steps=steps, setup_items=setup_items, requires=requires,
+            groups=groups, parse_warnings=warnings,
             parse_problems=(require_problems + step_problems + state_problems
                             + capture_problems + use_problems + timer_problems
                             + setup_problems + readiness_problems + action_problems
@@ -1969,16 +2062,29 @@ def attach_procedure(entry: Placed, procedure: Procedure, checks: dict[str, Chec
     current_state = ""
     for step in procedure.steps:
         step.required_state = ""
+    #: A group's `Start:` line takes effect at the first of its steps this
+    #: platform keeps, so a group whose first step runs on the other platform
+    #: still states its start; `state_for` on a step then replaces it, as it
+    #: replaced an earlier `state_for`.
+    group_of = {number: i for i, group in enumerate(procedure.groups) for number in group.steps}
+    in_group = None
     for step in applicable:
+        here = group_of.get(step.number)
+        if here is not None and here != in_group:
+            in_group = here
+            if procedure.groups[here].start:
+                current_state = procedure.groups[here].start
         if step.state_declared:
             current_state = step.state_declared
         step.required_state = current_state
     for step in procedure.steps:
         action = step.action_for.get(platform)
         if action:
+            #: A step no longer has to name its screen (project-os-dev
+            #: REQ-0033), so without a bold heading to keep, the variant
+            #: replaces the whole action line.
             prefix = _ACTION_HEAD_RE.match(step.authored_head)
-            if prefix:
-                step.head = "%s %s" % (prefix.group(1), action)
+            step.head = "%s %s" % (prefix.group(1), action) if prefix else action
         if step.readiness and step.readiness.get("platforms") and platform not in step.readiness["platforms"]:
             step.readiness = {}
     owed_parts = {part for c in entry.rows for part in parts_of(c)}
@@ -2075,9 +2181,9 @@ def validate_preparation(procedure: Procedure, platform: str = "") -> list[str]:
             problems.append("%s: step %d has an `action_for` variant for %s, but the step runs only on %s"
                             % (procedure.path, step.number, name, ", ".join(sorted(step.platforms))))
     for step in procedure.steps:
-        if step.action_for and (not _ACTION_HEAD_RE.match(step.authored_head)
-                                or parse_tags(step.body[0])):
-            problems.append("%s: step %d needs a bold surface heading without test tags for `action_for`"
+        if step.action_for and parse_tags(step.body[0]):
+            problems.append("%s: step %d carries test tags on its action line, which `action_for` "
+                            "would replace; put the tags on a line of their own"
                             % (procedure.path, step.number))
         for source in step.uses_capture:
             if source not in steps:
@@ -2269,8 +2375,9 @@ def audit_procedure(procedure: Procedure, section: Section, owed: list[Check],
 
     A problem is a disagreement between the procedure and the release's owed
     set, or between a quoted expectation and the check it quotes. A remark is
-    something true that is not a disagreement -- a step that names no screen,
-    or a live check the procedure has not reached yet. Coverage of the owed
+    something true that is not a disagreement, such as a live check the
+    procedure has not reached yet. A step that names no screen is no longer
+    one: the action alone is enough (project-os-dev REQ-0033). Coverage of the owed
     parts is the requirement; coverage of everything live is the aim.
 
     A warning is a form the procedure should leave, such as a quoted
@@ -2311,9 +2418,6 @@ def audit_procedure(procedure: Procedure, section: Section, owed: list[Check],
             % (procedure.path, ", ".join(str(s.written) for s in applicable),
                len(applicable)))
     for step in applicable:
-        if not step.surface_id:
-            remarks.append("step %d names no screen; a step says where it "
-                           "happens (%s)" % (step.number, procedure.path))
         in_fence = False
         for line in step.body:
             if FENCE_RE.match(line):
@@ -2500,6 +2604,17 @@ def render_what_changed(sheet: ReleaseTest, out: list[str]) -> None:
             out.append("")
 
 
+def _suggested(readiness: dict) -> str:
+    """" Suggested result: blocked." when the declaration names one, else "".
+
+    Only a declared `result:` prints here. Which result a decision without
+    one is offered is for the page that lays out readiness lines
+    (project-os-dev REQ-0033, TASK-0190).
+    """
+    result = readiness.get("result") if readiness else ""
+    return " Suggested result: %s." % result if result else ""
+
+
 def render_check(check: Check, out: list[str], platform: str = "") -> None:
     """One per-check row, testable without leaving the sheet (rule 5)."""
     head = "### [%s](%s)" % (check.id, check.path)
@@ -2510,7 +2625,7 @@ def render_check(check: Check, out: list[str], platform: str = "") -> None:
     readiness = check_readiness(check, platform)
     if readiness:
         label = "Needs preparation" if readiness["kind"] == "preparation" else "Needs a decision"
-        out.append("**%s:** %s" % (label, readiness["reason"]))
+        out.append("**%s:** %s%s" % (label, readiness["reason"], _suggested(readiness)))
         if readiness.get("issue"):
             out.append("Related issue: %s." % readiness["issue"])
         out.append("")
@@ -2591,8 +2706,9 @@ def render_procedure(placed: Placed, out: list[str]) -> None:
             out.append("")
         if step.readiness:
             label = "Needs preparation" if step.readiness["kind"] == "preparation" else "Needs a decision"
-            out.append("**%s:** %s%s" % (label, step.readiness["reason"],
-                       " (%s)" % step.readiness["issue"] if step.readiness["issue"] else ""))
+            out.append("**%s:** %s%s%s" % (label, step.readiness["reason"],
+                       " (%s)" % step.readiness["issue"] if step.readiness["issue"] else "",
+                       _suggested(step.readiness)))
             out.append("")
         if step.capture_needed:
             out.append("**Capture here for a later comparison:** %s" % step.capture_prompt)
@@ -2987,6 +3103,8 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
 WARNING_KINDS = {
     "quoted": "procedure line(s) state an expectation in their own words instead of "
               "giving tags alone (project-os-dev ADR-0050 D2)",
+    "state_for": "procedure(s) still declare `state_for:`, which a `Start:` line under a "
+                 "group heading replaces (project-os-dev REQ-0033)",
 }
 
 
