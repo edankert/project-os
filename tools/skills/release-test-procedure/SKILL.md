@@ -12,7 +12,7 @@ tags: [skills, testing, release, release-test]
 
 ## When to use
 - `python3 tools/scripts/release-test.py --check` reports that a section's procedure no longer covers what the release owes, or reports no procedure for a section at all.
-- Before handing over a release test sheet, when the section's owed checks have changed since the procedure was written (`../release-prep/SKILL.md`, step 2a).
+- Before handing over a release test sheet, when the section's owed checks have changed since the procedure was written (`../release-prep/SKILL.md`, step 2b).
 
 What a procedure is, what a step is, what a tag is, what an owed part is and what the validator refuses are stated once in `../../instructions/TESTING.md`, "The release test", rule 9. This skill restates none of it; it is the order of operations.
 

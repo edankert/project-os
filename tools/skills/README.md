@@ -52,3 +52,4 @@ The numbers in a checklist are for reference, not an order. Steps that do not de
 - Release preparation: `release-prep/SKILL.md`
 - Release verification: `release-verification/SKILL.md`
 - Release test procedure (write or rewrite a section's script): `release-test-procedure/SKILL.md`
+- Release test preparation (screenshots, procedures, what changed and short Expect lines, for every platform, in one request): `release-test-prep/SKILL.md`

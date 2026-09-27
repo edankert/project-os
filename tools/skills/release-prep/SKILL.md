@@ -4,7 +4,7 @@ id: SKILL-RELEASE-PREP
 status: active
 owner: group:maintainers
 created: 2026-03-16
-updated: 2026-09-03
+updated: 2026-09-27
 tags: [skills, release]
 ---
 
@@ -40,12 +40,15 @@ tags: [skills, release]
 - If a check cannot be run, recording a **release exception** with justification is the user's decision (`TESTING.md`, "Release gating"; pause rule: `../../instructions/LIFECYCLE.md`, "When to pause for the user").
 - A repo that has not migrated to notes has no ledger and no sheet; read `docs/tests/ACCEPTANCE_TESTS.md` and list every check "Release gating" calls a blocker.
 
-### 2a. Hold each section's procedure to what the release owes
+### 2a. Prepare the release test
+- Run `../release-test-prep/SKILL.md` for the release. It recaptures the screenshots, rewrites the procedures of the sections that need it, writes each platform's what-changed lines and shortens the Expect lines the length check names, then checks all of it. Do it before the release test is handed over, and pass its two closing lists (what it changed, what needs the owner) to the owner with the release note.
+
+### 2b. Hold each section's procedure to what the release owes
 - Run `python3 tools/scripts/release-test.py --check --platform <platform>` before generating the sheet. A section tested from a written procedure goes stale without anyone editing it: a ledger event can make a new part owed (`../../instructions/TESTING.md`, "The release test", rule 9).
 - Rewrite every procedure it refuses, with `../release-test-procedure/SKILL.md`, and run it again. A section whose procedure still fails prints its per-check rows, so nothing owed is hidden — but the tester then reads the long form of a section somebody had already scripted.
 - A section with no procedure is not a defect. It prints per-check rows, which is what every section did before ADR-0045.
 
-### 2b. Docs consistency audit
+### 2c. Docs consistency audit
 - Run `bash tools/scripts/validate-docs.sh` (mechanical) and `../docs-audit/SKILL.md` (cross-document, one bounded round) before drafting the release note — releases are the last chance to catch stale references before they ship as documentation.
 
 ### 3. Create release note
