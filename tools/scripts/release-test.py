@@ -2806,7 +2806,7 @@ def unordered_sections(checks: list[Check]) -> list[Section]:
     return out
 
 
-# --------------------------------------------------------------- the renderer
+# ------------------------------------------------------------ text helpers
 
 def _quote(text: str) -> str:
     return "\n".join("> " + line if line.strip() else ">"
@@ -2817,354 +2817,567 @@ def _plural(n: int, one: str, many: str = "") -> str:
     return one if n == 1 else (many or one + "s")
 
 
-def render_what_changed(sheet: ReleaseTest, out: list[str]) -> None:
+# ------------------------------------------------------------- the page model
+
+#: What a readiness problem suggests when it names no `result:`: a missing
+#: fixture blocks the check, and an open product question is a question
+#: (project-os-dev REQ-0033).
+DEFAULT_RESULT = {"preparation": "blocked", "decision": "question"}
+#: "Step 3:" at the start of a check's Expect line: the check's own numbering,
+#: which the page does not print (project-os-dev REQ-0033).
+_STEP_PREFIX_RE = re.compile(r"^(\*\*|__)?\s*Step\s+\d+[a-z]?\s*[:.—–-]\s*(\*\*|__)?\s*", re.I)
+_TAG_SPAN_RE = re.compile(r"\s*`TST-\d{2,}(?:\.\d+)?`")
+
+
+def _tag_name(tag: tuple[str, str]) -> str:
+    """`TST-0657.1`, or `TST-0028` for a check whose steps are not numbered."""
+    return "%s.%s" % tag if tag[1] else tag[0]
+
+
+def shown_expected(text: str) -> str:
+    """An Expect line as the page prints it: no list marker, no tags, no "Step N:"."""
+    text = _TAG_SPAN_RE.sub("", _MARKER_RE.sub("", text.strip())).strip()
+    found = _STEP_PREFIX_RE.match(text)
+    if found:
+        rest = text[found.end():]
+        #: "**Step 3: the scorecard shows.**" opens its emphasis before the
+        #: number and closes it at the end, so the opening marker goes back.
+        #: "Step 1: **the panel.**" opens its emphasis after it. Either way
+        #: one marker was taken without its partner, and it goes back.
+        if bool(found.group(1)) != bool(found.group(2)):
+            rest = (found.group(1) or found.group(2)) + rest
+        text = rest.strip()
+        #: "Step 3: the slot reads ..." was the middle of a sentence; alone,
+        #: it starts one.
+        first = re.search(r"[A-Za-z]", text)
+        if first and not re.match(r"[`\[]", text[:first.start()] or " "):
+            text = text[:first.start()] + text[first.start()].upper() + text[first.start() + 1:]
+    return text
+
+
+def _readiness(readiness: dict | None) -> dict | None:
+    """A readiness declaration as the page states it, with the result to offer."""
+    if not readiness:
+        return None
+    kind = readiness.get("kind", "")
+    return {"kind": kind, "reason": readiness.get("reason", ""),
+            "issue": readiness.get("issue", "") or "",
+            "result": readiness.get("result") or DEFAULT_RESULT.get(kind, "question")}
+
+
+def _setup_entries(text: str) -> list[str]:
+    """Setup prose as separate things to do: one per list item, else one per paragraph."""
+    lines = text.strip().splitlines()
+    if not lines:
+        return []
+    if any(_MARKER_RE.match(line) for line in lines):
+        out: list[str] = []
+        for line in lines:
+            if _MARKER_RE.match(line):
+                out.append(_MARKER_RE.sub("", line).strip())
+            elif line.strip() and out:
+                out[-1] += " " + line.strip()
+            elif line.strip():
+                out.append(line.strip())
+        return out
+    return [_WS_RE.sub(" ", para).strip() for para in re.split(r"\n\s*\n", text.strip()) if para.strip()]
+
+
+def screen_payload(screen: Screen) -> dict:
+    shorts = screen.short or [False] * len(screen.sentences)
+    return {
+        "id": screen.id, "title": screen.title, "parent": screen.parent,
+        "unresolved": screen.unresolved,
+        "lines": [{"change": change_id, "title": title, "text": sentence, "short": short}
+                  for (change_id, title, sentence), short in zip(screen.sentences, shorts)],
+        "captures": [{"key": c.key, "state": c.state, "before": c.before, "after": c.after,
+                      "new": c.new, "stale": c.stale, "stale_against": c.stale_against}
+                     for c in screen.captures],
+    }
+
+
+def _procedure_checks(placed: Placed, platform: str) -> tuple[list[dict], dict[int, int]]:
+    """The printed checks of a section tested from its procedure, in groups.
+
+    Numbers run from 1 over the steps this platform keeps. They are the only
+    step numbers a tester sees, and every line the page writes about a step
+    uses them (project-os-dev ISS-0086).
+    """
+    procedure = placed.procedure
+    printed = {step.number: i for i, step in enumerate(placed.steps, start=1)}
+    titles = {i: group.title for i, group in enumerate(procedure.groups)}
+    starts = {i: group.start for i, group in enumerate(procedure.groups)}
+    group_of = {n: i for i, group in enumerate(procedure.groups) for n in group.steps}
+    applicable = [s.number for s in procedure.steps
+                  if not s.platforms or not platform or platform in s.platforms]
+    groups: list[dict] = []
+    previous_state = None
+    previous_number = None
+    for step in placed.steps:
+        here = group_of.get(step.number, -1)
+        if not groups or groups[-1]["_index"] != here:
+            groups.append({"_index": here, "title": titles.get(here, ""),
+                           "start": step.required_state if here >= 0 and starts.get(here) else "",
+                           "checks": []})
+            if not groups[-1]["start"] and step.required_state != previous_state:
+                groups[-1]["start"] = step.required_state
+            restate, again = "", False
+        else:
+            skipped = previous_number is not None and any(
+                previous_number < n < step.number for n in applicable)
+            restate = step.required_state if step.required_state and (
+                skipped or step.required_state != previous_state) else ""
+            again = bool(restate) and step.required_state == previous_state
+        previous_state, previous_number = step.required_state, step.number
+        lines = []
+        for expectation in step.expectations:
+            text = shown_expected(expectation.raw)
+            #: Only the tags this release owes are printed beside the line;
+            #: the ones already passed are kept apart (project-os-dev REQ-0033).
+            lines.append({"text": text,
+                          "tags": [_tag_name(tag) for tag in expectation.tags if tag in expectation.owed],
+                          "passed": [_tag_name(tag) for tag in expectation.tags if tag not in expectation.owed],
+                          "owed": bool(expectation.owed)})
+        action = [step.head.strip()]
+        expectation_raws = {e.raw for e in step.expectations}
+        for line in step.body[1:]:
+            if line.strip() and line not in expectation_raws:
+                action.append(line.strip())
+        owed_lines = [line for line in lines if line["owed"]]
+        tags = []
+        for line in owed_lines:
+            tags += [tag for tag in line["tags"] if tag not in tags]
+        owed_tags = {tag for e in step.expectations for tag in e.owed}
+        checks = []
+        for check_id, _n in sorted(owed_tags):
+            if check_id not in checks:
+                checks.append(check_id)
+        groups[-1]["checks"].append({
+            "number": printed[step.number],
+            "action": _WS_RE.sub(" ", " ".join(action)).strip(),
+            "expected": [{"text": line["text"], "tags": line["tags"], "passed": line["passed"]}
+                         for line in owed_lines],
+            #: Lines whose checks have all passed: kept for a host that shows
+            #: them, never printed as something to observe.
+            "passed_lines": [{"text": line["text"], "tags": line["passed"]}
+                             for line in lines if not line["owed"]],
+            "tags": tags,
+            "checks": checks,
+            "passed": sorted({_tag_name(tag) for e in step.expectations
+                              for tag in e.tags if tag not in e.owed}),
+            "preparation": not owed_tags,
+            "start": restate,
+            "start_again": again,
+            "readiness": _readiness(step.readiness),
+            "timer": step.timer_seconds,
+            "capture": step.capture_prompt if step.capture_needed else "",
+            "compare_with": [printed[n] for n in step.uses_capture if n in printed],
+            "path": "",
+        })
+    for group in groups:
+        del group["_index"]
+    return groups, printed
+
+
+def _setup_payload(placed: Placed, printed: dict[int, int], platform: str) -> dict:
+    """Setup in three parts: on the bench, before you start, and later.
+
+    An item a procedure ties to particular steps belongs to the first printed
+    check that needs it. When that is check 1 it is done before starting;
+    otherwise it is done later, and the page names the check.
+    """
+    before: list[str] = []
+    later: list[dict] = []
+    procedure = placed.procedure
+    if procedure is not None and placed.tested_from_procedure:
+        for item in procedure.setup_items:
+            if item.platforms and platform and platform not in item.platforms:
+                continue
+            texts = _setup_entries(item.text)
+            if not item.steps:
+                before += texts
+                continue
+            served = sorted(printed[n] for n in item.steps if n in printed)
+            if not served:
+                continue
+            if served[0] == 1:
+                before += texts
+            else:
+                later += [{"check": served[0], "text": text} for text in texts]
+    elif placed.section.state:
+        before.append(placed.section.state)
+    later.sort(key=lambda item: item["check"])
+    return {"bench": list(placed.section.bench), "before": before, "later": later}
+
+
+def _row_checks(rows: list[Check], platform: str) -> list[dict]:
+    """One printed check per owed check, for a section with no usable procedure."""
+    out = []
+    for number, check in enumerate(rows, start=1):
+        out.append({
+            "number": number, "action": check.title or check.id,
+            "expected": [{"text": shown_expected(expect_display(check).get(key, key)), "tags": [],
+                          "passed": []} for key in expect_text(check, platform)],
+            "passed_lines": [],
+            "tags": [check.id], "checks": [check.id], "passed": [],
+            "preparation": False, "start": "",
+            "readiness": _readiness(check_readiness(check, platform)),
+            "timer": 0, "capture": "", "compare_with": [], "path": check.path,
+            #: A check with no procedure is tested from its own note, so its
+            #: setup and steps stay on the page (rule 5). The length check
+            #: counts them, which is what makes writing a procedure pay.
+            "setup": check.setup.strip(),
+            "steps": check.steps.strip() or check.lead.strip(),
+            "steps_heading": bool(check.steps.strip()),
+            "expect_stated": bool(check.expect.strip()),
+        })
+    return out
+
+
+def section_payload(number: int | None, placed: Placed | None, rows: list[Check],
+                    sheet: ReleaseTest) -> dict:
+    """One section of the page: what changed, setup, and its checks in groups."""
+    section = placed.section if placed is not None else Section(name="Unplaced")
+    from_procedure = placed is not None and placed.tested_from_procedure
+    if from_procedure:
+        groups, printed = _procedure_checks(placed, sheet.platform)
+        omitted = placed.omitted
+    else:
+        groups, printed, omitted = [{"title": "", "start": "", "checks": _row_checks(rows, sheet.platform)}], {}, 0
+    setup = (_setup_payload(placed, printed, sheet.platform) if placed is not None
+             else {"bench": [], "before": [], "later": []})
+    procedure = placed.procedure if placed is not None else None
+    return {
+        "number": number, "name": section.name, "unplaced": placed is None,
+        "owed": len(rows), "tests": sorted({c.id for c in rows}),
+        "bench_line": " · ".join(section.bench), "state": section.state,
+        "procedure": procedure.path if procedure is not None else "",
+        "problems": list(procedure.problems) if procedure is not None else [],
+        "what_changed": [screen_payload(s) for s in (placed.what_changed if placed else [])],
+        "nothing_changed": bool(placed is not None and not placed.what_changed
+                                and sheet.what_changed_tag),
+        "setup": setup,
+        "groups": groups,
+        "omitted": omitted,
+    }
+
+
+def payload(sheet: ReleaseTest) -> dict:
+    """The page as data. The Markdown sheet is rendered from this, and the
+    cockpit draws its page from the same dictionary (`--json`), so the two
+    cannot disagree. Its shape is TESTING.md, "The release test", rule 10.
+    """
+    sections = [section_payload(i, placed, placed.rows, sheet)
+                for i, placed in enumerate(sheet.sections, start=1)]
+    if sheet.unplaced:
+        sections.append(section_payload(None, None, sheet.unplaced, sheet))
+    return {
+        "release": sheet.release, "platform": sheet.platform, "generated": sheet.generated,
+        "owed": sheet.rows, "authored_order": sheet.authored_order,
+        "notices": list(sheet.notices), "warnings": list(sheet.warnings),
+        "what_changed": {
+            "release": sheet.what_changed_release, "tag": sheet.what_changed_tag,
+            "problem": sheet.what_changed_problem, "gallery": sheet.gallery,
+            "short_lines_problem": sheet.short_lines_problem,
+            "undeclared": list(sheet.undeclared),
+            "any": bool(sheet.what_changed),
+            "screens": [screen_payload(s) for s in sheet.what_changed_overview],
+        },
+        "sections": sections,
+    }
+
+
+# --------------------------------------------------------------- the renderer
+
+def _result_word(result: str) -> str:
+    return {"na": "N/A"}.get(result, result.capitalize())
+
+
+def render_what_changed(page: dict, out: list[str]) -> None:
     """What changed on this platform, before any section ("The release test", rule 2).
 
-    Each section prints the changes to its own screens at its head
-    (`render_screens`). This part says what the list was compared against,
-    and prints the changed screens that no section on this sheet tests.
-
-    No check id appears here, and that is the rule rather than an oversight:
-    the what-changed list is a list of places to open and look at. The previous version
-    printed the checks an invalidation reopened, which is a list of things to
-    run, and a person read it as the start of the release test instead of as the look
-    around before it.
+    Each section prints the changes to its own screens at its head. This part
+    says what the list was compared against, and prints the changed screens
+    no section on this sheet tests. No check id appears in any of it: the
+    list is places to open and look at, not things to run.
     """
-    out.append("## What changed on %s" % sheet.platform)
+    changed = page["what_changed"]
+    platform = page["platform"]
+    out.append("## What changed on %s" % platform)
     out.append("")
-    if sheet.gallery:
-        out.append("Regenerate and compare before testing anything: `%s`" % sheet.gallery)
+    if changed["gallery"]:
+        out.append("Regenerate and compare before testing anything: `%s`" % changed["gallery"])
         out.append("")
-    if sheet.what_changed_problem:
+    if changed["problem"]:
         out.append("**No release to compare against:** %s. Nothing is listed "
                    "below, because without a last release nothing says which "
-                   "change notes are new." % sheet.what_changed_problem)
+                   "change notes are new." % changed["problem"])
         out.append("")
-    elif sheet.what_changed_tag:
+    elif changed["tag"]:
         out.append("Compared against **%s**, tagged `%s`. Every change note added "
                    "since that tag is read for the screens it says it altered on %s."
-                   % (sheet.what_changed_release or "the last release",
-                      sheet.what_changed_tag, sheet.platform))
+                   % (changed["release"] or "the last release", changed["tag"], platform))
         out.append("")
-    if sheet.short_lines_problem:
-        out.append("**Short lines not used:** %s." % sheet.short_lines_problem)
+    if changed["short_lines_problem"]:
+        out.append("**Short lines not used:** %s." % changed["short_lines_problem"])
         out.append("")
-    if sheet.undeclared:
+    undeclared = changed["undeclared"]
+    if undeclared:
         out.append("**Listed on every platform:** %s %s no `platforms:`, so "
                    "nothing says which platform %s changed: %s."
-                   % (len(sheet.undeclared),
-                      _plural(len(sheet.undeclared), "change note declares",
-                              "change notes declare"),
-                      _plural(len(sheet.undeclared), "it", "they"),
-                      ", ".join(sheet.undeclared)))
+                   % (len(undeclared),
+                      _plural(len(undeclared), "change note declares", "change notes declare"),
+                      _plural(len(undeclared), "it", "they"), ", ".join(undeclared)))
         out.append("")
-    if not sheet.what_changed:
-        if not sheet.what_changed_problem:
+    if not changed["any"]:
+        if not changed["problem"]:
             out.append("No change note names a screen on %s. Either this release "
                        "altered no screen there, or its change notes have no "
                        "`## Impact` list — the close-out step that writes one is in "
                        '`tools/instructions/TESTING.md`, "The release test", rule 8.'
-                       % sheet.platform)
+                       % platform)
             out.append("")
         return
     out.append("Each section starts with the changes to the screens it tests. "
                "Open those screens and look at them before its first check.")
     out.append("")
-    if sheet.what_changed_overview:
+    if changed["screens"]:
         out.append("No section on this sheet tests these changed screens. Open "
                    "them and look at them too:")
         out.append("")
-        render_screens(sheet.what_changed_overview, out, "###")
+        render_screens(changed["screens"], out, "###")
 
 
-def render_screens(screens: list[Screen], out: list[str], depth: str) -> None:
-    """Changed screens, each with its lines and pictures; a child one level down.
-
-    ``depth`` is the heading level of a top-level screen, such as `###`.
-    """
+def render_screens(screens: list[dict], out: list[str], depth: str) -> None:
+    """Changed screens, each with its lines and pictures; a child one level down."""
     for screen in screens:
-        level = depth + "#" if screen.parent else depth
-        label = "%s (%s)" % (screen.title, screen.id) if screen.title != screen.id else screen.id
+        level = depth + "#" if screen["parent"] else depth
+        label = ("%s (%s)" % (screen["title"], screen["id"])
+                 if screen["title"] != screen["id"] else screen["id"])
         out.append("%s %s" % (level, label))
         out.append("")
-        if screen.unresolved:
+        if screen["unresolved"]:
             out.append("**No surface note carries this id.** A change note names "
                        "it, so something was altered, and nobody reading this "
                        "sheet can tell which screen to open.")
             out.append("")
-        shorts = screen.short or [False] * len(screen.sentences)
-        for (change_id, title, sentence), short in zip(screen.sentences, shorts):
-            if short:
-                out.append("- %s" % sentence)
+        for line in screen["lines"]:
+            if line["short"]:
+                out.append("- %s" % line["text"])
                 continue
-            said = sentence or "_that change names this screen and says nothing about it_"
-            out.append("- %s — %s" % (said, title or change_id))
-        if screen.sentences:
+            said = line["text"] or "_that change names this screen and says nothing about it_"
+            out.append("- %s — %s" % (said, line["title"] or line["change"]))
+        if screen["lines"]:
             out.append("")
-        for capture in screen.captures:
-            name = "`%s`" % capture.key
-            if capture.state:
-                name += " (%s)" % capture.state
-            if capture.stale:
+        for capture in screen["captures"]:
+            name = "`%s`" % capture["key"]
+            if capture["state"]:
+                name += " (%s)" % capture["state"]
+            if capture["stale"]:
                 out.append("%s — **this picture is older than the change**: it was "
                            "committed on %s, before %s, so it cannot show it. "
-                           "Capture it again." % (name, capture.stale, capture.stale_against))
+                           "Capture it again." % (name, capture["stale"], capture["stale_against"]))
                 out.append("")
-            if capture.new:
-                out.append("%s — **new**, captured now and not at the last release:"
-                           % name)
+            if capture["new"]:
+                out.append("%s — **new**, captured now and not at the last release:" % name)
                 out.append("")
-                out.append("![%s, now](%s)" % (capture.key, capture.after))
-            elif capture.after:
+                out.append("![%s, now](%s)" % (capture["key"], capture["after"]))
+            elif capture["after"]:
                 out.append("%s — before, then now:" % name)
                 out.append("")
-                out.append("![%s, at the last release](%s)" % (capture.key, capture.before))
+                out.append("![%s, at the last release](%s)" % (capture["key"], capture["before"]))
                 out.append("")
-                out.append("![%s, now](%s)" % (capture.key, capture.after))
+                out.append("![%s, now](%s)" % (capture["key"], capture["after"]))
             else:
                 out.append("%s — captured at the last release and not since:" % name)
                 out.append("")
-                out.append("![%s, at the last release](%s)" % (capture.key, capture.before))
+                out.append("![%s, at the last release](%s)" % (capture["key"], capture["before"]))
             out.append("")
 
 
-def _suggested(readiness: dict) -> str:
-    """" Suggested result: blocked." when the declaration names one, else "".
-
-    Only a declared `result:` prints here. Which result a decision without
-    one is offered is for the page that lays out readiness lines
-    (project-os-dev REQ-0033, TASK-0190).
-    """
-    result = readiness.get("result") if readiness else ""
-    return " Suggested result: %s." % result if result else ""
+def readiness_line(readiness: dict) -> str:
+    """One line: why the check cannot be tested as written, and which result fits."""
+    issue = " (%s)" % readiness["issue"] if readiness["issue"] else ""
+    return "%s%s Suggested: %s." % (readiness["reason"].rstrip(), issue,
+                                     _result_word(readiness["result"]))
 
 
-def render_check(check: Check, out: list[str], platform: str = "") -> None:
-    """One per-check row, testable without leaving the sheet (rule 5)."""
-    head = "### [%s](%s)" % (check.id, check.path)
-    if check.title:
-        head += " — %s" % check.title
-    out.append(head)
-    out.append("")
-    readiness = check_readiness(check, platform)
-    if readiness:
-        label = "Needs preparation" if readiness["kind"] == "preparation" else "Needs a decision"
-        out.append("**%s:** %s%s" % (label, readiness["reason"], _suggested(readiness)))
-        if readiness.get("issue"):
-            out.append("Related issue: %s." % readiness["issue"])
-        out.append("")
-    out.append("- [ ] tested, and the result recorded in the ledger" if not readiness
-               else "- [ ] readiness resolved, then tested or a decision recorded in the ledger")
-    out.append("")
-    if check.setup:
-        out.append("**Setup:** %s" % check.setup.strip())
+def render_note_parts(check: dict, out: list[str]) -> None:
+    """A per-check row's Setup and Steps, indented under its action line."""
+    if check["setup"]:
+        out.append("  - Setup: %s" % _WS_RE.sub(" ", check["setup"]))
     else:
-        out.append("**Setup: not stated.** This check has no Setup "
-                   "heading. Write one while you test it "
-                   '(`tools/instructions/TESTING.md`, "A check is '
-                   'testable by a stranger").')
-    out.append("")
-    if check.steps:
-        out.append("**Steps:**")
-        out.append("")
-        out.append(check.steps)
-    elif check.lead:
-        out.append("**Steps: no heading.** The note's own description "
-                   "is below; give it numbered steps while you test it.")
-        out.append("")
-        out.append(check.lead)
+        out.append("  - **Setup: not stated.** This check has no Setup heading. Write "
+                   'one while you test it (`tools/instructions/TESTING.md`, "A check '
+                   'is testable by a stranger").')
+    if check["steps"] and check["steps_heading"]:
+        out.append("  - Steps:")
+        out.extend(("    " + line) if line.strip() else "" for line in check["steps"].splitlines())
+    elif check["steps"]:
+        out.append("  - **Steps: no heading.** The note's own description is below; "
+                   "give it numbered steps while you test it.")
+        out.extend(("    " + line) if line.strip() else "" for line in check["steps"].splitlines())
     else:
-        out.append("**Steps:**")
-        out.append("")
-        out.append("_The note states no steps._")
-    out.append("")
-    out.append("**Expect:**")
-    out.append("")
-    #: Only this platform's lines, and a marked line without its mark
-    #: (project-os-dev REQ-0034). A check whose Expect holds only for other
-    #: platforms says so rather than printing nothing.
-    shown = expect_block(check, platform)
-    out.append(shown if shown
-               else "_The note states no expected result for this platform._" if check.expect
-               else "_The note states no expected result._")
-    out.append("")
+        out.append("  - Steps: _The note states no steps._")
+    out.append("  - Expect:" if check["expected"] else "")
+    if not check["expected"]:
+        out.pop()
 
 
-def render_procedure(placed: Placed, out: list[str]) -> None:
-    """One section tested from its written script ("The release test", rule 9)."""
-    procedure = placed.procedure
-    out.append("Tested from a procedure: [%s](%s). The setup below is stated once "
-               "and every step assumes it." % (procedure.path, procedure.path))
-    out.append("")
-    if placed.setup:
-        out.append("**Setup:**")
-        out.append("")
-        out.append(placed.setup)
+def render_section(section: dict, platform: str, out: list[str]) -> None:
+    """One section: what changed, setup in three parts, then its numbered checks."""
+    if section["unplaced"]:
+        out.append("## Unplaced")
     else:
-        out.append("**Setup: not stated.** The procedure has no Setup heading, so "
-                   "every step below assumes a state nobody wrote down.")
+        out.append("## Section %d — %s" % (section["number"], section["name"]))
     out.append("")
-    out.append("%d %s to test." % (len(placed.steps), _plural(len(placed.steps), "step")))
-    if placed.omitted:
-        out.append("")
-        out.append("%d further %s in this procedure %s left out because %s "
-                   "not needed for this platform's owed observations."
-                   % (placed.omitted, _plural(placed.omitted, "step"),
-                      _plural(placed.omitted, "is", "are"),
-                      _plural(placed.omitted, "it is", "they are")))
-        out.append("")
-        #: project-os-dev ISS-0086: the procedure's own text says "for step 21",
-        #: so a step keeps that number here, and the numbers skip.
-        out.append("Each step keeps its number in the procedure, so the numbers skip "
-                   "where steps are left out.")
+    out.append("%d %s · %s" % (section["owed"], _plural(section["owed"], "check"),
+                               ", ".join(section["tests"])))
     out.append("")
-    for step in placed.steps:
-        preparation = not any(expectation.owed for expectation in step.expectations)
-        out.append("#### Step %d%s%s" % (
-            step.number,
-            " — %s" % step.surface_said if step.surface_said else "",
-            " (preparation)" if preparation else ""))
+    if section["what_changed"]:
+        out.append("### What changed on the screens this section tests")
         out.append("")
-        if step.required_state:
-            out.append("**Required state:** %s" % step.required_state)
+        render_screens(section["what_changed"], out, "####")
+    elif section["nothing_changed"]:
+        out.append("Nothing changed on the screens this section tests.")
+        out.append("")
+    setup = section["setup"]
+    if setup["bench"] or setup["before"] or setup["later"]:
+        out.append("### Setup")
+        out.append("")
+        if setup["bench"]:
+            out.append("**On the bench:**")
             out.append("")
-        if step.readiness:
-            label = "Needs preparation" if step.readiness["kind"] == "preparation" else "Needs a decision"
-            out.append("**%s:** %s%s%s" % (label, step.readiness["reason"],
-                       " (%s)" % step.readiness["issue"] if step.readiness["issue"] else "",
-                       _suggested(step.readiness)))
+            out.extend("- %s" % item for item in setup["bench"])
             out.append("")
-        if step.capture_needed:
-            out.append("**Capture here for a later comparison:** %s" % step.capture_prompt)
+        if setup["before"]:
+            out.append("**Before you start:**")
             out.append("")
-        if step.uses_capture:
-            out.append("**Compare with evidence from %s.**" % ", ".join(
-                "step %d" % source for source in step.uses_capture))
+            out.extend("%d. %s" % (i, item) for i, item in enumerate(setup["before"], start=1))
             out.append("")
-        if step.timer_seconds:
-            out.append("**Optional timer:** %d seconds. Ending it records no verdict."
-                       % step.timer_seconds)
+        if setup["later"]:
+            out.append("**Later:**")
             out.append("")
-        if preparation:
-            out.append("_Prepare the next observation. Continue without recording a test verdict._")
+            out.extend("- Check %d needs: %s" % (item["check"], item["text"])
+                       for item in setup["later"])
             out.append("")
-        for i, line in enumerate(step.body):
-            #: The step's number is already in the heading above, so the first
-            #: line prints without it. Everything else prints as written: a
-            #: tester follows these words and a generator that reflowed them
-            #: would be putting words nobody wrote in front of the person
-            #: recording the verdict.
-            text = step.head if i == 0 else line
-            if not text.strip():
+    if section["problems"]:
+        out.append("**This section has a procedure and it no longer matches "
+                   "what the release owes.** Each owed check is printed on its "
+                   "own below instead, so nothing owed is hidden. Rewrite it with "
+                   "`tools/skills/release-test-procedure/SKILL.md`:")
+        out.append("")
+        out.extend("- %s" % problem for problem in section["problems"])
+        out.append("")
+    out.append("### Checks")
+    out.append("")
+    if section["procedure"] and not section["problems"]:
+        out.append("From [%s](%s)." % (section["procedure"], section["procedure"]))
+        if section["omitted"]:
+            out.append("%d %s of it %s left out: %s already passed or %s another platform."
+                       % (section["omitted"], _plural(section["omitted"], "step"),
+                          _plural(section["omitted"], "is", "are"),
+                          _plural(section["omitted"], "it has", "they have"),
+                          _plural(section["omitted"], "is for", "are for")))
+        out.append("")
+    for group in section["groups"]:
+        if group["title"]:
+            out.append("#### %s" % group["title"])
+            out.append("")
+        if group["start"]:
+            out.append("Start: %s" % group["start"])
+            out.append("")
+        for check in group["checks"]:
+            if check["start"]:
+                if out[-1] != "":
+                    out.append("")
+                out.append("%s: %s" % ("Start again" if check.get("start_again") else "Start",
+                                       check["start"]))
                 out.append("")
-                continue
-            found = next((e for e in step.expectations if e.raw == line), None)
-            if found is None:
-                out.append(text)
-                continue
-            if preparation:
-                continue
-            passed = [tag for tag in found.tags if tag not in found.owed]
-            suffix = ""
-            if passed:
-                suffix = "  _(already tested: %s)_" % ", ".join(
-                    _part_name(tag) for tag in passed)
-            out.append(text.rstrip() + suffix)
+            action = ("[%s](%s)" % (check["action"], check["path"]) if check["path"]
+                      else check["action"])
+            if check["timer"]:
+                action += " ⏱ %d s" % check["timer"]
+            out.append("- [ ] **%d.** %s" % (check["number"], action))
+            if check["preparation"]:
+                out.append("  - _Preparation for a later check. Nothing to record._")
+            if "setup" in check:
+                render_note_parts(check, out)
+            tags = " ".join("`%s`" % tag for tag in check["tags"])
+            for i, line in enumerate(check["expected"]):
+                #: A line carries its own tags; a per-check row's lines all
+                #: belong to its one check, whose tag goes on the last.
+                own = line["tags"] or (check["tags"] if i == len(check["expected"]) - 1 else [])
+                shown = " ".join("`%s`" % tag for tag in own)
+                indent = "    - " if "setup" in check else "  - "
+                out.append("%s%s%s" % (indent, line["text"], " " + shown if shown else ""))
+            if not check["expected"] and not check["preparation"]:
+                said = ("_The note states no expected result for %s._" % platform
+                        if check.get("expect_stated", True) else "_The note states no expected result._")
+                out.append("  - %s %s" % (said, tags))
+            if check["readiness"]:
+                out.append("  - _%s_" % readiness_line(check["readiness"]))
+            if check["capture"]:
+                out.append("  - _Keep what you see: %s_" % check["capture"])
+            if check["compare_with"]:
+                out.append("  - _Compare with what you kept at check %s._"
+                           % ", ".join(str(n) for n in check["compare_with"]))
         out.append("")
-    out.append("**Record a verdict for each of these when the procedure is done:**")
-    out.append("")
-    for check in placed.owed_checks:
-        out.append("- [ ] [%s](%s)%s" % (check.id, check.path,
-                                         " — %s" % check.title if check.title else ""))
-    out.append("")
 
 
 def render(sheet: ReleaseTest) -> str:
-    """The sheet a person reads. Counts of rows are the only numbers on it."""
+    """The sheet a person reads, rendered from `payload`."""
+    return render_page(payload(sheet))
+
+
+def render_page(page: dict) -> str:
     out: list[str] = []
-    out.append("# Release test sheet — %s, %s" % (sheet.release, sheet.platform))
+    out.append("# Release test — %s, %s" % (page["release"], page["platform"]))
     out.append("")
     out.append("Generated %s by `tools/scripts/release-test.py` from the release "
                "ledger, the check notes, the change notes and "
                "`docs/tests/acceptance/RELEASE-TEST.md`. "
-               "Do not edit it: record every verdict in the ledger and generate "
+               "Do not edit it: record every result in the ledger and generate "
                "it again. The rules are in `tools/instructions/TESTING.md`, "
-               '"The release test".' % sheet.generated)
+               '"The release test".' % page["generated"])
     out.append("")
+    sections = page["sections"]
     out.append("**%d owed %s in %d %s.**"
-               % (sheet.rows, "row" if sheet.rows == 1 else "rows",
-                  len(sheet.sections) + (1 if sheet.unplaced else 0),
-                  "section" if len(sheet.sections) + (1 if sheet.unplaced else 0) == 1
-                  else "sections"))
+               % (page["owed"], _plural(page["owed"], "check"),
+                  len(sections), _plural(len(sections), "section")))
     out.append("")
     out.append("The validator counts from `mark:` on the note; this sheet counts "
                "from the ledger (project-os-dev ISS-0060).")
-    if not sheet.authored_order:
+    if not page["authored_order"]:
         out.append("")
         out.append("**This project has authored no section order.** The sections "
                    "below are one per `area:` in id order, which is a grouping "
                    "and not a section order. Copy `docs/__templates__/release-test.md` to "
                    "`docs/tests/acceptance/RELEASE-TEST.md` and write the real one.")
-    for notice in sheet.notices:
+    for notice in page["notices"]:
         out.append("")
         out.append("**Note:** %s" % notice)
-    for warning in sheet.warnings:
+    for warning in page["warnings"]:
         out.append("")
         out.append("**Check the section order:** %s" % warning)
     out.append("")
-
-    render_what_changed(sheet, out)
-
-    def rows_of(title: str, placed: Placed | None, rows: list[Check]) -> None:
-        section = placed.section if placed is not None else None
-        out.append("## %s" % title)
-        out.append("")
-        if placed is not None and placed.what_changed:
-            out.append("### What changed on the screens this section tests")
-            out.append("")
-            render_screens(placed.what_changed, out, "####")
-        elif placed is not None and sheet.what_changed_tag:
-            out.append("Nothing changed on %s since `%s` on the screens this "
-                       "section tests." % (sheet.platform, sheet.what_changed_tag))
-            out.append("")
-        if section is not None and section.state:
-            out.append("**State this section needs:** %s" % section.state)
-            out.append("")
-        if section is not None and section.bench:
-            out.append("**On the bench:**")
-            out.append("")
-            for item in section.bench:
-                out.append("- %s" % item)
-            out.append("")
-        if placed is not None and placed.procedure is not None and placed.procedure.problems:
-            out.append("**This section has a procedure and it no longer matches "
-                       "what the release owes.** The checks are printed one by "
-                       "one below instead, so nothing owed is hidden. Rewrite it "
-                       "with `tools/skills/release-test-procedure/SKILL.md`:")
-            out.append("")
-            for problem in placed.procedure.problems:
-                out.append("- %s" % problem)
-            out.append("")
-        if placed is not None and placed.tested_from_procedure:
-            out.append("%d owed %s, tested as one script."
-                       % (len(rows), _plural(len(rows), "check")))
-            out.append("")
-            render_procedure(placed, out)
-            return
-        out.append("%d %s." % (len(rows), "row" if len(rows) == 1 else "rows"))
-        out.append("")
-        for check in rows:
-            render_check(check, out, sheet.platform)
-
-    for i, placed in enumerate(sheet.sections, start=1):
-        rows_of("Section %d — %s" % (i, placed.section.name), placed, placed.rows)
-    if sheet.unplaced:
-        rows_of("Unplaced", None, sheet.unplaced)
-        out.append("These rows are owed and no section in "
-                   "`docs/tests/acceptance/RELEASE-TEST.md` claims their `area:`. That "
-                   "is the section order's worklist, not a defect in the sheet: "
-                   "add a section that claims them, or add the area to one that "
-                   "exists.")
+    out.append("## Sections")
+    out.append("")
+    out.append("| # | Section | Checks | On the bench |")
+    out.append("|---|---|---|---|")
+    for section in sections:
+        out.append("| %s | %s | %d | %s |" % (
+            section["number"] if section["number"] is not None else "–",
+            section["name"].replace("|", "\\|"), section["owed"],
+            section["bench_line"].replace("|", "\\|") or "Nothing extra"))
+    out.append("")
+    render_what_changed(page, out)
+    for section in sections:
+        render_section(section, page["platform"], out)
+    if any(s["unplaced"] for s in sections):
+        out.append("The Unplaced checks are owed and no section in "
+                   "`docs/tests/acceptance/RELEASE-TEST.md` claims their `area:`. "
+                   "Add a section that claims them, or add the area to one that exists.")
         out.append("")
     return "\n".join(out).rstrip() + "\n"
 
@@ -3521,6 +3734,9 @@ def main(argv=None):
                          "owes, print nothing else, and exit 1 on a disagreement")
     ap.add_argument("--out", default="",
                     help="write the sheet here instead of stdout")
+    ap.add_argument("--json", action="store_true",
+                    help="write the page as JSON, the data the Markdown sheet is "
+                         "rendered from and the cockpit draws its page from")
     ap.add_argument("--quiet", action="store_true",
                     help="with --check, print remarks only when something is "
                          "also wrong")
@@ -3544,7 +3760,8 @@ def main(argv=None):
     except ReleaseTestError as exc:
         print("release-test: %s" % exc, file=sys.stderr)
         return 2
-    text = render(sheet)
+    text = (json.dumps(payload(sheet), indent=2, ensure_ascii=False) + "\n"
+            if args.json else render(sheet))
     if args.out:
         target = Path(args.out)
         target.parent.mkdir(parents=True, exist_ok=True)

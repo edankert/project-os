@@ -109,6 +109,14 @@ class ReleaseTestPreparationTest(unittest.TestCase):
         self.assertEqual([], procedure.problems)
         return entry
 
+    def page_of(self, entry, platform):
+        """The section as the page prints it, from the same model as --json."""
+        sheet = rt.ReleaseTest("REL-0001", platform, "2026-09-27", [], [entry], [])
+        section = rt.payload(sheet)["sections"][0]
+        out = []
+        rt.render_section(section, platform, out)
+        return section, "\n".join(out)
+
     def test_a_known_surface_id_names_the_screen_and_keeps_its_link(self):
         procedure = self.procedure()
         by_number = {step.number: step for step in procedure.steps}
@@ -130,15 +138,15 @@ class ReleaseTestPreparationTest(unittest.TestCase):
         self.assertIn("Place the meter nearby", android.setup)
         self.assertIn("Keep the ride running", android.setup)
         self.assertNotIn("iPhone", android.setup)
-        out = []
-        rt.render_procedure(android, out)
-        rendered = "\n".join(out)
-        self.assertIn("Step 1", rendered)
-        self.assertIn("preparation", rendered)
+        section, rendered = self.page_of(android, "android")
+        checks = [c for g in section["groups"] for c in g["checks"]]
+        self.assertEqual([1, 2, 3], [c["number"] for c in checks])
+        self.assertEqual([True, True, False], [c["preparation"] for c in checks])
+        self.assertIn("- [ ] **1.** ", rendered)
+        self.assertIn("Preparation for a later check. Nothing to record.", rendered)
         self.assertNotIn("The meter appears.", rendered)
         self.assertIn("The tile shows cadence.", rendered)
-        self.assertIn("**Required state:**", rendered)
-        self.assertIn("The same ride is running with the meter connected.", rendered)
+        self.assertIn("Start: The same ride is running with the meter connected.", rendered)
         self.assertIn("Bind the power meter from the equipment panel.", rendered)
 
     def test_setup_for_an_omitted_step_is_left_out(self):
@@ -184,18 +192,17 @@ class ReleaseTestPreparationTest(unittest.TestCase):
         self.assertTrue(cadence.steps[0].capture_needed)
         self.assertEqual([1], cadence.steps[-1].uses_capture)
         self.assertEqual(12, cadence.steps[-1].timer_seconds)
-        out = []
-        rt.render_procedure(cadence, out)
-        rendered = "\n".join(out)
-        self.assertIn("Capture here for a later comparison", rendered)
-        self.assertIn("**Optional timer:** 12 seconds", rendered)
-        self.assertIn("Compare with evidence from step 1.", rendered)
-        self.assertIn("**Needs preparation:** Bring the power meter to the bench. (ISS-1001)", rendered)
+        _section, rendered = self.page_of(cadence, "android")
+        self.assertIn("_Keep what you see: ", rendered)
+        self.assertIn(" ⏱ 12 s", rendered)
+        # Step 4 of the procedure prints as check 3, and the line naming the
+        # step it compares with uses the printed number (ISS-0086).
+        self.assertIn("Compare with what you kept at check 1.", rendered)
+        self.assertIn("Bring the power meter to the bench. (ISS-1001) Suggested: Blocked.", rendered)
         meter = self.placed("android", ["TST-1001"])
         self.assertFalse(meter.steps[0].capture_needed)
-        out = []
-        rt.render_procedure(meter, out)
-        self.assertNotIn("Capture here for a later comparison", "\n".join(out))
+        _section, rendered = self.page_of(meter, "android")
+        self.assertNotIn("Keep what you see", rendered)
 
     def test_capture_source_must_be_declared_and_required(self):
         procedure = self.procedure()
@@ -297,19 +304,84 @@ class ReleaseTestPreparationTest(unittest.TestCase):
         self.assertIn("numbers its steps 1, 2, 9", remark)
         self.assertIn("prints them 1 to 3", remark)
 
-    def test_steps_keep_their_procedure_numbers(self):
-        # ISS-0086, option 1 (Edwin, 2026-09-25): a procedure's own text says
-        # "for step 21", so a kept step prints under that number, not 1, 2, 3.
+    def test_printed_numbers_run_from_one_and_setup_names_them(self):
+        # REQ-0033 closes ISS-0086 the other way from its 2026-09-25 option 1:
+        # the page numbers the checks it prints from 1, and every line it
+        # writes about a check uses that number. Steps 1, 2 and 4 of the
+        # procedure print as checks 1, 2 and 3.
         android = self.placed("android", ["TST-1002"])
-        out = []
-        rt.render_procedure(android, out)
-        headings = [line for line in out if line.startswith("#### Step")]
-        self.assertEqual(["#### Step 1 — Equipment panel (preparation)",
-                          "#### Step 2 — Equipment panel (preparation)",
-                          "#### Step 4 — Ride cockpit"], headings)
-        rendered = "\n".join(out)
-        self.assertNotIn("source step", rendered)
-        self.assertIn("the numbers skip where steps are left out", rendered)
+        section, rendered = self.page_of(android, "android")
+        numbers = [line.split("**")[1] for line in rendered.splitlines() if line.startswith("- [ ] **")]
+        self.assertEqual(["1.", "2.", "3."], numbers)
+        self.assertNotIn("Step 4", rendered)
+        # Setup splits three ways: `all` is done before starting, and an item
+        # tied to later steps names the printed check that needs it.
+        self.assertEqual(["Connect the trainer."], section["setup"]["before"])
+        self.assertEqual([{"check": 2, "text": "Place the meter nearby."},
+                          {"check": 3, "text": "Keep the ride running."}],
+                         section["setup"]["later"])
+        self.assertIn("- Check 2 needs: Place the meter nearby.", rendered)
+        self.assertIn("1. Connect the trainer.", rendered)
+
+    def test_a_comparison_names_the_printed_number_of_its_source(self):
+        # Step 1 is left out, so procedure steps 2 and 3 print as checks 1 and
+        # 2, and the comparison at step 3 names check 1, not step 2.
+        self.path.write_text('''---
+type: "[[reference]]"
+section: "The bench"
+requires:
+  3: [2]
+capture_for:
+  2: "Record the cadence."
+use_capture:
+  3: [2]
+---
+
+# Procedure
+
+## Setup
+
+Connect the trainer.
+
+## Steps
+
+1. Read the panel.
+   - `TST-1001.1`
+2. Record the cadence.
+3. Check cadence again.
+   - `TST-1002.1`
+''', encoding="utf-8")
+        entry = self.placed("android", ["TST-1002"])
+        section, rendered = self.page_of(entry, "android")
+        checks = [c for g in section["groups"] for c in g["checks"]]
+        self.assertEqual([1, 2], [c["number"] for c in checks])
+        self.assertEqual([1], checks[1]["compare_with"])
+        self.assertIn("Compare with what you kept at check 1.", rendered)
+
+    def test_an_expected_line_loses_the_checks_own_step_number(self):
+        self.assertEqual("The tile shows cadence.",
+                         rt.shown_expected("- Step 3: The tile shows cadence. `TST-1002.3`"))
+        self.assertEqual("**The tile shows cadence.**",
+                         rt.shown_expected("**Step 3: The tile shows cadence.**"))
+        self.assertEqual("**The tile** shows cadence.",
+                         rt.shown_expected("Step 3: **the tile** shows cadence."))
+        self.assertEqual("The slot reads the trainer.",
+                         rt.shown_expected("Step 1: the slot reads the trainer."))
+        self.assertEqual("**The slot** reads the trainer.",
+                         rt.shown_expected("Step 1: **the slot** reads the trainer."))
+        self.assertEqual("`unknown` is shown.",
+                         rt.shown_expected("Step 1: `unknown` is shown."))
+        self.assertEqual("A step 3 of the ride is shown.",
+                         rt.shown_expected("A step 3 of the ride is shown."))
+
+    def test_a_readiness_problem_offers_a_result_by_its_kind(self):
+        self.assertEqual("blocked", rt._readiness({"kind": "preparation", "reason": "r"})["result"])
+        self.assertEqual("question", rt._readiness({"kind": "decision", "reason": "r"})["result"])
+        self.assertEqual("excused", rt._readiness({"kind": "preparation", "reason": "r",
+                                                   "result": "excused"})["result"])
+        self.assertEqual("Nobody owns one. Suggested: Excused.",
+                         rt.readiness_line({"reason": "Nobody owns one.", "issue": "",
+                                            "result": "excused"}))
 
     def test_cross_platform_prerequisite_is_refused(self):
         procedure = self.procedure()
@@ -391,8 +463,7 @@ class ReleaseTestPreparationTest(unittest.TestCase):
                                       surfaces={"Equipment panel": "SUR-0001"},
                                       surface_notes=surfaces, changes=[],
                                       what_changed_tag="v1")
-        self.assertIn("Nothing changed on android since `v1` on the screens this section tests.",
-                      rt.render(sheet))
+        self.assertIn("Nothing changed on the screens this section tests.", rt.render(sheet))
 
     def test_an_undeclared_change_is_named_only_with_more_than_one_platform(self):
         change = rt.Change("CHG-1", "Slot", "change.md", screens=[("SUR-0001", "A slot.")])
@@ -411,13 +482,12 @@ class ReleaseTestPreparationTest(unittest.TestCase):
         self.assertEqual([], problems)
         check = rt.Check("TST-1004", "Android backup", "check.md", "Bench",
                            readiness_for=declared)
-        ios = []
-        android = []
-        rt.render_check(check, ios, "ios")
-        rt.render_check(check, android, "android")
-        self.assertIn("**Needs a decision:** Choose the iOS scope.", "\n".join(ios))
-        self.assertIn("Related issue: ISS-1001.", "\n".join(ios))
-        self.assertNotIn("Needs a decision", "\n".join(android))
+        entry = rt.Placed(rt.Section("Bench", surfaces=["Bench"]), [check])
+        _section, ios = self.page_of(entry, "ios")
+        _section, android = self.page_of(entry, "android")
+        # A decision with no declared result offers `question` (REQ-0033).
+        self.assertIn("_Choose the iOS scope. (ISS-1001) Suggested: Question._", ios)
+        self.assertNotIn("Choose the iOS scope", android)
 
     def test_malformed_unscripted_check_readiness_is_reported(self):
         declared, problems = rt.parse_check_readiness({
@@ -430,9 +500,9 @@ class ReleaseTestPreparationTest(unittest.TestCase):
         check = rt.Check("TST-1004", "Bad readiness", "check.md", "Bench",
                            readiness_for=declared, readiness_problems=problems)
         self.assertEqual("decision", rt.check_readiness(check, "ios")["kind"])
-        rendered = []
-        rt.render_check(check, rendered, "ios")
-        self.assertIn("Needs a decision", "\n".join(rendered))
+        entry = rt.Placed(rt.Section("Bench", surfaces=["Bench"]), [check])
+        _section, rendered = self.page_of(entry, "ios")
+        self.assertIn("readiness declaration is invalid", rendered)
 
 
 if __name__ == "__main__":

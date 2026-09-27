@@ -189,13 +189,20 @@ OUT="$(python3 "$SHEET" --release REL-0042 --platform testbed --repo-root "$REPO
 check "the generator exits 0 on a repo with a ledger" "$code" "$OUT"
 
 # --- rows are exactly the ledger's owed manual checks
-hasnt "the automated check (command:) never reaches the sheet" '^### \[TST-0001\]'
-hasnt "a pass stored under the old key mark still clears the check" '^### \[TST-0002\]'
-hasnt "an excused check is absent while its ledger is open"    '^### \[TST-0003\]'
-has   "a check invalidated after its pass is owed again"       '^### \[TST-0006\]'
-has   "a never-tested check is owed"                           '^### \[TST-0004\]'
-has   "the header counts rows and sections"                    '\*\*6 owed rows in 3 sections\.\*\*'
+hasnt "the automated check (command:) never reaches the sheet" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0001[-.]'
+hasnt "a pass stored under the old key mark still clears the check" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0002[-.]'
+hasnt "an excused check is absent while its ledger is open"    '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0003[-.]'
+has   "a check invalidated after its pass is owed again"       '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0006[-.]'
+has   "a never-tested check is owed"                           '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0004[-.]'
+has   "the header counts rows and sections"                    '\*\*6 owed checks in 3 sections\.\*\*'
 has   "the header says which count the validator reports"      'ISS-0060'
+# REQ-0033: before any section, a table lists every section in order with
+# its owed count and one line of what it needs on the bench.
+has   "the sections table lists the first section with its count and bench line" '^\| 1 \| The trainer on the bench \| 3 \| The trainer, powered \|$'
+has   "and the next one after it"                                  '^\| 2 \| A fresh install \| 1 \| The tablet with the candidate build \|$'
+has   "and the unplaced checks last, needing nothing extra"        '^\| – \| Unplaced \| 2 \| Nothing extra \|$'
+check "a section's setup comes before its checks" \
+  "$( s=$(line_of '^### Setup'); c=$(line_of '^### Checks'); [[ -n "$s" && -n "$c" && "$s" -lt "$c" ]]; echo $?)"
 
 # --- what changed. It named invalidated checks and their `area:` until
 # 2026-09-14; ADR-0045 decision 1 replaced that with the screens the change
@@ -212,16 +219,16 @@ first=$(line_of '^## Section 1 — The trainer on the bench')
 second=$(line_of '^## Section 2 — A fresh install')
 check "sections render in RELEASE-TEST.md file order, not alphabetically" \
   "$( { [[ -n "$first" && -n "$second" && "$first" -lt "$second" ]]; }; echo $?)" "1=$first 2=$second"
-a=$(line_of '^### \[TST-0005\]'); b=$(line_of '^### \[TST-0004\]')
+a=$(line_of '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0005[-.]'); b=$(line_of '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0004[-.]')
 check "a check with after: renders after its prerequisite, against id order" \
   "$( { [[ -n "$a" && -n "$b" && "$a" -lt "$b" ]]; }; echo $?)" "TST-0005=$a TST-0004=$b"
-pulled=$(line_of '^### \[TST-0007\]')
+pulled=$(line_of '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0007[-.]')
 check "a check named by id joins that section, not its own area's later one" \
   "$( { [[ -n "$pulled" && "$pulled" -lt "$second" ]]; }; echo $?)" "TST-0007=$pulled section2=$second"
 
 # --- labels
 has "a check no section claims lands under Unplaced" '^## Unplaced'
-unplaced=$(line_of '^## Unplaced'); gamma=$(line_of '^### \[TST-0008\]')
+unplaced=$(line_of '^## Unplaced'); gamma=$(line_of '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0008[-.]')
 check "the unclaimed area's check is the row under Unplaced" \
   "$( { [[ -n "$gamma" && "$gamma" -gt "$unplaced" ]]; }; echo $?)" "Unplaced=$unplaced TST-0008=$gamma"
 has "a check with no Setup heading says so"   '\*\*Setup: not stated\.\*\*'
@@ -229,18 +236,18 @@ has "a check with no Setup heading says so"   '\*\*Setup: not stated\.\*\*'
 # unheaded paragraph. Printing nothing for those rows would make the sheet
 # useless on the only corpus big enough to need it.
 has "a check with no Steps heading prints its own description"   '\*\*Steps: no heading\.\*\*'
-has "that description is the note's prose, verbatim"             '^Open the panel and confirm the reading arrives\.'
+has "that description is the note's prose, verbatim"             '^    Open the panel and confirm the reading arrives\.'
 hasnt "the fallback stops at the next heading"                   '^Migrated from the old document'
 has "a check with no prose at all says the note states no steps" '_The note states no steps\._'
 # A row's link has to work in a checkout, not only on the machine that
 # generated the sheet.
-has   "a row links its note by a repo-relative path" '^### \[TST-0004\]\(docs/tests/acceptance/'
+has   "a row links its note by a repo-relative path" '^- \[ \] \*\*[0-9]+\.\*\* \[The TST-0004 check\]\(docs/tests/acceptance/TST-0004-'
 hasnt "no row link is an absolute filesystem path"   '\]\(/'
-has "a check with a Setup heading prints it"  '\*\*Setup:\*\* A fresh install\.'
-has "each row prints the note's steps verbatim"    '^1\. Open the screen\.'
-has "each row prints the note's expected result"   '^- The banner reads DONE\.'
-has "each row carries an empty tick box"           '^- \[ \] tested, and the result recorded in the ledger'
-has "a section prints the state it needs"          '\*\*State this section needs:\*\* A fresh install, no account yet\.'
+has "a check with a Setup heading prints it"  '^  - Setup: A fresh install\.'
+has "each row prints the note's steps verbatim"    '^    1\. Open the screen\.'
+has "each row prints the note's expected result"   '^    - The banner reads DONE\. `TST-'
+has "each row carries an empty tick box"           '^- \[ \] \*\*1\.\*\* '
+has "a section prints the state it needs, as the thing to do before starting" '^1\. A fresh install, no account yet\.'
 has "a section prints what must be on the bench"   '^- The tablet with the candidate build'
 
 # --- no schedule, anywhere (TASK-0449's guard rail)
@@ -262,7 +269,7 @@ rm "$REPO/docs/tests/acceptance/RELEASE-TEST.md"
 OUT="$(python3 "$SHEET" --release REL-0042 --platform testbed --repo-root "$REPO" 2>&1)"
 has "without RELEASE-TEST.md the sheet says the order is unauthored" 'authored no section order'
 has "without RELEASE-TEST.md the rows are still grouped by area"     '^## Section [0-9]+ — Alpha'
-has "without RELEASE-TEST.md every owed row is still on the sheet"   '\*\*6 owed rows in'
+has "without RELEASE-TEST.md every owed row is still on the sheet"   '\*\*6 owed checks in'
 
 # --- --out writes the sheet and reports the count
 python3 "$SHEET" --release REL-0042 --platform testbed --repo-root "$REPO" --out "$TMP/sheet.md" >/dev/null 2>&1
@@ -357,20 +364,20 @@ cat > "$LAYERS/docs/releases/ledgers/WORKING-testbed.json" <<'JSON'
 }
 JSON
 OUT="$(python3 "$SHEET" --release REL-0043 --platform testbed --repo-root "$LAYERS" 2>&1)"
-hasnt "an excuse in the OPEN ledger does not destroy the pass beneath it" '^### \[TST-0101\]'
-has   "an excuse expires when its ledger seals, and the check is owed again"  '^### \[TST-0102\]'
-hasnt "a blocked in a SEALED ledger expires and leaves the pass under it"     '^### \[TST-0103\]'
-hasnt "a pass in a later ledger overtakes an invalidation in an earlier one"  '^### \[TST-0104\]'
-hasnt "sealing is read from the sealed field, not from the release field"     '^### \[TST-0105\]'
-hasnt "a pass in the open ledger clears"                                      '^### \[TST-0106\]'
-has   "a check nobody ever tested is owed"                                    '^### \[TST-0107\]'
+hasnt "an excuse in the OPEN ledger does not destroy the pass beneath it" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0101[-.]'
+has   "an excuse expires when its ledger seals, and the check is owed again"  '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0102[-.]'
+hasnt "a blocked in a SEALED ledger expires and leaves the pass under it"     '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0103[-.]'
+hasnt "a pass in a later ledger overtakes an invalidation in an earlier one"  '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0104[-.]'
+hasnt "sealing is read from the sealed field, not from the release field"     '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0105[-.]'
+hasnt "a pass in the open ledger clears"                                      '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0106[-.]'
+has   "a check nobody ever tested is owed"                                    '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0107[-.]'
 # The sealed ledgers resolve BEFORE the open one. Nothing pinned that boundary
 # until this row: every other invalidation in the fixture sits in the earliest
 # sealed ledger, so resolving the open ledger first changed nothing here while
 # dropping 35 of your-trainer's 61 owed rows. Found by independent review,
 # round two, 2026-09-13.
-has   "an invalidation in the OPEN ledger reopens a pass from a sealed one"   '^### \[TST-0108\]'
-has   "only the three genuinely owed rows are on the sheet"                   '\*\*3 owed rows in'
+has   "an invalidation in the OPEN ledger reopens a pass from a sealed one"   '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0108[-.]'
+has   "only the three genuinely owed rows are on the sheet"                   '\*\*3 owed checks in'
 
 # ---------------------------------------------------------------------------
 # Note shapes and RELEASE-TEST.md shapes a real corpus turns out to have.
@@ -621,14 +628,14 @@ retired_check TST-0301 retired
 # introducing another is not a fix (project-os-cockpit ISS-0303).
 retired_check TST-0302 superseded
 OUT="$(python3 "$SHEET" --release REL-0050 --platform testbed --repo-root "$SHAPES" 2>&1)"
-hasnt "a retired check is kept and no longer asked"       '^### \[TST-0301\]'
-has   "a check at a status the sheet does not filter is still asked" '^### \[TST-0302\]'
-has   "a check at active in the same area is still asked" '^### \[TST-0201\]'
-has "a check on the pre-ADR-0027 headings still prints its procedure" '^1\. Press the old button\.'
-has "and its expected result"                                         '^- The old banner appears\.'
-has "an HTML comment above the title is not read as the steps"        '^Press the button and watch the row settle\.'
+hasnt "a retired check is kept and no longer asked"       '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0301[-.]'
+has   "a check at a status the sheet does not filter is still asked" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0302[-.]'
+has   "a check at active in the same area is still asked" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0201[-.]'
+has "a check on the pre-ADR-0027 headings still prints its procedure" '^    1\. Press the old button\.'
+has "and its expected result"                                         '^    - The old banner appears\.'
+has "an HTML comment above the title is not read as the steps"        '^    Press the button and watch the row settle\.'
 hasnt "that comment does not reach the sheet"                         'imported from the v2.1.1 plan'
-has "a regression check is a manual row and stays on the sheet"       '^### \[TST-0203\]'
+has "a regression check is a manual row and stays on the sheet"       '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0203[-.]'
 # What changed reads change notes now, not invalidation events. This fixture has
 # no released REL-* note, so it has no tag to date them against and says so --
 # the screens-and-captures answer is asserted on its own fixture below (TST-0011).
@@ -636,17 +643,17 @@ hasnt "an invalidation no longer puts its change note under what changed" '^- \*
 hasnt "and its reopened section is no longer quoted"                 '^> - TST-0201 the banner it asserts against'
 hasnt "a surface is no longer headed by how many checks it owes"     '^### Navigator \(SUR-0001\) . 1 owed'
 has "a section may claim its checks by SUR id"                        '^## Section 1 . The navigator section'
-has "a trailing comment is stripped from a sections state"            'State this section needs:\*\* A signed-in account\.$'
+has "a trailing comment is stripped from a sections state"            '^1\. A signed-in account\.$'
 # The template's own example puts a comment on `surfaces:`. Reading it as part
 # of the list would leave the section claiming nothing and its rows unplaced.
 has "a trailing comment is stripped from a sections surfaces too"    '^## Section 1 . The navigator section'
-nav=$(line_of '^### \[TST-0201\]'); unp=$(line_of '^## Unplaced')
+nav=$(line_of '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0201[-.]'); unp=$(line_of '^## Unplaced')
 check "so the navigator rows do not fall through to Unplaced" \
   "$( { [[ -n "$nav" && -n "$unp" && "$nav" -lt "$unp" ]]; }; echo $?)" "TST-0201=$nav Unplaced=$unp"
 # A fenced block inside a section carries heading-shaped lines; treating one as
 # a heading truncates the steps at exactly the interesting part.
-has "a fenced block does not end a section early"                    '^2\. Watch the row settle\.'
-has "and the fenced content itself prints"                           '^\./run --once$'
+has "a fenced block does not end a section early"                    '^    2\. Watch the row settle\.'
+has "and the fenced content itself prints"                           '^    \./run --once$'
 # `bench:` is the field written as sentences, and a comma in one is ordinary.
 # Splitting on every comma turned one item into two, the second of which --
 # "for the tablet row" -- is an instruction to fetch nothing (ISS-0304).
@@ -659,10 +666,10 @@ has "and the entry beside it is still its own item"                  '^- The tab
 # without the first would send an author looking for the wrong mistake.
 has "a block-style list is reported rather than silently dropped"     'writes .checks:. as a block list'
 has "a section claiming nothing is reported"                          'names neither .surfaces. nor .checks.'
-has "the block-style section really did claim nothing"                '^### \[TST-0203\]'
+has "the block-style section really did claim nothing"                '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0203[-.]'
 has "a cycle in after: is reported and names both checks"             'forms a cycle over TST-0204, TST-0205'
-has "a cycle drops no row: the first is still there"                  '^### \[TST-0204\]'
-has "a cycle drops no row: the second is still there"                 '^### \[TST-0205\]'
+has "a cycle drops no row: the first is still there"                  '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0204[-.]'
+has "a cycle drops no row: the second is still there"                 '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0205[-.]'
 
 # ---------------------------------------------------------------------------
 # What the generator refuses. Each of these was a defect an independent review
@@ -838,7 +845,7 @@ check "the what-changed fixture generates a sheet" "$code" "$OUT"
 # What changed on the platform is everything between its heading and the
 # first section; each section's own list runs from its heading to its row count.
 CHANGED_TEXT="$(printf '%s' "$OUT" | awk '/^## What changed/{on=1} on&&/^## Section/{on=0} on')"
-SECTION_CHANGED="$(printf '%s' "$OUT" | awk '/^### What changed on the screens/{on=1} on&&/^[0-9]+ rows?\./{on=0} on')"
+SECTION_CHANGED="$(printf '%s' "$OUT" | awk '/^### What changed on the screens/{on=1} on&&/^### (Setup|Checks)/{on=0} on')"
 has "what changed says which release and tag it compared against" 'Compared against \*\*REL-0010\*\*, tagged `v1.0`'
 # REQ-0035: a changed screen is listed at the head of the section that tests
 # it, and a screen no section tests is listed once before the sections.
@@ -850,6 +857,10 @@ check "the screen no section tests is listed before the sections, and only there
   "$(printf '%s' "$CHANGED_TEXT" | grep -q '^### Ride cockpit' && [[ $(printf '%s' "$OUT" | grep -c 'Ride cockpit (SUR-0002)') -eq 1 ]] && echo 0 || echo 1)" "$CHANGED_TEXT"
 has "and the part before the sections says why it is there" '^No section on this sheet tests these changed screens'
 has "the section's list says what it is"                    '^### What changed on the screens this section tests$'
+wc_line=$(line_of '^### What changed on the screens'); setup_line=$(line_of '^### Setup'); checks_line=$(line_of '^### Checks')
+check "a section prints what changed, then setup, then its checks" \
+  "$( { [[ -n "$wc_line" && -n "$checks_line" && "$wc_line" -lt "$checks_line" && ( -z "$setup_line" || ( "$wc_line" -lt "$setup_line" && "$setup_line" -lt "$checks_line" ) ) ]]; }; echo $?)" \
+  "what changed=$wc_line setup=$setup_line checks=$checks_line"
 has "a repo with no short lines says the Impact sentences are shown" '^\*\*Short lines not used:\*\* no short lines are written for this platform'
 has "each screen carries the sentence its change wrote"     '^- a third slot appears, for a power meter\. — The panel gains a slot'
 has "a bare SUR id in an Impact line is read too"           '^- the cadence number sits beside the power number\.'
@@ -858,7 +869,7 @@ hasnt "a change note added BEFORE the tag is not under what changed" 'lap counte
 # A dialog is a child surface (ADR-0044 rule 2) and prints under its parent.
 has "a child surface prints one level under its parent"     '^##### Sensor dialog \(SUR-0003\)'
 parent_line=$(line_of '^#### Equipment panel'); child_line=$(line_of '^##### Sensor dialog')
-next_top=$(line_of '^### \[TST-0501\]')
+next_top=$(line_of '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0501[-.]')
 check "and prints between its parent and the section's first check" \
   "$( { [[ -n "$parent_line" && -n "$child_line" && -n "$next_top" && "$parent_line" -lt "$child_line" && "$child_line" -lt "$next_top" ]]; }; echo $?)" \
   "parent=$parent_line child=$child_line next=$next_top"
@@ -880,7 +891,7 @@ hasnt "a paragraph under Impact is not read as a screen either"  'also gained a 
 check "what changed names no check at all" \
   "$(printf '%s%s' "$CHANGED_TEXT" "$SECTION_CHANGED" | grep -q 'TST-' && echo 1 || echo 0)" \
   "$(printf '%s%s' "$CHANGED_TEXT" "$SECTION_CHANGED" | grep -n 'TST-' | head -2 | tr '\n' ' ')"
-has "the rest of the sheet still prints its rows" '^### \[TST-0501\]'
+has "the rest of the sheet still prints its rows" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0501[-.]'
 
 # A shallow clone has the commits and not the tag. What changed must say so and
 # the sheet must still print: a tester in CI is not helped by a crash.
@@ -888,7 +899,7 @@ SHALLOW="$TMP/shallow"
 git clone -q --depth 1 "file://$CHANGED" "$SHALLOW" 2>/dev/null
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$SHALLOW" 2>&1)"
 has "a shallow clone says the tag is not in this checkout" 'the tag `v1.0` is not in this checkout'
-has "and still prints the rows below it"                   '^### \[TST-0501\]'
+has "and still prints the rows below it"                   '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0501[-.]'
 hasnt "and lists no screen it cannot vouch for"            'Equipment panel \(SUR-0001\)'
 
 # ---------------------------------------------------------------------------
@@ -1228,28 +1239,28 @@ check "and draws no remark about a screen" \
 
 # --- steps 6 and 7 of TST-0010: what the sheet prints
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PROC" 2>&1)"
-has   "a section with a procedure says which file it tests"   'Tested from a procedure: \[docs/tests/acceptance/release-test/the-bench\.md\]'
-has   "the setup is printed once for the whole section"       '^The bench powered and the tablet awake\.$'
+has   "a section with a procedure says which file it tests"   '^From \[docs/tests/acceptance/release-test/the-bench\.md\]'
+has   "the setup is printed once for the whole section, as the thing to do before starting" '^1\. The bench powered and the tablet awake\.$'
 check "and exactly once" \
-  "$(printf '%s' "$OUT" | grep -c '^The bench powered and the tablet awake\.$' | grep -q '^1$' && echo 0 || echo 1)" \
-  "$(printf '%s' "$OUT" | grep -c '^The bench powered and the tablet awake\.$')"
-has   "an owed step is printed with its screen in the heading" '^#### Step 1 — Equipment panel'
+  "$(printf '%s' "$OUT" | grep -c 'The bench powered and the tablet awake\.$' | grep -q '^1$' && echo 0 || echo 1)" \
+  "$(printf '%s' "$OUT" | grep -c 'The bench powered and the tablet awake\.$')"
+has   "an owed step prints as its number and its one action line" '^- \[ \] \*\*1\.\*\* \*\*Equipment panel \(SUR-0001\)\.\*\* Open the panel\.$'
 has   "its expectation lines keep their tags"                  'The panel lists the trainer\. `TST-0401\.1`'
 hasnt "a step citing only checks that have passed is left out" 'Unpair everything'
-has   "and the sheet says how many steps it left out"          '1 further step in this procedure is left out because it is not needed'
+has   "and the sheet says how many steps it left out"          '^1 step of it is left out'
 has   "a step mixing an owed tag with a passed one still prints" 'The reading arrives\.'
-has   "and marks the tag that has already been tested"          '_\(already tested: TST-0404 step 2\)_'
-has   "the section ends with one tick box per owed check"       '^- \[ \] \[TST-0401\]\(docs/tests/acceptance/TST-0401-Fixture\.md\)'
-hasnt "a section tested from a procedure prints no per-check rows" '^### \[TST-0401\]'
-has   "a section with no procedure prints per-check rows as before" '^### \[TST-0405\]'
-has   "and that row still carries its own setup, steps and expect"  '^- It opens\.$'
+has   "and prints only the tag it still owes beside that line"  '^  - The reading arrives\. `TST-0403`$'
+has   "each printed step has its own tick box, numbered from 1 in the section" '^- \[ \] \*\*4\.\*\* '
+hasnt "a section tested from a procedure prints no per-check rows" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0401[-.]'
+has   "a section with no procedure prints per-check rows as before" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0405[-.]'
+has   "and that row still carries its own setup, steps and expect"  '^    - It opens\. `TST-0405`$'
 
 # A procedure that no longer covers what the release owes must not hide it.
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$UNCITED" 2>&1)"
 has "a procedure the validator refuses says so on the sheet" 'has a procedure and it no longer matches what the release owes'
 has "and names what is wrong with it"                        '^- The bench owes TST-0403'
-has "and falls back to per-check rows, so nothing owed is hidden" '^### \[TST-0403\]'
-has "including the check the procedure did cover"                 '^### \[TST-0401\]'
+has "and falls back to per-check rows, so nothing owed is hidden" '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0403[-.]'
+has "including the check the procedure did cover"                 '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0401[-.]'
 # The sheet is not the only consumer: the cockpit renders `steps` from this
 # payload. A refused procedure that still carried printable steps would show a
 # stale script there while the sheet fell back here.
@@ -1310,7 +1321,7 @@ PY
 procfail "two steps that share a written number are still two steps" "$DUPNUM" \
   'TST-0401 step 1 is cited by steps 1, 2'
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$ALLONE" 2>&1)"
-has "and the sheet numbers them by position, not by the digit" '^#### Step 2 — Ride cockpit'
+has "and the sheet numbers them by position, not by the digit" '^- \[ \] \*\*2\.\*\* \*\*Ride cockpit \(SUR-0002\)\.\*\* Start the workout\.$'
 
 # A tag inside a fenced block is an example. It used to satisfy coverage on its
 # own, and could equally refuse a correct procedure for citing a part twice.
@@ -1351,7 +1362,11 @@ procfail "and dropping one of them is still refused" "$CHKNUM" \
 
 # A procedure covers its whole section, so it cites checks that have already
 # passed. A reader that knew only the owed set called every such tag unknown.
-has "the base fixture's procedure cites an already-passed check" '`TST-0404\.2`'
+check "the base fixture's procedure cites an already-passed check" \
+  "$(grep -q '`TST-0404\.2`' "$PROC/docs/tests/acceptance/release-test/the-bench.md" && echo 0 || echo 1)"
+OUT_JSON="$(python3 "$SHEET" --json --release REL-0011 --platform testbed --repo-root "$PROC" 2>&1)"
+check "and the page keeps that line apart as passed, not as something to observe" \
+  "$(printf '%s' "$OUT_JSON" | python3 -c 'import json,sys; p=json.load(sys.stdin); c=[c for s in p["sections"] for g in s["groups"] for c in g["checks"] if c["number"]==3 and s["number"]==1][0]; sys.exit(0 if any("TST-0404.2" in l["passed"] for l in c["expected"]) and all("TST-0404.2" not in l["tags"] for l in c["expected"]) else 1)'; echo $?)" "$OUT_JSON"
 
 # A host may hold its own owed set and pass a smaller `checks` -- the cockpit
 # does. `known` is what a tag is resolved against, so a procedure citing a
@@ -1472,7 +1487,7 @@ TAGONLY="$(variant tagonly '   - The panel lists the trainer. `TST-0401.1`' '   
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$TAGONLY" 2>&1)"; code=$?
 check "--check accepts a tag-only line" "$code" "$OUT"
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$TAGONLY" 2>&1)"
-has "the sheet prints the check's own words for it" '^   - The panel lists the trainer\. `TST-0401\.1`$'
+has "the sheet prints the check's own words for it" '^  - The panel lists the trainer\. `TST-0401\.1`$'
 check "only the Expect line paired with step 1, not all three" \
   "$([[ $(printf '%s\n' "$OUT" | grep -c 'TST-0401\.1') -eq 1 ]]; echo $?)" "$OUT"
 hasnt "the bare tag line itself is not printed" '^   - `TST-0401\.1`$'
@@ -1508,7 +1523,7 @@ reword "$TAGONLY"
 OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$TAGONLY" 2>&1)"; code=$?
 check "and does not break a tag-only one" "$code" "$OUT"
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$TAGONLY" 2>&1)"
-has "whose sheet prints the new words" '^   - The panel lists every paired trainer\. `TST-0401\.1`$'
+has "whose sheet prints the new words" '^  - The panel lists every paired trainer\. `TST-0401\.1`$'
 
 # The sheet prints a check's Expect line as written: emphasis that runs to
 # the end of the line keeps its closing marks (TASK-0186).
@@ -1519,7 +1534,7 @@ p = pathlib.Path(sys.argv[1]); t = p.read_text()
 p.write_text(t.replace("- The panel lists the trainer.", "- Step 1: **the panel lists the trainer.** (`GRADE  N.N%`)"))
 PY2
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$BOLD" 2>&1)"
-has "a tag-only line keeps the check's emphasis whole and its code spacing" '^   - Step 1: \*\*the panel lists the trainer\.\*\* \(`GRADE  N\.N%`\) `TST-0401\.1`$'
+has "a tag-only line keeps the check's emphasis whole and its code spacing" '^  - \*\*The panel lists the trainer\.\*\* \(`GRADE  N\.N%`\) `TST-0401\.1`$'
 
 # unpair <repo>: TST-0404 gets a third Expect line for its two steps, so its
 # steps and Expect lines no longer pair and a tag names all three.
@@ -1535,8 +1550,10 @@ ALLLINES="$(variant alllines '   - The reading arrives. `TST-0403` `TST-0404.2`'
    - `TST-0404.2`')"
 unpair "$ALLLINES"
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$ALLLINES" 2>&1)"
-check "a check with unpaired Expect lines prints them all for its tag" \
-  "$( { printf '%s' "$OUT" | grep -q 'The panel is empty again\. `TST-0404\.2`' && printf '%s' "$OUT" | grep -q 'The reading arrives\. `TST-0404\.2`' && printf '%s' "$OUT" | grep -q 'The panel shows no error\. `TST-0404\.2`'; } && echo 0 || echo 1)" "$OUT"
+# TST-0404 has passed, so its lines are kept apart as passed rather than printed.
+OUT="$(python3 "$SHEET" --json --release REL-0011 --platform testbed --repo-root "$ALLLINES" 2>&1)"
+check "a check with unpaired Expect lines gives its tag all of them" \
+  "$(printf '%s' "$OUT" | python3 -c 'import json,sys; p=json.load(sys.stdin); got={l["text"] for s in p["sections"] for g in s["groups"] for c in g["checks"] for l in c["passed_lines"] if "TST-0404.2" in l["tags"]}; sys.exit(0 if {"The panel is empty again.","The reading arrives.","The panel shows no error."} <= got else 1)'; echo $?)" "$OUT"
 
 # The converter: only what loses nothing, and --refresh for the rest.
 WT="$PROC-tags"; rm -rf "$WT"; cp -R "$PROC" "$WT"
@@ -1607,20 +1624,20 @@ check "--check passes a check whose Expect lines are marked per platform (testbe
 OUT="$(python3 "$SHEET" --check --platform bench --repo-root "$PLAT" 2>&1)"; code=$?
 check "and on the other platform (bench)" "$code" "$OUT"
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$PLAT" 2>&1)"
-has   "a line marked [testbed] prints on testbed, without its mark" '^   - The target power is shown\. `TST-0401\.2`$'
+has   "a line marked [testbed] prints on testbed, without its mark" '^  - The target power is shown\. `TST-0401\.2`$'
 hasnt "a line marked [bench] does not print on testbed"             'reads in watts'
 hasnt "no platform mark reaches the page"                           '\[(testbed|bench)\]'
 has   "an unmarked line prints on testbed"                          'The panel lists the trainer\. `TST-0401\.1`'
 # Four lines, three steps: without counting per platform the tag names all four.
 check "tag .3 pairs with the third line that applies on testbed, and only that line" \
-  "$( { printf '%s\n' "$OUT" | grep -qx '   - The trainer holds the target\. `TST-0401\.3`' && [[ $(printf '%s\n' "$OUT" | grep -c '`TST-0401\.3`') -eq 1 ]]; } && echo 0 || echo 1)" "$OUT"
-has   "a per-check row prints its unmarked Expect line on testbed"  '^- It opens\.$'
+  "$( { printf '%s\n' "$OUT" | grep -qx '  - The trainer holds the target\. `TST-0401\.3`' && [[ $(printf '%s\n' "$OUT" | grep -c '`TST-0401\.3`') -eq 1 ]]; } && echo 0 || echo 1)" "$OUT"
+has   "a per-check row prints its unmarked Expect line on testbed"  '^    - It opens\. `TST-0405`$'
 hasnt "and leaves out the line marked for bench"                    'It opens slowly'
 OUT="$(python3 "$SHEET" --release REL-0011 --platform bench --repo-root "$PLAT" 2>&1)"
-has   "a line marked [bench] prints on bench, without its mark"     '^   - The target power reads in watts\. `TST-0401\.2`$'
+has   "a line marked [bench] prints on bench, without its mark"     '^  - The target power reads in watts\. `TST-0401\.2`$'
 hasnt "a line marked [testbed] does not print on bench"             'The target power is shown'
 has   "an unmarked line prints on bench too"                        'The panel lists the trainer\. `TST-0401\.1`'
-has   "a per-check row prints the bench line on bench, mark removed" '^- It opens slowly\.$'
+has   "a per-check row prints the bench line on bench, mark removed" '^    - It opens slowly\. `TST-0405`$'
 # A bracketed platform with no ledger prints nowhere, so it is refused, naming
 # the check and the line.
 TYPO="$TMP/proc-platform-typo"; rm -rf "$TYPO"; cp -R "$PLAT" "$TYPO"
@@ -1782,15 +1799,38 @@ PY
 check "the generator reads each group's heading, Start line and steps" \
   "$(printf '%s\n' "$groups" | tr '\n' '#' | grep -qx 'The panel|The trainer connected, nothing else bound.|1#Riding|A ride running on the trainer.|2,3,4,5,6#step4=Riding#' && echo 0 || echo 1)" "$groups"
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$GRPS" 2>&1)"
-has "a group's Start line is the state its first step needs" '^\*\*Required state:\*\* The trainer connected, nothing else bound\.$'
+has "a group's Start line is printed once under its heading" '^Start: The trainer connected, nothing else bound\.$'
 # Step 2, the first of "Riding", runs on bench only; on testbed the group
 # starts at step 3, and the Start line must reach it rather than the last one.
-s3="$(printf '%s\n' "$OUT" | awk '/^#### Step 3/{on=1;next} on&&/^#### /{exit} on')"
+s3="$(printf '%s\n' "$OUT" | awk '/^#### Riding/{on=1;next} on&&/^- \[ \]/{exit} on')"
 check "a group whose first step is on the other platform states its start at its first step here" \
-  "$(printf '%s' "$s3" | grep -qx '\*\*Required state:\*\* A ride running on the trainer\.' && echo 0 || echo 1)" "$s3"
-has   "action_for replaces the whole action when the step names no screen" '^Open the panel from the top bar\.$'
-hasnt "and the authored action is not printed beside it"                    '^Open the panel\.$'
-has   "a declared readiness result is printed as the suggested result"      'Waits for a product call\. Suggested result: question\.'
+  "$(printf '%s' "$s3" | grep -qx 'Start: A ride running on the trainer\.' && echo 0 || echo 1)" "$s3"
+# Step 5 has passed and is left out, so step 6 follows a gap: the start of
+# "Riding" is printed again before it.
+has   "a group's start prints again before a check that follows skipped ones" '^Start again: A ride running on the trainer\.$'
+check "and only there" \
+  "$(printf '%s' "$OUT" | grep -c 'A ride running on the trainer\.' | grep -q '^2$' && echo 0 || echo 1)" \
+  "$(printf '%s' "$OUT" | grep -c 'A ride running on the trainer\.')"
+# The Markdown sheet is rendered from the JSON payload, so the two carry the
+# same sections, groups, numbers and lines. Rendering the JSON the generator
+# printed gives back the sheet it printed, byte for byte.
+python3 "$SHEET" --json --release REL-0011 --platform testbed --repo-root "$GRPS" > "$TMP/grps.json" 2>&1
+python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$GRPS" > "$TMP/grps.md" 2>&1
+same="$(SHEET_PATH="$SHEET" JSON="$TMP/grps.json" MD="$TMP/grps.md" python3 - <<'PY'
+import importlib.util as ilu, json, os, sys
+spec = ilu.spec_from_file_location("release_test", os.environ["SHEET_PATH"])
+rt = ilu.module_from_spec(spec); sys.modules["release_test"] = rt
+spec.loader.exec_module(rt)
+page = json.load(open(os.environ["JSON"]))
+md = open(os.environ["MD"]).read()
+numbers = [c["number"] for s in page["sections"] for g in s["groups"] for c in g["checks"]]
+print("same" if rt.render_page(page) == md and numbers else "differ")
+PY
+)"
+check "the JSON payload renders to exactly the Markdown sheet" "$([[ "$same" == same ]]; echo $?)" "$same"
+has   "action_for replaces the whole action when the step names no screen" '^- \[ \] \*\*1\.\*\* Open the panel from the top bar\.$'
+hasnt "and the authored action is not printed beside it"                    '\*\* Open the panel\.$'
+has   "a declared readiness result is printed as the suggested result"      'Waits for a product call\. Suggested: Question\.'
 # state_for still works on a procedure that has not moved to groups, and warns.
 OLDSTATE="$(variant oldstate 'section: "The bench"' 'section: "The bench"
 state_for:
@@ -1802,7 +1842,7 @@ QUIETS="$(python3 "$SHEET" --check --quiet --platform testbed --repo-root "$OLDS
 check "under --quiet the state_for warning is one counted line" \
   "$(printf '%s' "$QUIETS" | grep -q '^WARN  \[RELEASE-TEST\] release-test --check: 1 procedure(s) still declare `state_for:`' && echo 0 || echo 1)" "$QUIETS"
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$OLDSTATE" 2>&1)"
-has "and its state_for is still printed" '^\*\*Required state:\*\* The workout is running\.$'
+has "and its state_for is still printed" '^Start: The workout is running\.$'
 # A Start line and state_for on the same step are two instructions for one thing.
 TWICE_START="$TMP/proc-groups-twice"; rm -rf "$TWICE_START"; cp -R "$GRPS" "$TWICE_START"
 python3 - "$TWICE_START/docs/tests/acceptance/release-test/the-bench.md" <<'PY'
@@ -1824,7 +1864,7 @@ p = pathlib.Path(sys.argv[1]); t = p.read_text()
 p.write_text(t.replace("level: acceptance\n", 'level: acceptance\nreadiness_for:\n  testbed: {kind: preparation, reason: "Bring the meter.", result: blocked}\n', 1))
 PY
 OUT="$(python3 "$SHEET" --release REL-0011 --platform testbed --repo-root "$CHKRESULT" 2>&1)"
-has "a check's readiness result is printed on its row" 'Bring the meter\. Suggested result: blocked\.'
+has "a check's readiness result is printed on its row" 'Bring the meter\. Suggested: Blocked\.'
 sed -i.bak 's/result: blocked}/result: skipped}/' "$CHKRESULT/docs/tests/acceptance/TST-0405-Fixture.md"; rm -f "$CHKRESULT"/docs/tests/acceptance/*.bak
 procfail "a check readiness result that is not a stored value is refused" "$CHKRESULT" \
   "readiness_for. entry 'testbed' has .result: skipped."
