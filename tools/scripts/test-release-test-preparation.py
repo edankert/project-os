@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused regression checks for declared walk preparation and survey nesting."""
+"""Focused regression checks for declared release test preparation and what-changed nesting."""
 
 import sys as _sys
 # No bytecode, ever: a cached compile Python judges current is used in place of
@@ -15,16 +15,16 @@ import tempfile
 import unittest
 
 
-MODULE_PATH = pathlib.Path(__file__).with_name("walk-sheet.py")
-spec = importlib.util.spec_from_file_location("walk_sheet_preparation_test", MODULE_PATH)
-walk = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = walk
-spec.loader.exec_module(walk)
+MODULE_PATH = pathlib.Path(__file__).with_name("release-test.py")
+spec = importlib.util.spec_from_file_location("release_test_preparation_test", MODULE_PATH)
+rt = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = rt
+spec.loader.exec_module(rt)
 
 
 PROCEDURE = """---
 type: "[[reference]]"
-sitting: "The bench"
+section: "The bench"
 requires:
   2: [1]
   4: [2, 1]
@@ -74,37 +74,37 @@ setup_platforms:
 """
 
 
-class WalkPreparationTest(unittest.TestCase):
+class ReleaseTestPreparationTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = pathlib.Path(self.temp.name)
         self.docs = self.root / "docs"
-        self.path = self.docs / "tests/acceptance/walk/the-bench.md"
+        self.path = self.docs / "tests/acceptance/release-test/the-bench.md"
         self.path.parent.mkdir(parents=True)
         self.path.write_text(PROCEDURE, encoding="utf-8")
         self.checks = {
-            "TST-1001": walk.Check("TST-1001", "Meter", "meter.md", "Bench",
+            "TST-1001": rt.Check("TST-1001", "Meter", "meter.md", "Bench",
                                    steps="1. Bind meter.", expect="- The meter appears."),
-            "TST-1002": walk.Check("TST-1002", "Cadence", "cadence.md", "Bench",
+            "TST-1002": rt.Check("TST-1002", "Cadence", "cadence.md", "Bench",
                                    steps="1. Read tile.", expect="- The tile shows cadence."),
-            "TST-1003": walk.Check("TST-1003", "iPhone", "iphone.md", "Bench",
+            "TST-1003": rt.Check("TST-1003", "iPhone", "iphone.md", "Bench",
                                    steps="1. Read source.", expect="- The source line names the meter."),
         }
-        self.sitting = walk.Sitting("The bench", checks=list(self.checks))
+        self.section = rt.Section("The bench", checks=list(self.checks))
 
     def procedure(self):
-        procedure, = walk.load_procedures(self.docs, self.root)
-        walk.name_surfaces(procedure.steps, {
-            "SUR-0001": walk.Surface("SUR-0001", "Equipment panel"),
-            "SUR-0002": walk.Surface("SUR-0002", "Ride cockpit"),
+        procedure, = rt.load_procedures(self.docs, self.root)
+        rt.name_surfaces(procedure.steps, {
+            "SUR-0001": rt.Surface("SUR-0001", "Equipment panel"),
+            "SUR-0002": rt.Surface("SUR-0002", "Ride cockpit"),
         })
         return procedure
 
     def placed(self, platform, owed):
         procedure = self.procedure()
-        entry = walk.Placed(self.sitting, [self.checks[item] for item in owed])
-        walk.attach_procedure(entry, procedure, self.checks, set(owed), [self.sitting],
+        entry = rt.Placed(self.section, [self.checks[item] for item in owed])
+        rt.attach_procedure(entry, procedure, self.checks, set(owed), [self.section],
                               {}, platform=platform, known=self.checks)
         self.assertEqual([], procedure.problems)
         return entry
@@ -119,7 +119,7 @@ class WalkPreparationTest(unittest.TestCase):
 
         # A missing surface note still leaves the authored id visible, so the
         # action does not silently lose its screen when a workspace is partial.
-        walk.name_surfaces(procedure.steps, {})
+        rt.name_surfaces(procedure.steps, {})
         self.assertEqual("SUR-0001", by_number[1].surface_said)
         self.assertEqual("SUR-0001", by_number[1].surface_id)
 
@@ -131,7 +131,7 @@ class WalkPreparationTest(unittest.TestCase):
         self.assertIn("Keep the ride running", android.setup)
         self.assertNotIn("iPhone", android.setup)
         out = []
-        walk.render_procedure(android, out)
+        rt.render_procedure(android, out)
         rendered = "\n".join(out)
         self.assertIn("Step 1", rendered)
         self.assertIn("preparation", rendered)
@@ -144,7 +144,7 @@ class WalkPreparationTest(unittest.TestCase):
     def test_setup_for_an_omitted_step_is_left_out(self):
         # Mutation check, 2026-09-24 (TASK-0125): printing every setup item
         # passed every other test, because the one negative assertion above is
-        # met by the platform filter. `finish` is scoped to step 4, which a walk
+        # met by the platform filter. `finish` is scoped to step 4, which a release test
         # owing only TST-1001 (step 2, needing step 1) leaves out.
         android = self.placed("android", ["TST-1001"])
         self.assertEqual([1, 2], [step.number for step in android.steps])
@@ -166,9 +166,9 @@ class WalkPreparationTest(unittest.TestCase):
             procedure.steps[1].state_declared = "The meter is connected."
             procedure.steps[2].state_declared = "The iPhone scan is open."
             procedure.steps[3].state_declared = ""
-            entry = walk.Placed(self.sitting, [self.checks["TST-1002"]])
-            walk.attach_procedure(entry, procedure, self.checks, {"TST-1002"},
-                                  [self.sitting], {}, platform=platform, known=self.checks)
+            entry = rt.Placed(self.section, [self.checks["TST-1002"]])
+            rt.attach_procedure(entry, procedure, self.checks, {"TST-1002"},
+                                  [self.section], {}, platform=platform, known=self.checks)
             self.assertEqual([], procedure.problems)
             return entry
 
@@ -185,7 +185,7 @@ class WalkPreparationTest(unittest.TestCase):
         self.assertEqual([1], cadence.steps[-1].uses_capture)
         self.assertEqual(12, cadence.steps[-1].timer_seconds)
         out = []
-        walk.render_procedure(cadence, out)
+        rt.render_procedure(cadence, out)
         rendered = "\n".join(out)
         self.assertIn("Capture here for a later comparison", rendered)
         self.assertIn("**Optional timer:** 12 seconds", rendered)
@@ -194,13 +194,13 @@ class WalkPreparationTest(unittest.TestCase):
         meter = self.placed("android", ["TST-1001"])
         self.assertFalse(meter.steps[0].capture_needed)
         out = []
-        walk.render_procedure(meter, out)
+        rt.render_procedure(meter, out)
         self.assertNotIn("Capture here for a later comparison", "\n".join(out))
 
     def test_capture_source_must_be_declared_and_required(self):
         procedure = self.procedure()
         procedure.requires[4] = [2]
-        problems = walk.validate_preparation(procedure, "android")
+        problems = rt.validate_preparation(procedure, "android")
         self.assertTrue(any("must require evidence source step 1" in problem
                             for problem in problems))
 
@@ -208,18 +208,18 @@ class WalkPreparationTest(unittest.TestCase):
         procedure = self.procedure()
         procedure.requires = {2: [1], 4: [5, 1], 1: [4]}
         procedure.setup_items[0].steps.add(8)
-        problems = walk.validate_preparation(procedure, "android")
+        problems = rt.validate_preparation(procedure, "android")
         self.assertTrue(any("absent step 5" in problem for problem in problems))
         self.assertTrue(any("cycle" in problem for problem in problems))
         self.assertTrue(any("setup item trainer names absent step 8" in problem
                             for problem in problems))
-        entry = walk.Placed(self.sitting, [self.checks["TST-1002"]])
-        walk.attach_procedure(entry, procedure, self.checks, {"TST-1002"},
-                              [self.sitting], {}, platform="android", known=self.checks)
+        entry = rt.Placed(self.section, [self.checks["TST-1002"]])
+        rt.attach_procedure(entry, procedure, self.checks, {"TST-1002"},
+                              [self.section], {}, platform="android", known=self.checks)
         self.assertTrue(procedure.problems)
         self.assertEqual([], entry.steps)
-        sheet = walk.Walk("REL-0001", "android", "2026-09-16", [], [entry], [])
-        rendered = walk.render(sheet)
+        sheet = rt.ReleaseTest("REL-0001", "android", "2026-09-16", [], [entry], [])
+        rendered = rt.render(sheet)
         self.assertIn("no longer matches what the release owes", rendered)
         self.assertIn("TST-1002", rendered)
 
@@ -229,14 +229,14 @@ class WalkPreparationTest(unittest.TestCase):
         self.path.write_text(PROCEDURE.replace(
             'state_for:\n  4: "The same ride is running with the meter connected."',
             'state_for:\n  4: "Signed in as FREE."\n  4: "Signed in as PRO."'), encoding="utf-8")
-        problems = walk.validate_preparation(self.procedure(), "android")
+        problems = rt.validate_preparation(self.procedure(), "android")
         self.assertTrue(any("`state_for` declares 4 twice" in problem for problem in problems))
         self.path.write_text(PROCEDURE.replace(
             "step_platforms:\n  3: [ios]", "step_platforms: {3: [ios], 3: [android]}"), encoding="utf-8")
-        problems = walk.validate_preparation(self.procedure(), "android")
+        problems = rt.validate_preparation(self.procedure(), "android")
         self.assertTrue(any("`step_platforms` declares 3 twice" in problem for problem in problems))
         self.path.write_text(PROCEDURE, encoding="utf-8")
-        self.assertEqual([], [problem for problem in walk.validate_preparation(self.procedure(), "android")
+        self.assertEqual([], [problem for problem in rt.validate_preparation(self.procedure(), "android")
                               if "twice" in problem])
 
     def test_a_declaration_that_can_never_apply_is_refused(self):
@@ -245,22 +245,22 @@ class WalkPreparationTest(unittest.TestCase):
         phone.platforms = {"android"}
         procedure.steps[1].platforms = {"android"}
         procedure.steps[3].platforms = {"ios"}
-        problems = walk.validate_preparation(procedure, "")
+        problems = rt.validate_preparation(procedure, "")
         self.assertTrue(any("setup item phone is limited to android, but none of its steps runs there"
                             in problem for problem in problems))
         self.assertTrue(any("step 2 has an `action_for` variant for ios" in problem for problem in problems))
         self.assertTrue(any("step 4's `readiness_for` is limited to android" in problem for problem in problems))
         self.assertFalse(any("can never" in problem or "none of its steps" in problem
-                             for problem in walk.validate_preparation(self.procedure(), "")))
+                             for problem in rt.validate_preparation(self.procedure(), "")))
 
     def test_a_platform_the_repo_has_no_ledger_for_is_refused(self):
-        ledgers = self.docs / walk.LEDGERS_REL
+        ledgers = self.docs / rt.LEDGERS_REL
         ledgers.mkdir(parents=True)
         for name in ("WORKING-android", "WORKING-ios"):
             (ledgers / (name + ".json")).write_text("{}", encoding="utf-8")
         self.assertEqual([], [problem for problem in self.procedure().parse_problems if "names platform" in problem])
         self.path.write_text(PROCEDURE.replace("  3: [ios]", "  3: [andriod]"), encoding="utf-8")
-        problems = walk.validate_preparation(self.procedure(), "android")
+        problems = rt.validate_preparation(self.procedure(), "android")
         self.assertTrue(any("`step_platforms` names platform andriod, and this repo keeps ledgers only for android, ios"
                             in problem for problem in problems))
 
@@ -275,7 +275,7 @@ class WalkPreparationTest(unittest.TestCase):
     def test_a_later_step_cannot_be_a_prerequisite(self):
         procedure = self.procedure()
         procedure.requires[2] = [3]
-        problems = walk.validate_preparation(procedure, "")
+        problems = rt.validate_preparation(procedure, "")
         self.assertTrue(any("step 2 requires step 3, but a prerequisite must come earlier" in problem
                             for problem in problems))
 
@@ -284,7 +284,7 @@ class WalkPreparationTest(unittest.TestCase):
         self.path.write_text(PROCEDURE.replace(
             'state_for:\n  4: "The same ride is running with the meter connected."',
             'state_for:\n  4: "Ride --- then stop."\n  4: "Signed in as PRO."'), encoding="utf-8")
-        problems = walk.validate_preparation(self.procedure(), "android")
+        problems = rt.validate_preparation(self.procedure(), "android")
         self.assertTrue(any("`state_for` declares 4 twice" in problem for problem in problems))
 
     def test_the_numbering_remark_counts_only_this_platforms_steps(self):
@@ -302,7 +302,7 @@ class WalkPreparationTest(unittest.TestCase):
         # "for step 21", so a kept step prints under that number, not 1, 2, 3.
         android = self.placed("android", ["TST-1002"])
         out = []
-        walk.render_procedure(android, out)
+        rt.render_procedure(android, out)
         headings = [line for line in out if line.startswith("#### Step")]
         self.assertEqual(["#### Step 1 — Equipment panel (preparation)",
                           "#### Step 2 — Equipment panel (preparation)",
@@ -314,7 +314,7 @@ class WalkPreparationTest(unittest.TestCase):
     def test_cross_platform_prerequisite_is_refused(self):
         procedure = self.procedure()
         procedure.requires[4] = [3]
-        problems = walk.validate_preparation(procedure, "android")
+        problems = rt.validate_preparation(procedure, "android")
         self.assertTrue(any("unavailable on android" in problem for problem in problems))
 
     def test_malformed_tag_beside_valid_coverage_keeps_the_fallback(self):
@@ -323,59 +323,59 @@ class WalkPreparationTest(unittest.TestCase):
                               "The meter appears. `TST-1001.1` `TST-1001.1a`"),
             encoding="utf-8")
         procedure = self.procedure()
-        entry = walk.Placed(self.sitting, [self.checks["TST-1001"]])
-        walk.attach_procedure(entry, procedure, self.checks, {"TST-1001"},
-                              [self.sitting], {}, platform="android", known=self.checks)
+        entry = rt.Placed(self.section, [self.checks["TST-1001"]])
+        rt.attach_procedure(entry, procedure, self.checks, {"TST-1001"},
+                              [self.section], {}, platform="android", known=self.checks)
         self.assertTrue(any("malformed expectation tag `TST-1001.1a`" in problem
                             for problem in procedure.problems))
         self.assertEqual([], entry.steps)
-        sheet = walk.Walk("REL-0001", "android", "2026-09-16", [], [entry], [])
-        rendered = walk.render(sheet)
+        sheet = rt.ReleaseTest("REL-0001", "android", "2026-09-16", [], [entry], [])
+        rendered = rt.render(sheet)
         self.assertIn("no longer matches what the release owes", rendered)
         self.assertIn("TST-1001", rendered)
         self.assertIn("The meter appears.", rendered)
 
     def test_changed_child_stays_under_its_unchanged_parent(self):
         surfaces = {
-            "SUR-0001": walk.Surface("SUR-0001", "Equipment panel"),
-            "SUR-0002": walk.Surface("SUR-0002", "Cadence scanner", "SUR-0001"),
+            "SUR-0001": rt.Surface("SUR-0001", "Equipment panel"),
+            "SUR-0002": rt.Surface("SUR-0002", "Cadence scanner", "SUR-0001"),
         }
-        change = walk.Change("CHG-1", "Cadence scan", "change.md",
+        change = rt.Change("CHG-1", "Cadence scan", "change.md",
                              screens=[("SUR-0002", "The scanner names its target.")])
-        survey = walk.build_survey([change], surfaces)
-        self.assertEqual(["SUR-0001", "SUR-0002"], [screen.id for screen in survey])
-        self.assertEqual([], survey[0].sentences)
-        self.assertEqual("SUR-0001", survey[1].parent)
+        changed = rt.build_what_changed([change], surfaces)
+        self.assertEqual(["SUR-0001", "SUR-0002"], [screen.id for screen in changed])
+        self.assertEqual([], changed[0].sentences)
+        self.assertEqual("SUR-0001", changed[1].parent)
 
     def test_unscripted_check_readiness_is_platform_specific(self):
-        declared, problems = walk.parse_check_readiness({
+        declared, problems = rt.parse_check_readiness({
             "ios": {"kind": "decision", "reason": "Choose the iOS scope.",
                     "issue": "ISS-1001"},
         }, "check.md")
         self.assertEqual([], problems)
-        check = walk.Check("TST-1004", "Android backup", "check.md", "Bench",
+        check = rt.Check("TST-1004", "Android backup", "check.md", "Bench",
                            readiness_for=declared)
         ios = []
         android = []
-        walk.render_check(check, ios, "ios")
-        walk.render_check(check, android, "android")
+        rt.render_check(check, ios, "ios")
+        rt.render_check(check, android, "android")
         self.assertIn("**Needs a decision:** Choose the iOS scope.", "\n".join(ios))
         self.assertIn("Related issue: ISS-1001.", "\n".join(ios))
         self.assertNotIn("Needs a decision", "\n".join(android))
 
     def test_malformed_unscripted_check_readiness_is_reported(self):
-        declared, problems = walk.parse_check_readiness({
+        declared, problems = rt.parse_check_readiness({
             "ios": {"kind": "decision", "reason": "  "},
             "iOS": {"kind": "preparation", "reason": "Find the device."},
         }, "check.md")
         self.assertEqual({}, declared)
         self.assertEqual(2, len(problems))
-        self.assertTrue(all("walk_readiness_for" in problem for problem in problems))
-        check = walk.Check("TST-1004", "Bad readiness", "check.md", "Bench",
+        self.assertTrue(all("readiness_for" in problem for problem in problems))
+        check = rt.Check("TST-1004", "Bad readiness", "check.md", "Bench",
                            readiness_for=declared, readiness_problems=problems)
-        self.assertEqual("decision", walk.check_readiness(check, "ios")["kind"])
+        self.assertEqual("decision", rt.check_readiness(check, "ios")["kind"])
         rendered = []
-        walk.render_check(check, rendered, "ios")
+        rt.render_check(check, rendered, "ios")
         self.assertIn("Needs a decision", "\n".join(rendered))
 
 

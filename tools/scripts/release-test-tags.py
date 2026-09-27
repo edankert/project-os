@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Rewrite quoted walk expectation lines as tag-only lines (ADR-0049, ISS-0088).
+"""Rewrite quoted procedure expectation lines as tag-only lines (ADR-0049, ISS-0088).
 
 A procedure step used to quote a check's `## Expect` line word for word, so
-rewriting the check broke every walk that quoted it. A line may now be only
-its tags, `` - `TST-0480` ``, and `walk-sheet.py` prints the check's current
+rewriting the check broke every procedure that quoted it. A line may now be only
+its tags, `` - `TST-0480` ``, and `release-test.py` prints the check's current
 Expect lines in its place. This script makes that change where it loses
 nothing, and leaves every other line as written:
 
   one line whose quote is exactly what its tag would print
       -> the tags alone. That is a check with one Expect line, or `.N` on a
-      check that pairs step N with Expect line N (`walk-sheet.py`,
+      check that pairs step N with Expect line N (`release-test.py`,
       `expect_for`), quoting line N
   one step quoting every Expect line of a check, all with the same tags
       -> one tag-only line where the first of them was
@@ -20,7 +20,7 @@ tags name several checks stays quoted too, for the same reason. Each kept line
 is reported with its reason.
 
 --refresh does the other half, for a line that must stay quoted. When a check's
-Expect line has been reworded, every walk quoting the old words fails. For each
+Expect line has been reworded, every procedure quoting the old words fails. For each
 such quote, it finds the check's last version in git (the working tree's edit
 against HEAD, then older commits) whose Expect had the quoted line, and
 rewrites the quote with the current line at the same position. It does so only
@@ -28,9 +28,9 @@ when the Expect section has as many lines as it had then; otherwise it reports
 the line for a person to re-quote.
 
 Usage:
-    walk-tags.py [--repo-root .]      # dry run: what would change, and what stays
-    walk-tags.py --apply
-    walk-tags.py --refresh [--apply]  # re-quote lines a reworded check broke
+    release-test-tags.py [--repo-root .]      # dry run: what would change, and what stays
+    release-test-tags.py --apply
+    release-test-tags.py --refresh [--apply]  # re-quote lines a reworded check broke
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 
-def walk_module():
-    spec = importlib.util.spec_from_file_location("_walk_for_tags", HERE / "walk-sheet.py")
+def release_test_module():
+    spec = importlib.util.spec_from_file_location("_release_test_for_tags", HERE / "release-test.py")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
@@ -52,11 +52,11 @@ def walk_module():
 
 
 def plan(repo_root: Path):
-    ws = walk_module()
+    rt = release_test_module()
     docs = repo_root / "docs"
-    checks = ws.load_checks(docs, repo_root=repo_root)
+    checks = rt.load_checks(docs, repo_root=repo_root)
     out = []
-    for procedure in ws.load_procedures(docs, repo_root):
+    for procedure in rt.load_procedures(docs, repo_root):
         path = repo_root / procedure.path
         edits, kept = [], []
         for step in procedure.steps:
@@ -75,13 +75,13 @@ def plan(repo_root: Path):
                     continue
                 want = []
                 for _c, n in tags:
-                    want += [x for x in ws.expect_for(check, n) if x not in want]
+                    want += [x for x in rt.expect_for(check, n) if x not in want]
                 have = [e.quote for e in lines]
-                if not ws.expect_text(check):
+                if not rt.expect_text(check):
                     for e in lines:
                         kept.append((step.number, e.raw, "%s states no Expect text to print" % cid))
                     continue
-                if any(q not in ws.expect_text(check) for q in have):
+                if any(q not in rt.expect_text(check) for q in have):
                     for e in lines:
                         kept.append((step.number, e.raw, "it does not quote %s's current Expect" % cid))
                     continue
@@ -91,7 +91,7 @@ def plan(repo_root: Path):
                                      % (cid, len(want), len(set(have)))))
                     continue
                 first = lines[0].raw
-                m = ws._MARKER_RE.match(first)
+                m = rt._MARKER_RE.match(first)
                 prefix = first[:m.end()] if m else first[:len(first) - len(first.lstrip())]
                 tag_text = " ".join("`%s%s`" % (c, "." + n if n else "") for c, n in tags)
                 edits.append((first, prefix + tag_text, [e.raw for e in lines[1:]]))
@@ -110,9 +110,9 @@ def _git(repo_root: Path, *args: str) -> str:
 
 def refresh_plan(repo_root: Path):
     """Stale quotes, each with the current line at the position it used to quote."""
-    ws = walk_module()
+    rt = release_test_module()
     docs = repo_root / "docs"
-    checks = ws.load_checks(docs, repo_root=repo_root)
+    checks = rt.load_checks(docs, repo_root=repo_root)
     history: dict[str, list[list[str]]] = {}
 
     def versions(check) -> list[list[str]]:
@@ -124,8 +124,8 @@ def refresh_plan(repo_root: Path):
             text = _git(repo_root, "show", "%s:%s" % (rev, rel))
             body = text.split("\n---", 1)[1] if text.startswith("---") and "\n---" in text[3:] else text
             lines = []
-            for line in ws.section(body, "Expect", "Expected results").splitlines():
-                n = ws.normalise(line)
+            for line in rt.under_heading(body, "Expect", "Expected results").splitlines():
+                n = rt.normalise(line)
                 if n and n not in lines:
                     lines.append(n)
             out.append(lines)
@@ -133,7 +133,7 @@ def refresh_plan(repo_root: Path):
         return out
 
     out = []
-    for procedure in ws.load_procedures(docs, repo_root):
+    for procedure in rt.load_procedures(docs, repo_root):
         edits, kept = [], []
         for step in procedure.steps:
             for e in step.expectations:
@@ -141,7 +141,7 @@ def refresh_plan(repo_root: Path):
                 if not e.quote or len(owners) != 1:
                     continue
                 check = checks.get(next(iter(owners)))
-                now = ws.expect_text(check) if check else []
+                now = rt.expect_text(check) if check else []
                 if not now or e.quote in now:
                     continue
                 found = None
@@ -157,7 +157,7 @@ def refresh_plan(repo_root: Path):
                                  % (check.id, len(found), len(now))))
                     continue
                 new_text = now[found.index(e.quote)]
-                m = ws._MARKER_RE.match(e.raw)
+                m = rt._MARKER_RE.match(e.raw)
                 prefix = e.raw[:m.end()] if m else e.raw[:len(e.raw) - len(e.raw.lstrip())]
                 tag_text = " ".join("`%s%s`" % (c, "." + n if n else "") for c, n in e.tags)
                 edits.append((e.raw, prefix + new_text + " " + tag_text, []))
@@ -197,10 +197,10 @@ def main(argv=None):
     n_edit = sum(len(i["edits"]) for i in items)
     n_kept = sum(len(i["kept"]) for i in items)
     if args.refresh:
-        print("walk-tags: %s %d stale quote(s) from the check's current Expect; %d need a person"
+        print("release-test-tags: %s %d stale quote(s) from the check's current Expect; %d need a person"
               % ("re-quoted" if args.apply else "would re-quote", n_edit, n_kept))
     else:
-        print("walk-tags: %s %d line(s) to tags only; %d quoted line(s) stay quoted"
+        print("release-test-tags: %s %d line(s) to tags only; %d quoted line(s) stay quoted"
               % ("rewrote" if args.apply else "would rewrite", n_edit, n_kept))
     for item in items:
         for first, new, drop in item["edits"]:

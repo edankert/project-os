@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Generate a release walk sheet: the owed acceptance checks as a procedure.
+"""Generate a release test sheet: the owed acceptance checks as a procedure.
 
-A walk sheet is what a person reads while walking a release. It opens with the
+A release test sheet is what a person reads while testing a release by hand. It opens with the
 screens the release changed, then lists every check the platform still owes, in
 the order the project authored, with each check's setup, steps and expected
 result printed on the page. The rules it implements are stated once in
-`tools/instructions/TESTING.md`, "The walk" (project-os-dev ADR-0029); this
-file restates none of them and is the only code that computes a walk.
+`tools/instructions/TESTING.md`, "The release test" (project-os-dev ADR-0029); this
+file restates none of them and is the only code that computes a release test.
 
 WHY A GENERATOR AND NOT A NOTE
 ------------------------------
@@ -21,41 +21,41 @@ WHAT IT READS, AND NOTHING ELSE
   * the acceptance notes -- `level: acceptance`, their `area:`, `after:`,
     `covers:`, `command:` and their Setup / Steps / Expect sections;
   * `docs/releases/ledgers/{WORKING,REL-####}-<platform>.json`, sealed and open;
-  * `docs/tests/acceptance/WALK.md`, the project's authored sitting order;
-  * `docs/tests/acceptance/walk/*.md`, one written procedure per sitting;
+  * `docs/tests/acceptance/RELEASE-TEST.md`, the project's authored section order;
+  * `docs/tests/acceptance/release-test/*.md`, one written procedure per section;
   * the `SUR-*` notes, for their titles, their `parent:` and their `gallery:`;
   * `docs/changes/CHG-*.md` added since the last release tag, for the `##
     Impact` list that says which screens each one altered;
   * `git`, to find that tag and to date the change notes against it. This is
     the only subprocess it runs, and a checkout without the tag loses the
-    survey and nothing else.
+    what-changed list and nothing else.
 
 --check
 -------
-`--check` walks the procedures instead of printing a sheet: it fails when a
-procedure and the release's owed set disagree ("The walk", rule 9). Exit 1 =
+`--check` reads the procedures instead of printing a sheet: it fails when a
+procedure and the release's owed set disagree ("The release test", rule 9). Exit 1 =
 at least one procedure is wrong, 0 = nothing to fix. `validate-docs.sh` runs
 it for every platform that has a ledger.
 
 It writes markdown and never reads a sheet back. A generated sheet may be kept
-as a record of what was walked; it is never edited by hand and nothing parses
-it ("The walk", rule 1). `--out` is therefore optional: the sheet goes to
+as a record of what was tested; it is never edited by hand and nothing parses
+it ("The release test", rule 1). `--out` is therefore optional: the sheet goes to
 stdout unless a path is named.
 
 THE OWED PREDICATE IS THE GATE'S
 --------------------------------
-A row is a manual check (feature or regression section, so no `command:`) with
+A row is a manual check (a feature or regression test, so no `command:`) with
 no surviving clearing verdict for this platform. That is `ledger.owed()` in
 `project-os-cockpit`, reproduced here entry for entry, because two
 implementations of one predicate is how a badge and a gate come to disagree
 about one corpus. The cockpit bundles this module rather than writing a second
-one ("The walk", rule 7).
+one ("The release test", rule 7).
 
 Exit codes: 0 = a sheet was produced, 2 = usage error or no ledger in this repo.
 
 Stdlib only. Usage:
-    walk-sheet.py --release REL-0017 --platform android [--out PATH] [--repo-root DIR]
-    walk-sheet.py --check [--platform android] [--repo-root DIR]
+    release-test.py --release REL-0017 --platform android [--out PATH] [--repo-root DIR]
+    release-test.py --check [--platform android] [--repo-root DIR]
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ from pathlib import Path
 # --------------------------------------------------------------- note reading
 
 #: Loaded lazily, so a host that already has a note index (the cockpit) can
-#: import `build_walk` and `render` without dragging the validator in.
+#: import `build_release_test` and `render` without dragging the validator in.
 _VD = None
 
 
@@ -86,7 +86,7 @@ def _validator():
     if _VD is None:
         import importlib.util as ilu
         here = Path(__file__).resolve().parent / "validate-docs.py"
-        spec = ilu.spec_from_file_location("_vd_walk", here)
+        spec = ilu.spec_from_file_location("_vd_release_test", here)
         module = ilu.module_from_spec(spec)
         spec.loader.exec_module(module)  # type: ignore[union-attr]
         _VD = module
@@ -96,7 +96,7 @@ def _validator():
 #: `TASK-0825`, and `CHG-20260913` out of `CHG-20260913-The-Banner-Moves`.
 #: **Two or more digits, not three or four**: a change note's id carries an
 #: eight-digit date, so the narrower pattern matched every task and no change
-#: at all -- and an invalidation naming a change then produced a survey entry
+#: at all -- and an invalidation naming a change then produced a what-changed entry
 #: with no id, no title and no quoted section. Found by independent review,
 #: 2026-09-13; your-trainer's ledger happens to hold only `TASK-*` ids, which
 #: is why generating a real sheet did not show it. The index a change note is
@@ -141,10 +141,10 @@ def body_of(path: Path) -> str:
     return text
 
 
-def section(body: str, *names: str) -> str:
+def under_heading(body: str, *names: str) -> str:
     """The text under the first of ``names`` that the note has, verbatim.
 
-    Verbatim is the rule, not a convenience: a walker follows these words, and
+    Verbatim is the rule, not a convenience: a tester follows these words, and
     a generator that reflowed or summarised them would be putting words a
     nobody wrote in front of the person recording the verdict.
 
@@ -234,10 +234,10 @@ class Check:
     readiness_problems: list[str] = field(default_factory=list)
 
     @property
-    def section(self) -> str:
+    def kind(self) -> str:
         """feature / regression / automated -- derived, never filed.
 
-        `TESTING.md`, "The three sections": a `command:` makes it automated; a
+        `TESTING.md`, "The three test kinds": a `command:` makes it automated; a
         `covers:` naming an `ISS-*` makes it a claim about a past defect, so a
         regression; everything else is a standing claim about behaviour. A
         check naming no issue reads as a behaviour claim, which is the safe
@@ -247,7 +247,7 @@ class Check:
             return "automated"
         #: **Only the automated branch changes a sheet**, because both of the
         #: others are manual and a row does not say which it is. The split is
-        #: kept so this module and the cockpit name the same three sections
+        #: kept so this module and the cockpit name the same three test kinds
         #: from the same two fields; its regression/feature boundary is
         #: asserted there, on a surface that renders it, and cannot be
         #: asserted here. Said rather than left for the next reader to find
@@ -277,7 +277,7 @@ def load_checks(docs_root: Path, index=None, repo_root: Path | None = None) -> d
             continue
         #: **Retiring a check means kept, and no longer asked.** The verdict
         #: and its date survive as the record that a behaviour was once
-        #: walked; what stops is the asking. A sheet that printed a retired
+        #: tested; what stops is the asking. A sheet that printed a retired
         #: check would ask it, undoing the one thing retirement does -- and it
         #: made this generator report five owed rows where the cockpit's page
         #: reported four on the same corpus, which is exactly the disagreement
@@ -293,10 +293,14 @@ def load_checks(docs_root: Path, index=None, repo_root: Path | None = None) -> d
             except ValueError:
                 pass
         readiness, readiness_problems = parse_check_readiness(
-            fm.get("walk_readiness_for"), str(shown))
+            fm.get("readiness_for"), str(shown))
+        if "walk_readiness_for" in fm:
+            readiness_problems.append(
+                "%s: `walk_readiness_for` is the old name; it is now `readiness_for`. %s"
+                % (shown, MIGRATE_HINT))
         #: A misspelt platform hid the notice on every platform without a word
         #: (FEAT-0033 review, 2026-09-24); procedures already refuse one.
-        readiness_problems += ["%s: `walk_readiness_for` names platform %s, and this repo "
+        readiness_problems += ["%s: `readiness_for` names platform %s, and this repo "
                                "keeps ledgers only for %s" % (shown, name, ", ".join(known_platforms))
                                for name in sorted(readiness) if known_platforms and name not in known_platforms]
         out[note_id] = Check(
@@ -307,13 +311,13 @@ def load_checks(docs_root: Path, index=None, repo_root: Path | None = None) -> d
             after=_ids(fm.get("after")),
             covers=_ids(fm.get("covers")),
             command=_text(fm.get("command")),
-            setup=section(body, "Setup"),
+            setup=under_heading(body, "Setup"),
             #: Procedure and Expected results are the pre-ADR-0027 headings.
             #: Read as fallbacks so a corpus nobody has rewritten yet still
-            #: yields a walkable row. Setup has no fallback, and that absence
+            #: yields a row a person can test. Setup has no fallback, and that absence
             #: is the point of the "not stated" label.
-            steps=section(body, "Steps", "Procedure"),
-            expect=section(body, "Expect", "Expected results"),
+            steps=under_heading(body, "Steps", "Procedure"),
+            expect=under_heading(body, "Expect", "Expected results"),
             lead=lead_paragraph(body),
             readiness_for=readiness,
             readiness_problems=readiness_problems,
@@ -326,7 +330,7 @@ def parse_check_readiness(raw, path: str) -> tuple[dict[str, dict[str, str]], li
     if raw in (None, ""):
         return {}, []
     if not isinstance(raw, dict):
-        return {}, ["%s: `walk_readiness_for` must map platforms to kind and reason" % path]
+        return {}, ["%s: `readiness_for` must map platforms to kind and reason" % path]
     out: dict[str, dict[str, str]] = {}
     problems: list[str] = []
     for platform, value in raw.items():
@@ -337,7 +341,7 @@ def parse_check_readiness(raw, path: str) -> tuple[dict[str, dict[str, str]], li
                 or not isinstance(value.get("reason"), str)
                 or not value["reason"].strip()
                 or ("issue" in value and not isinstance(value["issue"], str))):
-            problems.append("%s: `walk_readiness_for` entry %r needs a platform, "
+            problems.append("%s: `readiness_for` entry %r needs a platform, "
                             "kind preparation or decision, and a plain reason" % (path, platform))
             continue
         out[platform] = {"kind": value["kind"],
@@ -350,7 +354,7 @@ def check_readiness(check: Check, platform: str) -> dict[str, str]:
     """A malformed declaration is a visible decision, never a ready card."""
     if check.readiness_problems:
         return {"kind": "decision", "reason":
-                "This check's walk readiness declaration is invalid. Fix its note "
+                "This check's readiness declaration is invalid. Fix its note "
                 "before recording a verdict.", "issue": ""}
     return check.readiness_for.get(platform, {})
 
@@ -358,8 +362,8 @@ def check_readiness(check: Check, platform: str) -> dict[str, str]:
 CHANGES_REL = "changes"
 RELEASES_REL = "releases"
 GALLERY_REL = "tests/acceptance/gallery"
-PROCEDURES_REL = "tests/acceptance/walk"
-#: The folder holding the pictures of the build being walked. Every other
+PROCEDURES_REL = "tests/acceptance/release-test"
+#: The folder holding the pictures of the build being tested. Every other
 #: folder under the gallery is named after the tag it was captured at.
 CANDIDATE_DIR = "candidate"
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".svg")
@@ -408,7 +412,7 @@ def load_surfaces(index) -> dict[str, Surface]:
     `parent:` is written three ways in the fleet -- a bare id, a wikilink, and
     the parent's title -- so all three are resolved here and a caller never
     has to ask which one it got. A `parent:` naming nothing resolvable is
-    dropped rather than kept as a string: the survey nests by id, and a
+    dropped rather than kept as a string: the what-changed list nests by id, and a
     dangling parent would put a child under a heading that does not exist.
     """
     vd = _validator()
@@ -459,7 +463,7 @@ def surfaces_by_title(index) -> dict[str, str]:
 def top_screen(surface_id: str, surfaces: dict[str, Surface]) -> str:
     """The top-level screen a surface sits under, or itself.
 
-    Walks `parent:` upwards with a seen-set, because a pair of notes naming
+    Follows `parent:` upwards with a seen-set, because a pair of notes naming
     each other is a thing an author can write and is not worth a crash.
     """
     seen, at = {surface_id}, surface_id
@@ -500,13 +504,13 @@ def parse_impact(body: str) -> tuple[list[tuple[str, str]], bool]:
     screens: list[tuple[str, str]] = []
     none = False
     in_fence = False
-    for line in section(body, IMPACT_HEADING).splitlines():
+    for line in under_heading(body, IMPACT_HEADING).splitlines():
         if FENCE_RE.match(line):
             in_fence = not in_fence
             continue
         #: **A fenced block is an example, not a claim.** A template or a
         #: change note showing the shape inside ``` would otherwise put a
-        #: screen on the survey that nothing altered. Found by independent
+        #: screen on the what-changed list that nothing altered. Found by independent
         #: review, 2026-09-14.
         if in_fence:
             continue
@@ -588,8 +592,9 @@ def load_changes(docs_root: Path, repo_root: Path | None = None,
 def _git(root: Path, *args: str) -> tuple[int, str]:
     """`git` in ``root``. A missing git is a return code, never an exception.
 
-    The survey is the only thing that needs git, so a machine without it, or
-    a checkout that is not a repository, loses the survey and keeps the sheet.
+    The what-changed list is the only thing that needs git, so a machine
+    without it, or a checkout that is not a repository, loses that list and
+    keeps the sheet.
     """
     try:
         done = subprocess.run(["git", "-C", str(root), *args],
@@ -660,8 +665,8 @@ def changes_since(repo_root: Path, tag: str) -> tuple[set[str], str]:
 def capture_finder(docs_root: Path, repo_root: Path | None, tag: str):
     """`key -> (before, after)`, as repo-relative paths, "" where absent.
 
-    The convention is `TESTING.md`, "The walk", rule 2: one folder per tag,
-    plus `candidate/` for the build being walked.
+    The convention is `TESTING.md`, "The release test", rule 2: one folder per tag,
+    plus `candidate/` for the build being tested.
     """
     base = docs_root / GALLERY_REL
 
@@ -685,7 +690,7 @@ def capture_finder(docs_root: Path, repo_root: Path | None, tag: str):
     return captures
 
 
-# ------------------------------------------------------ a sitting's procedure
+# ------------------------------------------------------ a section's procedure
 
 #: `1. ` or `1) ` at the start of a line, indented no more than three spaces --
 #: deeper than that is a continuation inside the previous item, not a new one.
@@ -696,7 +701,7 @@ _STEP_RE = re.compile(r"^ {0,3}(\d+)[.)]\s+(.*)$")
 _TAG_RE = re.compile(r"`(TST-\d{2,})(?:\.(\d+))?`")
 #: A malformed backticked check reference must be reported even when another
 #: valid tag on the same line satisfies coverage. Otherwise the unparsed text
-#: becomes prose and an observation can disappear from the owed walk.
+#: becomes prose and an observation can disappear from the owed release test.
 _TAG_LIKE_RE = re.compile(r"`TST-[^`]*`")
 _ACTION_HEAD_RE = re.compile(r"^(\*\*.+?\.\*\*)\s*(.*)$")
 _MARKER_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
@@ -708,7 +713,7 @@ def normalise(text: str) -> str:
 
     The list marker goes, runs of whitespace collapse, and emphasis at either
     end goes -- `- **The banner reads DONE.**` and `The banner reads DONE.`
-    say the same thing to a walker. Nothing inside the line is touched, so a
+    say the same thing to a tester. Nothing inside the line is touched, so a
     code symbol in backticks still has to match.
     """
     return _WS_RE.sub(" ", _MARKER_RE.sub("", text or "")).strip().strip("*_ ")
@@ -731,7 +736,7 @@ class Expectation:
     quote: str
     raw: str
     tags: list[tuple[str, str]] = field(default_factory=list)
-    #: Filled by `build_walk`: which of this line's tags the release owes.
+    #: Filled by `build_release_test`: which of this line's tags the release owes.
     owed: set[tuple[str, str]] = field(default_factory=set)
 
 
@@ -756,10 +761,10 @@ class Step:
     platforms: set[str] = field(default_factory=set)
     #: State to confirm before this action; authored, never inferred from prose.
     #: A declaration on this source step; carried to later applicable steps
-    #: when the walk is built for one platform.
+    #: when the release test is built for one platform.
     state_declared: str = ""
     required_state: str = ""
-    #: A later retained step may ask the walker to keep evidence from here.
+    #: A later retained step may ask the tester to keep evidence from here.
     capture_prompt: str = ""
     capture_needed: bool = False
     uses_capture: list[int] = field(default_factory=list)
@@ -787,20 +792,23 @@ class SetupItem:
 
 @dataclass
 class Procedure:
-    """One sitting's written script."""
+    """One section's written script."""
 
     path: str
-    sitting: str
+    section: str
     setup: str
     steps: list[Step] = field(default_factory=list)
     setup_items: list[SetupItem] = field(default_factory=list)
     requires: dict[int, list[int]] = field(default_factory=dict)
     parse_problems: list[str] = field(default_factory=list)
-    #: Why this procedure cannot be printed. Non-empty means the sitting falls
-    #: back to per-check rows ("The walk", rule 9).
+    #: Why this procedure cannot be printed. Non-empty means the section falls
+    #: back to per-check rows ("The release test", rule 9).
     problems: list[str] = field(default_factory=list)
     #: True about the procedure, nobody's mistake.
     remarks: list[str] = field(default_factory=list)
+    #: The value of `sitting:`, the old name of `section:`, so the refusal
+    #: can name what to change (project-os-dev ADR-0050).
+    old_section: str = ""
 
 
 _SETUP_ITEM_RE = re.compile(r"^- \[([a-z][a-z0-9_-]*)\] (.+)$")
@@ -1000,7 +1008,7 @@ def parse_steps(body: str) -> list[Step]:
     steps: list[Step] = []
     current: Step | None = None
     in_fence = False
-    for line in section(body, "Steps").splitlines():
+    for line in under_heading(body, "Steps").splitlines():
         if FENCE_RE.match(line):
             in_fence = not in_fence
             if current is not None:
@@ -1141,7 +1149,7 @@ def unknown_platforms(procedure: Procedure, known: list[str],
 
 
 def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Procedure]:
-    """Every file under `docs/tests/acceptance/walk/`, parsed."""
+    """Every file under `docs/tests/acceptance/release-test/`, parsed."""
     root = docs_root / PROCEDURES_REL
     if not root.is_dir():
         return []
@@ -1159,7 +1167,7 @@ def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Proc
             except ValueError:
                 pass
         shown_path = str(shown)
-        setup = section(body, "Setup")
+        setup = under_heading(body, "Setup")
         steps = parse_steps(body)
         requires, require_problems = _number_map(fm.get("requires"), "requires", shown_path)
         step_platforms, step_problems = _platform_map(
@@ -1201,7 +1209,8 @@ def load_procedures(docs_root: Path, repo_root: Path | None = None) -> list[Proc
         end = next((i for i, line in enumerate(lines[1:], 1) if line.strip() == "---"), 0)
         front = "\n".join(lines[1:end]) if lines and lines[0].strip() == "---" and end else ""
         procedure = Procedure(
-            path=shown_path, sitting=_text(fm.get("sitting")), setup=setup,
+            path=shown_path, section=_text(fm.get("section")),
+            old_section=_text(fm.get("sitting")), setup=setup,
             steps=steps, setup_items=setup_items, requires=requires,
             parse_problems=(require_problems + step_problems + state_problems
                             + capture_problems + use_problems + timer_problems
@@ -1234,12 +1243,12 @@ def numbered_steps(check: Check) -> list[int]:
 
     **Position, not the digit written**, for the reason `parse_steps` gives.
     A note whose `## Steps` read `1.` three times has three steps, because
-    that is what markdown renders and what a walker counts; counting distinct
+    that is what markdown renders and what a tester counts; counting distinct
     digits collapsed it to one owed part, so the release owed less than rule 9
     says it does. Found by independent review, 2026-09-14.
 
     A check whose procedure is an unheaded paragraph has none, and is one
-    owed part cited by its bare id ("The walk", rule 9). Most of the corpus
+    owed part cited by its bare id ("The release test", rule 9). Most of the corpus
     that needs this looks like that today (project-os-dev ISS-0064).
     """
     return list(range(1, len(written_steps(check)) + 1))
@@ -1255,36 +1264,36 @@ def expect_lines(check: Check) -> set[str]:
     return {q for q in (normalise(l) for l in (check.expect or "").splitlines()) if q}
 
 
-def claims(sitting: Sitting, check: Check, surfaces: dict[str, str]) -> bool:
-    """Whether a sitting claims a check ("The walk", rule 3)."""
-    return (check.id in sitting.checks
-            or check.area in sitting.surfaces
-            or surfaces.get(check.area, "") in sitting.surfaces)
+def claims(section: Section, check: Check, surfaces: dict[str, str]) -> bool:
+    """Whether a section claims a check ("The release test", rule 3)."""
+    return (check.id in section.checks
+            or check.area in section.surfaces
+            or surfaces.get(check.area, "") in section.surfaces)
 
 
 _PLACEMENTS: dict = {}
 
 
-def placement(checks: list[Check], sittings: list[Sitting],
+def placement(checks: list[Check], sections: list[Section],
               surfaces: dict[str, str]) -> dict[str, str]:
-    """`check id -> sitting name`; the first sitting to claim a check keeps it.
+    """`check id -> section name`; the first section to claim a check keeps it.
 
     Memoised for the run (project-os-dev ISS-0093): `--check` asked the same
     question 475 times for one repo, 1.1 million `claims` calls. The key is the
-    check ids with the identity of the sitting and surface objects, which a
+    check ids with the identity of the section and surface objects, which a
     run never mutates; a copy returned per call keeps callers apart.
     """
-    key = (tuple(c.id for c in checks), id(sittings), id(surfaces))
+    key = (tuple(c.id for c in checks), id(sections), id(surfaces))
     if key in _PLACEMENTS:
         return dict(_PLACEMENTS[key][0])
     out: dict[str, str] = {}
-    for sitting in sittings:
+    for section in sections:
         for check in checks:
-            if check.id not in out and claims(sitting, check, surfaces):
-                out[check.id] = sitting.name
+            if check.id not in out and claims(section, check, surfaces):
+                out[check.id] = section.name
     #: The inputs are kept alive with the answer, so their ids cannot be
     #: reused by other objects while the entry exists.
-    _PLACEMENTS[key] = (dict(out), sittings, surfaces)
+    _PLACEMENTS[key] = (dict(out), sections, surfaces)
     return out
 
 
@@ -1300,16 +1309,33 @@ _LEDGER_NAME_RE = re.compile(r"^(?:WORKING|[A-Z]{2,6}-\d{3,4})-(?P<platform>.+)$
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-class WalkError(Exception):
+#: What a consumer runs once to move its own files to the release test names
+#: (project-os-dev ADR-0050). Printed wherever an old name is refused.
+MIGRATE_HINT = "Run `python3 tools/scripts/migrate-release-test-names.py --apply` (project-os-dev ADR-0050)."
+
+
+def entry_result(entry: dict) -> str:
+    """A ledger entry's result: `result`, or `mark` in an entry written before it.
+
+    New entries write `result` (project-os-dev ADR-0050). Sealed ledgers are
+    records and are never rewritten, so every reader accepts `mark` for good.
+    """
+    value = entry.get("result")
+    if value in (None, ""):
+        value = entry.get("mark")
+    return _text(value)
+
+
+class ReleaseTestError(Exception):
     """Something a person has to fix before a sheet can be produced."""
 
 
-class NothingToWalk(WalkError):
-    """This repo has no walk to compute, which is not a fault.
+class NothingToTest(ReleaseTestError):
+    """This repo has no release test to compute, which is not a fault.
 
     **Its own class, because `--check` runs on every commit and must be silent
     here without going quiet about a broken ledger.** The first version caught
-    `WalkError` and swallowed all of it, so a ledger whose filename named no
+    `ReleaseTestError` and swallowed all of it, so a ledger whose filename named no
     platform, and a ledger entry dated `2026-13-45`, both stopped being
     reported anywhere: the generator still refused them and nothing in
     `validate-docs.sh` did. Found by independent review, round two,
@@ -1322,7 +1348,7 @@ class NothingToWalk(WalkError):
 class Event:
     check: str
     date: str
-    mark: str = ""
+    result: str = ""
     reason: str = ""
     invalidated_by: str = ""
     release: str = ""
@@ -1340,7 +1366,7 @@ class Event:
 
     @property
     def clears(self) -> bool:
-        return self.mark in CLEARING
+        return self.result in CLEARING
 
 
 def _usable_date(raw: str) -> bool:
@@ -1358,8 +1384,8 @@ def load_events(docs_root: Path, platform: str) -> list[Event]:
 
     Ordering is resolution order, so it belongs here rather than in each
     caller. A file whose name does not name a platform is refused rather than
-    skipped: a ledger that silently disappears from its own platform while
-    sitting there looking read is the worse failure.
+    skipped: a ledger that silently drops out of its own platform while it
+    still looks read is the worse failure.
     """
     root = docs_root / LEDGERS_REL
     if not root.is_dir():
@@ -1368,7 +1394,7 @@ def load_events(docs_root: Path, platform: str) -> list[Event]:
     for path in sorted(root.glob("*.json")):
         found = _LEDGER_NAME_RE.match(path.stem)
         if not found:
-            raise WalkError(
+            raise ReleaseTestError(
                 "%s/%s: the filename does not name a platform. It must be "
                 "`WORKING-<platform>.json` or `REL-####-<platform>.json`, or "
                 "its verdicts are invisible to every query."
@@ -1378,7 +1404,7 @@ def load_events(docs_root: Path, platform: str) -> list[Event]:
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise WalkError("%s/%s: not readable as JSON -- %s"
+            raise ReleaseTestError("%s/%s: not readable as JSON -- %s"
                             % (LEDGERS_REL, path.name, exc)) from None
         sealed = _text(raw.get("sealed"))
         ledgers.append((bool(sealed), sealed, _text(raw.get("release")),
@@ -1390,13 +1416,13 @@ def load_events(docs_root: Path, platform: str) -> list[Event]:
         for entry in sorted(rows, key=lambda e: _text(e.get("date"))):
             when = _text(entry.get("date"))
             if not _usable_date(when):
-                raise WalkError(
+                raise ReleaseTestError(
                     "%s: %s has no usable date (%r) -- a ledger is resolved in "
                     "date order, so a date-shaped string reorders the answer"
                     % (LEDGERS_REL, _text(entry.get("check")), when))
             out.append(Event(
                 check=_text(entry.get("check")), date=when,
-                mark=_text(entry.get("mark")), reason=_text(entry.get("reason")),
+                result=entry_result(entry), reason=_text(entry.get("reason")),
                 invalidated_by=_text(entry.get("invalidated_by")),
                 release=release, working=not is_sealed))
     return out
@@ -1411,7 +1437,7 @@ def resolve(events: list[Event]) -> dict[str, Event]:
     because it was a statement about one release. A check with no surviving
     verdict simply has no key, and that absence is the answer.
 
-    Two layers, because an expiring mark must not destroy the verdict
+    Two layers, because an expiring result must not destroy the verdict
     underneath it: a `pass` followed by an `excused` in a sealed ledger
     resolves back to the `pass`, not to nothing.
     """
@@ -1422,7 +1448,7 @@ def resolve(events: list[Event]) -> dict[str, Event]:
             standing.pop(event.check, None)
             transient.pop(event.check, None)
             continue
-        if event.mark in PERSISTS:
+        if event.result in PERSISTS:
             standing[event.check] = event
             transient.pop(event.check, None)
         elif event.working:              # still in the open ledger
@@ -1441,7 +1467,7 @@ def latest_events(events: list[Event]) -> dict[str, Event]:
 def platforms(docs_root: Path) -> list[str]:
     """Every platform this repo keeps a ledger for.
 
-    A walk is asked for by name, and a name is easy to mistype. Without this,
+    A release test is asked for by name, and a name is easy to mistype. Without this,
     `--platform andriod` read no ledger, found no verdict for anything, and
     printed a confident sheet of every check in the repo -- 545 rows on
     your-trainer, with no warning. Found by independent review, 2026-09-13.
@@ -1483,10 +1509,10 @@ def has_ledger(docs_root: Path) -> bool:
     return root.is_dir() and any(root.glob("*.json"))
 
 
-# ------------------------------------------------------------ the walk order
+# ------------------------------------------------------------ the section order
 
 @dataclass
-class Sitting:
+class Section:
     name: str
     surfaces: list[str] = field(default_factory=list)
     checks: list[str] = field(default_factory=list)
@@ -1498,7 +1524,7 @@ class Sitting:
         return not self.surfaces and not self.checks
 
 
-WALK_REL = "tests/acceptance/WALK.md"
+RELEASE_TEST_REL = "tests/acceptance/RELEASE-TEST.md"
 _YAML_LIST_RE = re.compile(r"^\s*(surfaces|checks|bench)\s*:\s*(.*)$")
 _YAML_SCALAR_RE = re.compile(r"^\s*(state|gallery)\s*:\s*(.*)$")
 
@@ -1512,7 +1538,7 @@ def _inline_list(raw: str) -> list[str]:
     Wi-Fi, for the tablet row"` printed as two items, the second of which,
     *"for the tablet row"*, is an instruction to fetch nothing. `bench:` is
     the field people write as prose, so it is where this shows. Quiet, too:
-    nothing warned, and a walker could not tell a split entry from two
+    nothing warned, and a tester could not tell a split entry from two
     somebody wrote. Filed downstream as project-os-cockpit ISS-0304,
     2026-09-13.
     """
@@ -1537,15 +1563,15 @@ def _inline_list(raw: str) -> list[str]:
     return [p for p in out if p]
 
 
-def parse_walk_order(text: str) -> tuple[str, list[Sitting], list[str]]:
-    """`WALK.md` -> (gallery command, sittings in file order, warnings).
+def parse_section_order(text: str) -> tuple[str, list[Section], list[str]]:
+    """`RELEASE-TEST.md` -> (gallery command, sections in file order, warnings).
 
-    One `### ` heading per sitting, one fenced `yaml` block under it. That is
+    One `### ` heading per section, one fenced `yaml` block under it. That is
     the whole syntax and the generator parses no other, so a second way to
-    write a sitting is a defect rather than a dialect (ADR-0029 acceptance 1).
+    write a section is a defect rather than a dialect (ADR-0029 acceptance 1).
     """
     gallery = ""
-    sittings: list[Sitting] = []
+    sections: list[Section] = []
     warnings: list[str] = []
     lines = text.splitlines()
 
@@ -1560,14 +1586,14 @@ def parse_walk_order(text: str) -> tuple[str, list[Sitting], list[str]]:
             if found and found.group(1) == "gallery":
                 gallery = _strip_comment(found.group(2)).strip().strip("\"'")
 
-    current: Sitting | None = None
+    current: Section | None = None
     in_block = False
     for line in lines[start:]:
         heading = HEADING_RE.match(line)
         if heading and not in_block:
             if len(heading.group(1)) == 3:
-                current = Sitting(name=heading.group(2).strip())
-                sittings.append(current)
+                current = Section(name=heading.group(2).strip())
+                sections.append(current)
             elif len(heading.group(1)) <= 2:
                 current = None
             continue
@@ -1583,13 +1609,13 @@ def parse_walk_order(text: str) -> tuple[str, list[Sitting], list[str]]:
                 #: **Block-style is refused loudly rather than read.** ADR-0029
                 #: acceptance box 1 fixes one syntax and calls a second one a
                 #: defect, so this does not quietly learn to parse `- item`
-                #: lines -- but dropping them silently was worse: a sitting
+                #: lines -- but dropping them silently was worse: a section
                 #: with a block-style `surfaces:` and an inline `checks:` still
                 #: claims something, so it drew no "claims nothing" warning and
                 #: its surfaces simply vanished. Found by independent review,
                 #: 2026-09-13.
                 warnings.append(
-                    'the sitting "%s" writes `%s:` as a block list; the walk '
+                    'the section "%s" writes `%s:` as a block list; the section '
                     "order is read as inline lists only, so write it "
                     '`%s: ["one", "two"]` or it is not read at all'
                     % (current.name, found.group(1), found.group(1)))
@@ -1600,13 +1626,13 @@ def parse_walk_order(text: str) -> tuple[str, list[Sitting], list[str]]:
         if found and found.group(1) == "state":
             current.state = _strip_comment(found.group(2)).strip().strip("\"'")
 
-    for sitting in sittings:
-        if sitting.claims_nothing:
+    for section in sections:
+        if section.claims_nothing:
             warnings.append(
-                'the sitting "%s" names neither `surfaces` nor `checks`, so it '
+                'the section "%s" names neither `surfaces` nor `checks`, so it '
                 "can claim nothing and no row will appear under it"
-                % sitting.name)
-    return gallery, sittings, warnings
+                % section.name)
+    return gallery, sections, warnings
 
 
 def _strip_comment(raw: str) -> str:
@@ -1645,7 +1671,7 @@ class Capture:
 
 @dataclass
 class Screen:
-    """One line of the survey: a screen, what changed on it, its pictures."""
+    """One line of what changed: a screen, what changed on it, its pictures."""
 
     id: str
     title: str
@@ -1659,9 +1685,9 @@ class Screen:
 
 @dataclass
 class Placed:
-    sitting: Sitting
+    section: Section
     rows: list[Check]
-    #: The sitting's written procedure, when it has one and it holds up.
+    #: The section's written procedure, when it has one and it holds up.
     procedure: Procedure | None = None
     #: Only setup that the retained actions use on this platform.
     setup: str = ""
@@ -1673,42 +1699,42 @@ class Placed:
     owed_checks: list[Check] = field(default_factory=list)
 
     @property
-    def walked_from_procedure(self) -> bool:
+    def tested_from_procedure(self) -> bool:
         return self.procedure is not None and not self.procedure.problems
 
 
 @dataclass
-class Walk:
+class ReleaseTest:
     release: str
     platform: str
     generated: str
-    survey: list[Screen]
-    sittings: list[Placed]
+    what_changed: list[Screen]
+    sections: list[Placed]
     unplaced: list[Check]
     gallery: str = ""
-    #: Something to fix in `WALK.md`.
+    #: Something to fix in `RELEASE-TEST.md`.
     warnings: list[str] = field(default_factory=list)
     #: Something true about this sheet that is nobody's mistake.
     notices: list[str] = field(default_factory=list)
     authored_order: bool = True
-    #: The release note and tag the survey compared against, and why it could
-    #: not. Exactly one of `survey_tag` and `survey_problem` is set.
-    survey_release: str = ""
-    survey_tag: str = ""
-    survey_problem: str = ""
+    #: The release note and tag the what-changed list compared against, and why it could
+    #: not. Exactly one of `what_changed_tag` and `what_changed_problem` is set.
+    what_changed_release: str = ""
+    what_changed_tag: str = ""
+    what_changed_problem: str = ""
 
     @property
     def rows(self) -> int:
-        return sum(len(p.rows) for p in self.sittings) + len(self.unplaced)
+        return sum(len(p.rows) for p in self.sections) + len(self.unplaced)
 
 
 def order_rows(rows: list[Check], warnings: list[str], where: str) -> list[Check]:
-    """`after:` first, then id ("The walk", rule 4).
+    """`after:` first, then id ("The release test", rule 4).
 
-    A prerequisite in another sitting cannot be ordered here, so only edges
-    inside this sitting count. A cycle is reported and the rows fall back to id
+    A prerequisite in another section cannot be ordered here, so only edges
+    inside this section count. A cycle is reported and the rows fall back to id
     order: nothing gates on `after:`, so failing the whole sheet over it would
-    cost the walker their afternoon to save an ordering.
+    cost the tester their afternoon to save an ordering.
     """
     here = {c.id: c for c in rows}
     pending = {c.id: [a for a in c.after if a in here and a != c.id] for c in rows}
@@ -1732,23 +1758,23 @@ def owed_checks(checks: dict[str, Check], events: list[Event]) -> list[Check]:
     """The manual checks this platform still owes, in id order.
 
     `ledger.owed()` in `project-os-cockpit`, entry for entry: a manual check
-    (feature or regression section) with no surviving clearing verdict.
+    (a feature or regression test) with no surviving clearing verdict.
     """
     verdicts = resolve(events)
     out = [c for c in checks.values()
-           if c.section != "automated"
+           if c.kind != "automated"
            and ((v := verdicts.get(c.id)) is None or not v.clears)]
     out.sort(key=lambda c: c.id)
     return out
 
 
-def build_survey(changes: list[Change], surfaces: dict[str, Surface],
+def build_what_changed(changes: list[Change], surfaces: dict[str, Surface],
                  captures=None) -> list[Screen]:
     """The screens a release changed, from the change notes that named them.
 
     Order is the top-level screens by title, each followed by its children.
     That is the order a person navigates in, and it is why a dialog never
-    appears above the screen it opens from ("The walk", rule 2).
+    appears above the screen it opens from ("The release test", rule 2).
     """
     found: dict[str, Screen] = {}
     for change in changes:
@@ -1765,7 +1791,7 @@ def build_survey(changes: list[Change], surfaces: dict[str, Surface],
                     screen.parent = ""
                 found[surface_id] = screen
             screen.sentences.append((change.id, change.title, sentence))
-    # A changed dialog still needs its containing screen in the survey, even
+    # A changed dialog still needs its containing screen in the list, even
     # when no change note names that screen directly.
     for screen in list(found.values()):
         if screen.parent and screen.parent not in found:
@@ -1799,18 +1825,18 @@ def build_survey(changes: list[Change], surfaces: dict[str, Surface],
     return out
 
 
-def build_walk(checks: dict[str, Check], events: list[Event], sittings: list[Sitting],
+def build_release_test(checks: dict[str, Check], events: list[Event], sections: list[Section],
                *, release: str, platform: str, surfaces=None,
                surface_notes=None, changes=None, captures=None,
                procedures=None, known=None, retired=None,
                gallery: str = "", generated: str = "",
                warnings=None, notices=None, authored_order: bool = True,
-               survey_release: str = "", survey_tag: str = "",
-               survey_problem: str = "") -> Walk:
-    """The sheet as data: the survey, the sittings and the unplaced rows.
+               what_changed_release: str = "", what_changed_tag: str = "",
+               what_changed_problem: str = "") -> ReleaseTest:
+    """The sheet as data: what changed, the sections and the unplaced rows.
 
     Takes plain values rather than a repo path, so a host with its own note
-    index (the cockpit's `walk_payload`) computes the same walk from the same
+    index (the cockpit's `release_test_payload`) computes the same release test from the same
     rules without a second implementation of any of them.
     """
     surfaces = surfaces or {}
@@ -1819,45 +1845,45 @@ def build_walk(checks: dict[str, Check], events: list[Event], sittings: list[Sit
     owed = owed_checks(checks, events)
     owed_ids = {c.id for c in owed}
 
-    survey = build_survey(list(changes or []), surface_notes, captures)
+    what_changed = build_what_changed(list(changes or []), surface_notes, captures)
 
-    # --- placement: the first sitting that claims a check keeps it
+    # --- placement: the first section that claims a check keeps it
     placed: list[Placed] = []
     taken: set[str] = set()
-    by_sitting = {p.sitting: p for p in (procedures or []) if p.sitting}
-    for sitting in sittings:
-        claimed = [c for c in owed if c.id not in taken and claims(sitting, c, surfaces)]
+    by_section = {p.section: p for p in (procedures or []) if p.section}
+    for section in sections:
+        claimed = [c for c in owed if c.id not in taken and claims(section, c, surfaces)]
         taken.update(c.id for c in claimed)
         if not claimed:
             continue
-        rows = order_rows(claimed, warnings, sitting.name)
-        entry = Placed(sitting=sitting, rows=rows)
-        procedure = by_sitting.get(sitting.name)
+        rows = order_rows(claimed, warnings, section.name)
+        entry = Placed(section=section, rows=rows)
+        procedure = by_section.get(section.name)
         if procedure is not None:
-            attach_procedure(entry, procedure, checks, owed_ids, sittings,
+            attach_procedure(entry, procedure, checks, owed_ids, sections,
                              surfaces, platform=platform, retired=retired, known=known)
         placed.append(entry)
     unplaced = order_rows([c for c in owed if c.id not in taken],
                           warnings, "Unplaced")
-    return Walk(release=release, platform=platform,
+    return ReleaseTest(release=release, platform=platform,
                 generated=generated or date.today().isoformat(),
-                survey=survey, sittings=placed, unplaced=unplaced,
+                what_changed=what_changed, sections=placed, unplaced=unplaced,
                 gallery=gallery, warnings=warnings, notices=list(notices or []),
-                authored_order=authored_order, survey_release=survey_release,
-                survey_tag=survey_tag, survey_problem=survey_problem)
+                authored_order=authored_order, what_changed_release=what_changed_release,
+                what_changed_tag=what_changed_tag, what_changed_problem=what_changed_problem)
 
 
 def attach_procedure(entry: Placed, procedure: Procedure, checks: dict[str, Check],
-                     owed_ids: set[str], sittings: list[Sitting],
+                     owed_ids: set[str], sections: list[Section],
                      surfaces: dict[str, str], platform: str = "",
                      retired: set[str] | None = None,
                      known: dict[str, Check] | None = None) -> None:
-    """Hold a procedure to what this sitting owes, then keep what prints.
+    """Hold a procedure to what this section owes, then keep what prints.
 
     The judgement is `audit_procedure`; this decides what a sheet does with
     the answer. A procedure with a problem still reaches `entry.procedure`,
     because the renderer prints the problem above the per-check rows it falls
-    back to -- a stale procedure that vanished silently would leave the walker
+    back to -- a stale procedure that vanished silently would leave the tester
     reading rows and wondering where the script went.
     """
     entry.procedure = procedure
@@ -1865,7 +1891,7 @@ def attach_procedure(entry: Placed, procedure: Procedure, checks: dict[str, Chec
         step.head = step.authored_head or step.head
         step.readiness = step.readiness_declared
     procedure.problems, procedure.remarks = audit_procedure(
-        procedure, entry.sitting, entry.rows, checks, owed_ids, sittings, surfaces,
+        procedure, entry.section, entry.rows, checks, owed_ids, sections, surfaces,
         platform=platform, retired=retired, known=known)
     if procedure.problems:
         return
@@ -2030,7 +2056,7 @@ def expect_for(check: Check, number: str) -> list[str]:
     """The Expect lines a tag names: line N for step N when the check pairs them.
 
     A check whose `## Expect` has exactly one line per numbered step pairs
-    them by position, and a tag `.N` names line N. Walks already read them so:
+    them by position, and a tag `.N` names line N. Procedures already read them so:
     on your-trainer, 204 of 211 quotes citing such a check quote line N for
     `.N` (2026-09-26). Any other check has no pairing, so a tag names all of
     its Expect lines.
@@ -2048,7 +2074,7 @@ def expand_tag_only(procedure: Procedure, checks: dict[str, Check]) -> None:
     project-os-dev ISS-0088, ADR-0049. A line may be only its tags,
     `` - `TST-0480` ``, instead of quoting the check. It is replaced here, for
     the sheet and for the cockpit's payload alike, by one line per line of the
-    check's own `## Expect`, each carrying that check's tags. So the walker
+    check's own `## Expect`, each carrying that check's tags. So the tester
     still reads the check's own words, which is what lets a tick stand as a
     verdict on the check (ADR-0045), and editing the check no longer breaks
     the procedure: it only changes what the next sheet prints.
@@ -2104,13 +2130,13 @@ def expand_tag_only(procedure: Procedure, checks: dict[str, Check]) -> None:
             step.expectations = expectations + list(pending.values())
 
 
-def audit_procedure(procedure: Procedure, sitting: Sitting, owed: list[Check],
+def audit_procedure(procedure: Procedure, section: Section, owed: list[Check],
                     checks: dict[str, Check], owed_ids: set[str],
-                    sittings: list[Sitting], surfaces: dict[str, str],
+                    sections: list[Section], surfaces: dict[str, str],
                     platform: str = "",
                     retired: set[str] | None = None,
                     known: dict[str, Check] | None = None) -> tuple[list[str], list[str]]:
-    """(problems, remarks) for one procedure ("The walk", rule 9).
+    """(problems, remarks) for one procedure ("The release test", rule 9).
 
     A problem is a disagreement between the procedure and the release's owed
     set, or between a quoted expectation and the check it quotes. A remark is
@@ -2122,15 +2148,15 @@ def audit_procedure(procedure: Procedure, sitting: Sitting, owed: list[Check],
     remarks: list[str] = []
     retired = retired or set()
     #: **Every check a tag may legally name, not only the owed ones.** A
-    #: procedure covers its whole sitting and prints the owed part of itself,
+    #: procedure covers its whole section and prints the owed part of itself,
     #: so it cites checks that have already passed. A host that passed only
-    #: the owed set -- which the cockpit's `walk_payload` did -- reported
+    #: the owed set -- which the cockpit's `release_test_payload` did -- reported
     #: every such tag as naming no check at all, and the two readers of one
     #: corpus disagreed about one procedure. That is exactly what rule 7 says
     #: bundling this module prevents. Found by independent review, 2026-09-14.
     known = known or checks
     expand_tag_only(procedure, known)
-    where = placement(sorted(known.values(), key=lambda c: c.id), sittings, surfaces)
+    where = placement(sorted(known.values(), key=lambda c: c.id), sections, surfaces)
     want: dict[tuple[str, str], Check] = {}
     for check in owed:
         for part in parts_of(check):
@@ -2166,28 +2192,28 @@ def audit_procedure(procedure: Procedure, sitting: Sitting, owed: list[Check],
             for tag in expectation.tags:
                 cited.setdefault(tag, set()).add(step.number)
                 problems.extend(_audit_tag(procedure, step, expectation, tag,
-                                           known, retired, where, sitting.name))
+                                           known, retired, where, section.name))
     for part in sorted(want):
         if part not in cited:
             check = want[part]
             problems.append(
-                "%s owes %s and no step cites it; the walker would not walk it "
-                "(%s)" % (sitting.name, _part_name(part), procedure.path))
+                "%s owes %s and no step cites it; the tester would not test it "
+                "(%s)" % (section.name, _part_name(part), procedure.path))
     for part, steps in sorted(cited.items()):
         if part in want and len(steps) > 1:
             problems.append(
-                "%s is cited by steps %s; one owed part is walked once, so the "
+                "%s is cited by steps %s; one owed part is tested once, so the "
                 "verdict has one place to come from (%s)"
                 % (_part_name(part), ", ".join(str(n) for n in sorted(steps)),
                    procedure.path))
     live = [c for c in known.values()
-            if c.section != "automated" and where.get(c.id) == sitting.name]
+            if c.kind != "automated" and where.get(c.id) == section.name]
     covered = {tag[0] for tag in cited}
     missing = sorted(c.id for c in live if c.id not in covered)
     if missing:
         remarks.append(
             "covers %d of %d live checks in \"%s\"; not yet reached: %s"
-            % (len(live) - len(missing), len(live), sitting.name,
+            % (len(live) - len(missing), len(live), section.name,
                ", ".join(missing)))
     return problems, remarks
 
@@ -2198,7 +2224,7 @@ def _part_name(part: tuple[str, str]) -> str:
 
 def _audit_tag(procedure: Procedure, step: Step, expectation: Expectation,
                tag: tuple[str, str], checks: dict[str, Check], retired: set[str],
-               where: dict[str, str], sitting_name: str) -> list[str]:
+               where: dict[str, str], section_name: str) -> list[str]:
     """Everything wrong with one tag on one line."""
     check_id, number = tag
     at = "step %d of %s" % (step.number, procedure.path)
@@ -2210,9 +2236,9 @@ def _audit_tag(procedure: Procedure, step: Step, expectation: Expectation,
         return ["%s cites %s, which matches no acceptance check in this repo"
                 % (at, check_id)]
     claimed_by = where.get(check_id, "")
-    if claimed_by and claimed_by != sitting_name:
-        return ['%s cites %s, which the sitting "%s" claims; a check is walked '
-                "in one sitting" % (at, check_id, claimed_by)]
+    if claimed_by and claimed_by != section_name:
+        return ['%s cites %s, which the section "%s" claims; a check is tested '
+                "in one section" % (at, check_id, claimed_by)]
     numbers = numbered_steps(check)
     if number and int(number) not in numbers:
         return ["%s cites step %s of %s, which has %s"
@@ -2232,22 +2258,22 @@ def _audit_tag(procedure: Procedure, step: Step, expectation: Expectation,
         return []
     if expectation.quote not in wanted:
         return ["%s quotes %s as %r, and that check's Expect says none of: %s; "
-                "`python3 tools/scripts/walk-tags.py --refresh` re-quotes a line whose "
+                "`python3 tools/scripts/release-test-tags.py --refresh` re-quotes a line whose "
                 "check was reworded, or cite the step by its tag alone (ADR-0049)"
                 % (at, check_id, expectation.quote,
                    "; ".join(repr(w) for w in sorted(wanted)))]
     return []
 
 
-def unordered_sittings(checks: list[Check]) -> list[Sitting]:
-    """The fallback for a project with no WALK.md: one sitting per area.
+def unordered_sections(checks: list[Check]) -> list[Section]:
+    """The fallback for a project with no RELEASE-TEST.md: one section per area.
 
     Id order inside, area order outside, and the sheet says its order is
-    nobody's. Better than one undifferentiated list, and visibly not a walk
-    order somebody authored ("The walk", rule 3).
+    nobody's. Better than one undifferentiated list, and visibly not a section
+    order somebody authored ("The release test", rule 3).
     """
     areas = sorted({c.area for c in checks if c.area})
-    out = [Sitting(name=area, surfaces=[area]) for area in areas]
+    out = [Section(name=area, surfaces=[area]) for area in areas]
     return out
 
 
@@ -2262,42 +2288,42 @@ def _plural(n: int, one: str, many: str = "") -> str:
     return one if n == 1 else (many or one + "s")
 
 
-def render_survey(walk: Walk, out: list[str]) -> None:
-    """The screens this release changed ("The walk", rule 2).
+def render_what_changed(sheet: ReleaseTest, out: list[str]) -> None:
+    """The screens this release changed ("The release test", rule 2).
 
     No check id appears here, and that is the rule rather than an oversight:
-    the survey is a list of places to open and look at. The previous version
+    the what-changed list is a list of places to open and look at. The previous version
     printed the checks an invalidation reopened, which is a list of things to
-    run, and a person read it as the start of the walk instead of as the look
+    run, and a person read it as the start of the release test instead of as the look
     around before it.
     """
-    out.append("## Survey — the screens this release changed")
+    out.append("## What changed — the screens this release changed")
     out.append("")
-    if walk.gallery:
-        out.append("Regenerate and compare before walking anything: `%s`" % walk.gallery)
+    if sheet.gallery:
+        out.append("Regenerate and compare before testing anything: `%s`" % sheet.gallery)
         out.append("")
-    if walk.survey_problem:
+    if sheet.what_changed_problem:
         out.append("**No release to compare against:** %s. Nothing is listed "
                    "below, because without a last release nothing says which "
-                   "change notes are new." % walk.survey_problem)
+                   "change notes are new." % sheet.what_changed_problem)
         out.append("")
-    elif walk.survey_tag:
+    elif sheet.what_changed_tag:
         out.append("Compared against **%s**, tagged `%s`. Every change note added "
                    "since that tag is read for the screens it says it altered."
-                   % (walk.survey_release or "the last release", walk.survey_tag))
+                   % (sheet.what_changed_release or "the last release", sheet.what_changed_tag))
         out.append("")
-    if not walk.survey:
+    if not sheet.what_changed:
         out.append("No change note names a screen. Either this release altered no "
                    "screen, or its change notes have no `## Impact` list — the "
                    "close-out step that writes one is in "
-                   '`tools/instructions/TESTING.md`, "The walk", rule 8.')
+                   '`tools/instructions/TESTING.md`, "The release test", rule 8.')
         out.append("")
         return
-    out.append("Open these screens and look at them before walking a single "
+    out.append("Open these screens and look at them before testing a single "
                "scripted step. Each line under a screen is what one change says "
                "it altered there.")
     out.append("")
-    for screen in walk.survey:
+    for screen in sheet.what_changed:
         depth = "####" if screen.parent else "###"
         label = "%s (%s)" % (screen.title, screen.id) if screen.title != screen.id else screen.id
         out.append("%s %s" % (depth, label))
@@ -2334,7 +2360,7 @@ def render_survey(walk: Walk, out: list[str]) -> None:
 
 
 def render_check(check: Check, out: list[str], platform: str = "") -> None:
-    """One per-check row, walkable without leaving the sheet (rule 5)."""
+    """One per-check row, testable without leaving the sheet (rule 5)."""
     head = "### [%s](%s)" % (check.id, check.path)
     if check.title:
         head += " — %s" % check.title
@@ -2347,16 +2373,16 @@ def render_check(check: Check, out: list[str], platform: str = "") -> None:
         if readiness.get("issue"):
             out.append("Related issue: %s." % readiness["issue"])
         out.append("")
-    out.append("- [ ] walked, and the verdict recorded in the ledger" if not readiness
-               else "- [ ] readiness resolved, then walked or a decision recorded in the ledger")
+    out.append("- [ ] tested, and the result recorded in the ledger" if not readiness
+               else "- [ ] readiness resolved, then tested or a decision recorded in the ledger")
     out.append("")
     if check.setup:
         out.append("**Setup:** %s" % check.setup.strip())
     else:
         out.append("**Setup: not stated.** This check has no Setup "
-                   "heading. Write one while you walk it "
+                   "heading. Write one while you test it "
                    '(`tools/instructions/TESTING.md`, "A check is '
-                   'walkable by a stranger").')
+                   'testable by a stranger").')
     out.append("")
     if check.steps:
         out.append("**Steps:**")
@@ -2364,7 +2390,7 @@ def render_check(check: Check, out: list[str], platform: str = "") -> None:
         out.append(check.steps)
     elif check.lead:
         out.append("**Steps: no heading.** The note's own description "
-                   "is below; give it numbered steps while you walk it.")
+                   "is below; give it numbered steps while you test it.")
         out.append("")
         out.append(check.lead)
     else:
@@ -2380,9 +2406,9 @@ def render_check(check: Check, out: list[str], platform: str = "") -> None:
 
 
 def render_procedure(placed: Placed, out: list[str]) -> None:
-    """One sitting walked from its written script ("The walk", rule 9)."""
+    """One section tested from its written script ("The release test", rule 9)."""
     procedure = placed.procedure
-    out.append("Walked from a procedure: [%s](%s). The setup below is stated once "
+    out.append("Tested from a procedure: [%s](%s). The setup below is stated once "
                "and every step assumes it." % (procedure.path, procedure.path))
     out.append("")
     if placed.setup:
@@ -2393,7 +2419,7 @@ def render_procedure(placed: Placed, out: list[str]) -> None:
         out.append("**Setup: not stated.** The procedure has no Setup heading, so "
                    "every step below assumes a state nobody wrote down.")
     out.append("")
-    out.append("%d %s to walk." % (len(placed.steps), _plural(len(placed.steps), "step")))
+    out.append("%d %s to test." % (len(placed.steps), _plural(len(placed.steps), "step")))
     if placed.omitted:
         out.append("")
         out.append("%d further %s in this procedure %s left out because %s "
@@ -2439,7 +2465,7 @@ def render_procedure(placed: Placed, out: list[str]) -> None:
         for i, line in enumerate(step.body):
             #: The step's number is already in the heading above, so the first
             #: line prints without it. Everything else prints as written: a
-            #: walker follows these words and a generator that reflowed them
+            #: tester follows these words and a generator that reflowed them
             #: would be putting words nobody wrote in front of the person
             #: recording the verdict.
             text = step.head if i == 0 else line
@@ -2455,7 +2481,7 @@ def render_procedure(placed: Placed, out: list[str]) -> None:
             passed = [tag for tag in found.tags if tag not in found.owed]
             suffix = ""
             if passed:
-                suffix = "  _(already walked: %s)_" % ", ".join(
+                suffix = "  _(already tested: %s)_" % ", ".join(
                     _part_name(tag) for tag in passed)
             out.append(text.rstrip() + suffix)
         out.append("")
@@ -2467,66 +2493,66 @@ def render_procedure(placed: Placed, out: list[str]) -> None:
     out.append("")
 
 
-def render(walk: Walk) -> str:
+def render(sheet: ReleaseTest) -> str:
     """The sheet a person reads. Counts of rows are the only numbers on it."""
     out: list[str] = []
-    out.append("# Walk sheet — %s, %s" % (walk.release, walk.platform))
+    out.append("# Release test sheet — %s, %s" % (sheet.release, sheet.platform))
     out.append("")
-    out.append("Generated %s by `tools/scripts/walk-sheet.py` from the release "
+    out.append("Generated %s by `tools/scripts/release-test.py` from the release "
                "ledger, the check notes, the change notes and "
-               "`docs/tests/acceptance/WALK.md`. "
+               "`docs/tests/acceptance/RELEASE-TEST.md`. "
                "Do not edit it: record every verdict in the ledger and generate "
                "it again. The rules are in `tools/instructions/TESTING.md`, "
-               '"The walk".' % walk.generated)
+               '"The release test".' % sheet.generated)
     out.append("")
     out.append("**%d owed %s in %d %s.**"
-               % (walk.rows, "row" if walk.rows == 1 else "rows",
-                  len(walk.sittings) + (1 if walk.unplaced else 0),
-                  "sitting" if len(walk.sittings) + (1 if walk.unplaced else 0) == 1
-                  else "sittings"))
+               % (sheet.rows, "row" if sheet.rows == 1 else "rows",
+                  len(sheet.sections) + (1 if sheet.unplaced else 0),
+                  "section" if len(sheet.sections) + (1 if sheet.unplaced else 0) == 1
+                  else "sections"))
     out.append("")
     out.append("The validator counts from `mark:` on the note; this sheet counts "
                "from the ledger (project-os-dev ISS-0060).")
-    if not walk.authored_order:
+    if not sheet.authored_order:
         out.append("")
-        out.append("**This project has authored no walk order.** The sittings "
+        out.append("**This project has authored no section order.** The sections "
                    "below are one per `area:` in id order, which is a grouping "
-                   "and not a walk. Copy `docs/__templates__/walk.md` to "
-                   "`docs/tests/acceptance/WALK.md` and write the real one.")
-    for notice in walk.notices:
+                   "and not a section order. Copy `docs/__templates__/release-test.md` to "
+                   "`docs/tests/acceptance/RELEASE-TEST.md` and write the real one.")
+    for notice in sheet.notices:
         out.append("")
         out.append("**Note:** %s" % notice)
-    for warning in walk.warnings:
+    for warning in sheet.warnings:
         out.append("")
-        out.append("**Check the walk order:** %s" % warning)
+        out.append("**Check the section order:** %s" % warning)
     out.append("")
 
-    render_survey(walk, out)
+    render_what_changed(sheet, out)
 
     def rows_of(title: str, placed: Placed | None, rows: list[Check]) -> None:
-        sitting = placed.sitting if placed is not None else None
+        section = placed.section if placed is not None else None
         out.append("## %s" % title)
         out.append("")
-        if sitting is not None and sitting.state:
-            out.append("**State this sitting needs:** %s" % sitting.state)
+        if section is not None and section.state:
+            out.append("**State this section needs:** %s" % section.state)
             out.append("")
-        if sitting is not None and sitting.bench:
+        if section is not None and section.bench:
             out.append("**On the bench:**")
             out.append("")
-            for item in sitting.bench:
+            for item in section.bench:
                 out.append("- %s" % item)
             out.append("")
         if placed is not None and placed.procedure is not None and placed.procedure.problems:
-            out.append("**This sitting has a procedure and it no longer matches "
+            out.append("**This section has a procedure and it no longer matches "
                        "what the release owes.** The checks are printed one by "
                        "one below instead, so nothing owed is hidden. Rewrite it "
-                       "with `tools/skills/walk-procedure/SKILL.md`:")
+                       "with `tools/skills/release-test-procedure/SKILL.md`:")
             out.append("")
             for problem in placed.procedure.problems:
                 out.append("- %s" % problem)
             out.append("")
-        if placed is not None and placed.walked_from_procedure:
-            out.append("%d owed %s, walked as one script."
+        if placed is not None and placed.tested_from_procedure:
+            out.append("%d owed %s, tested as one script."
                        % (len(rows), _plural(len(rows), "check")))
             out.append("")
             render_procedure(placed, out)
@@ -2534,16 +2560,16 @@ def render(walk: Walk) -> str:
         out.append("%d %s." % (len(rows), "row" if len(rows) == 1 else "rows"))
         out.append("")
         for check in rows:
-            render_check(check, out, walk.platform)
+            render_check(check, out, sheet.platform)
 
-    for i, placed in enumerate(walk.sittings, start=1):
-        rows_of("Sitting %d — %s" % (i, placed.sitting.name), placed, placed.rows)
-    if walk.unplaced:
-        rows_of("Unplaced", None, walk.unplaced)
-        out.append("These rows are owed and no sitting in "
-                   "`docs/tests/acceptance/WALK.md` claims their `area:`. That "
-                   "is the walk order's worklist, not a defect in the sheet: "
-                   "add a sitting that claims them, or add the area to one that "
+    for i, placed in enumerate(sheet.sections, start=1):
+        rows_of("Section %d — %s" % (i, placed.section.name), placed, placed.rows)
+    if sheet.unplaced:
+        rows_of("Unplaced", None, sheet.unplaced)
+        out.append("These rows are owed and no section in "
+                   "`docs/tests/acceptance/RELEASE-TEST.md` claims their `area:`. That "
+                   "is the section order's worklist, not a defect in the sheet: "
+                   "add a section that claims them, or add the area to one that "
                    "exists.")
         out.append("")
     return "\n".join(out).rstrip() + "\n"
@@ -2569,7 +2595,7 @@ def retired_checks(docs_root: Path, index=None) -> set[str]:
 
 @dataclass
 class Reading:
-    """Everything one platform's walk is computed from, read once."""
+    """Everything one platform's release test is computed from, read once."""
 
     repo_root: Path
     docs_root: Path
@@ -2579,14 +2605,14 @@ class Reading:
     surfaces: dict[str, str]
     surface_notes: dict[str, Surface]
     events: list[Event]
-    sittings: list[Sitting]
+    sections: list[Section]
     procedures: list[Procedure]
     gallery: str = ""
     warnings: list[str] = field(default_factory=list)
     authored: bool = True
-    survey_release: str = ""
-    survey_tag: str = ""
-    survey_problem: str = ""
+    what_changed_release: str = ""
+    what_changed_tag: str = ""
+    what_changed_problem: str = ""
     changes: list[Change] = field(default_factory=list)
 
 
@@ -2594,8 +2620,8 @@ def read_repo(repo_root: Path, platform: str) -> Reading:
     """Read a repo once, for either the sheet or the check."""
     docs_root = repo_root / "docs"
     if not has_ledger(docs_root):
-        raise WalkError(
-            "no release ledger in %s. A walk sheet is the ledger's owed set, so "
+        raise ReleaseTestError(
+            "no release ledger in %s. A release test sheet is the ledger's owed set, so "
             "there is nothing to generate until the first verdict is written "
             "through the ledger path, which creates "
             "docs/releases/ledgers/WORKING-<platform>.json. A new project "
@@ -2605,23 +2631,23 @@ def read_repo(repo_root: Path, platform: str) -> Reading:
     index, _ = vd.build_note_index(docs_root)
     checks = load_checks(docs_root, index, repo_root=repo_root)
     if not checks:
-        raise NothingToWalk(
-            "no acceptance checks in %s. A walk sheet lists `[[test]]` notes at "
+        raise NothingToTest(
+            "no acceptance checks in %s. A release test sheet lists `[[test]]` notes at "
             "`level: acceptance`; this repo has none." % docs_root)
     known = platforms(docs_root)
     if platform not in known:
-        raise WalkError(
-            "no ledger for platform %r. This repo keeps one for: %s. A walk "
+        raise ReleaseTestError(
+            "no ledger for platform %r. This repo keeps one for: %s. A release test "
             "asked for by an unknown name would read no verdicts at all and "
             "report every check in the repo as owed, so it is refused instead."
             % (platform, ", ".join(known) or "(none)"))
-    walk_path = docs_root / WALK_REL
-    authored = walk_path.is_file()
+    release_test_path = docs_root / RELEASE_TEST_REL
+    authored = release_test_path.is_file()
     if authored:
-        gallery, sittings, warnings = parse_walk_order(
-            walk_path.read_text(encoding="utf-8"))
+        gallery, sections, warnings = parse_section_order(
+            release_test_path.read_text(encoding="utf-8"))
     else:
-        gallery, sittings, warnings = "", unordered_sittings(list(checks.values())), []
+        gallery, sections, warnings = "", unordered_sections(list(checks.values())), []
     surface_notes = load_surfaces(index)
     procedures = load_procedures(docs_root, repo_root)
     for procedure in procedures:
@@ -2635,13 +2661,13 @@ def read_repo(repo_root: Path, platform: str) -> Reading:
         repo_root=repo_root, docs_root=docs_root, index=index, checks=checks,
         retired=retired_checks(docs_root, index),
         surfaces=surfaces_by_title(index), surface_notes=surface_notes,
-        events=load_events(docs_root, platform), sittings=sittings,
+        events=load_events(docs_root, platform), sections=sections,
         procedures=procedures, gallery=gallery, warnings=warnings,
-        authored=authored, survey_release=release_id,
-        survey_tag="" if problem else tag, survey_problem=problem, changes=changes)
+        authored=authored, what_changed_release=release_id,
+        what_changed_tag="" if problem else tag, what_changed_problem=problem, changes=changes)
 
 
-def generate(repo_root: Path, release: str, platform: str) -> Walk:
+def generate(repo_root: Path, release: str, platform: str) -> ReleaseTest:
     read = read_repo(repo_root, platform)
     notices: list[str] = []
     sealed = sealed_releases(read.docs_root).get(release, "")
@@ -2651,14 +2677,14 @@ def generate(repo_root: Path, release: str, platform: str) -> Walk:
             "what the platform owes NOW, not what that release owed when it "
             "was sealed, because a ledger resolves forward."
             % (release, release, sealed))
-    return build_walk(
-        read.checks, read.events, read.sittings, release=release, platform=platform,
+    return build_release_test(
+        read.checks, read.events, read.sections, release=release, platform=platform,
         surfaces=read.surfaces, surface_notes=read.surface_notes,
         changes=read.changes, procedures=read.procedures, retired=read.retired,
-        captures=capture_finder(read.docs_root, repo_root, read.survey_tag),
+        captures=capture_finder(read.docs_root, repo_root, read.what_changed_tag),
         gallery=read.gallery, warnings=read.warnings, notices=notices,
-        authored_order=read.authored, survey_release=read.survey_release,
-        survey_tag=read.survey_tag, survey_problem=read.survey_problem)
+        authored_order=read.authored, what_changed_release=read.what_changed_release,
+        what_changed_tag=read.what_changed_tag, what_changed_problem=read.what_changed_problem)
 
 
 def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
@@ -2670,40 +2696,44 @@ def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
     remarks: list[str] = []
     owed = owed_checks(read.checks, read.events)
     owed_ids = {c.id for c in owed}
-    by_name = {s.name: s for s in read.sittings}
+    by_name = {s.name: s for s in read.sections}
     seen: set[str] = set()
     for procedure in read.procedures:
-        if not procedure.sitting:
-            problems.append("%s: no `sitting:` in its frontmatter, so nothing "
-                            "says which sitting it walks" % procedure.path)
+        if not procedure.section:
+            if procedure.old_section:
+                problems.append("%s: `sitting:` is the old name; it is now `section:`. %s"
+                                % (procedure.path, MIGRATE_HINT))
+                continue
+            problems.append("%s: no `section:` in its frontmatter, so nothing "
+                            "says which section it tests" % procedure.path)
             continue
-        if procedure.sitting not in by_name:
+        if procedure.section not in by_name:
             problems.append(
-                '%s: `sitting: "%s"` matches no `### ` heading in docs/%s'
-                % (procedure.path, procedure.sitting, WALK_REL))
+                '%s: `section: "%s"` matches no `### ` heading in docs/%s'
+                % (procedure.path, procedure.section, RELEASE_TEST_REL))
             continue
-        if procedure.sitting in seen:
-            problems.append('%s: a second procedure for "%s"; one sitting is '
-                            "walked from one script" % (procedure.path, procedure.sitting))
+        if procedure.section in seen:
+            problems.append('%s: a second procedure for "%s"; one section is '
+                            "tested from one script" % (procedure.path, procedure.section))
             continue
-        seen.add(procedure.sitting)
-        sitting = by_name[procedure.sitting]
-        mine = [c for c in owed if claims(sitting, c, read.surfaces)]
-        placed = placement(owed, read.sittings, read.surfaces)
-        mine = [c for c in mine if placed.get(c.id) == sitting.name]
-        found, said = audit_procedure(procedure, sitting, mine, read.checks,
-                                      owed_ids, read.sittings, read.surfaces,
+        seen.add(procedure.section)
+        section = by_name[procedure.section]
+        mine = [c for c in owed if claims(section, c, read.surfaces)]
+        placed = placement(owed, read.sections, read.surfaces)
+        mine = [c for c in mine if placed.get(c.id) == section.name]
+        found, said = audit_procedure(procedure, section, mine, read.checks,
+                                      owed_ids, read.sections, read.surfaces,
                                       platform=platform,
                                       retired=read.retired)
         problems.extend(found)
         remarks.extend(said)
     if read.procedures:
-        placed_all = placement(owed, read.sittings, read.surfaces)
+        placed_all = placement(owed, read.sections, read.surfaces)
         uncovered = sorted({placed_all.get(c.id, "") for c in owed} - seen - {""})
         if uncovered:
             remarks.append("no procedure yet for: %s" % ", ".join(uncovered))
-    #: **Every change note, not only the ones this release surveys.** The
-    #: survey is restricted to what git says is new since the tag; the
+    #: **Every change note, not only the ones this release lists.** The
+    #: what-changed list is restricted to what git says is new since the tag; the
     #: worklist is not, and a repo with no released note would otherwise be
     #: told nothing at all about its Impact lists. Found by independent
     #: review, 2026-09-14.
@@ -2713,7 +2743,7 @@ def check_repo(repo_root: Path, platform: str) -> tuple[list[str], list[str]]:
                 remarks.append("%s names %s in its Impact list and no surface "
                                "note carries that id" % (change.path, surface_id))
         if change.silent:
-            remarks.append("%s has no `## Impact` list, so it tells the survey "
+            remarks.append("%s has no `## Impact` list, so it tells the what-changed list "
                            "nothing; write the screens it altered, or "
                            '"No screen changed" and why' % change.path)
     return problems, remarks
@@ -2727,7 +2757,7 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
     hold to anything, and `validate-docs.sh` runs this on every commit --
     letting those through made a repo whose checks had all been retired fail
     its own pre-commit hook forever. But the first fix caught every
-    `WalkError`, which took a malformed ledger with it; `NothingToWalk` is the
+    `ReleaseTestError`, which took a malformed ledger with it; `NothingToTest` is the
     narrow one. Both halves found by independent review, 2026-09-14, rounds
     one and two.
     """
@@ -2740,16 +2770,16 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
     for name in wanted:
         try:
             problems, remarks = check_repo(repo_root, name)
-        except NothingToWalk as exc:
+        except NothingToTest as exc:
             #: No live acceptance check means no procedure to hold to anything.
             if not quiet:
-                print("walk-sheet --check (%s): nothing to check -- %s"
+                print("release-test --check (%s): nothing to check -- %s"
                       % (name, exc), file=sys.stderr)
             continue
-        except WalkError as exc:
+        except ReleaseTestError as exc:
             #: Everything else `read_repo` refuses is a broken ledger, and
             #: `--check` is the only thing that reads one on every commit.
-            print("ERROR [WALK] walk-sheet --check (%s): %s" % (name, exc), file=sys.stderr)
+            print("ERROR [RELEASE-TEST] release-test --check (%s): %s" % (name, exc), file=sys.stderr)
             status = 2
             continue
         for problem in problems:
@@ -2758,16 +2788,16 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
             if problem in printed:
                 continue
             printed.add(problem)
-            #: `ERROR [WALK]`: the validator's line shape, so a reader
+            #: `ERROR [RELEASE-TEST]`: the validator's line shape, so a reader
             #: filtering for ERROR finds it (project-os-dev ISS-0089).
-            print("ERROR [WALK] walk-sheet --check (%s): %s" % (name, problem), file=sys.stderr)
+            print("ERROR [RELEASE-TEST] release-test --check (%s): %s" % (name, problem), file=sys.stderr)
         #: Remarks are printed when something is wrong, or when a person
         #: asked. `validate-docs.sh` runs this on every commit, and a repo
         #: with procedures would otherwise print its coverage shortfall to
         #: everybody, every time, until it stopped being read.
         if problems or not quiet:
             for remark in remarks:
-                print("walk-sheet --check (%s): note: %s" % (name, remark))
+                print("release-test --check (%s): note: %s" % (name, remark))
         if problems:
             status = 1
     return status
@@ -2775,22 +2805,22 @@ def run_check(repo_root: Path, platform: str, quiet: bool = False) -> int:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Generate a release walk sheet: the owed acceptance checks "
+        description="Generate a release test sheet: the owed acceptance checks "
                     "as a procedure, the changed screens first.",
         epilog="The rules are stated once in tools/instructions/TESTING.md, "
-               '"The walk"; this script restates none of them. The survey lists '
+               '"The release test"; this script restates none of them. What changed lists '
                "the screens the change notes added since the last release tag "
                "say they altered. Without --out the sheet goes to stdout; a "
-               "sheet kept as a record of what was walked is never edited by "
-               "hand and never read back. --check walks the procedures instead "
+               "sheet kept as a record of what was tested is never edited by "
+               "hand and never read back. --check reads the procedures instead "
                "and exits 1 when one no longer matches what the release owes.")
     ap.add_argument("--release", default="",
-                    help="the release this walk is for, e.g. REL-0017")
+                    help="the release this release test is for, e.g. REL-0017")
     ap.add_argument("--platform", default="",
                     help="the platform whose ledger is read, e.g. android; with "
                          "--check, every platform when omitted")
     ap.add_argument("--check", action="store_true",
-                    help="hold each sitting's procedure to what the release "
+                    help="hold each section's procedure to what the release "
                          "owes, print nothing else, and exit 1 on a disagreement")
     ap.add_argument("--out", default="",
                     help="write the sheet here instead of stdout")
@@ -2802,27 +2832,27 @@ def main(argv=None):
 
     root = Path(args.repo_root).resolve()
     if not (root / "SNAPSHOT.yaml").is_file():
-        print("walk-sheet: no SNAPSHOT.yaml at %s" % root, file=sys.stderr)
+        print("release-test: no SNAPSHOT.yaml at %s" % root, file=sys.stderr)
         return 2
     if args.check:
         return run_check(root, args.platform, quiet=args.quiet)
     missing = [name for name, value in (("--release", args.release),
                                         ("--platform", args.platform)) if not value]
     if missing:
-        print("walk-sheet: %s required to generate a sheet"
+        print("release-test: %s required to generate a sheet"
               % " and ".join(missing), file=sys.stderr)
         return 2
     try:
-        walk = generate(root, args.release, args.platform)
-    except WalkError as exc:
-        print("walk-sheet: %s" % exc, file=sys.stderr)
+        sheet = generate(root, args.release, args.platform)
+    except ReleaseTestError as exc:
+        print("release-test: %s" % exc, file=sys.stderr)
         return 2
-    text = render(walk)
+    text = render(sheet)
     if args.out:
         target = Path(args.out)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
-        print("walk-sheet: %d owed rows -> %s" % (walk.rows, target))
+        print("release-test: %d owed rows -> %s" % (sheet.rows, target))
     else:
         sys.stdout.write(text)
     return 0
