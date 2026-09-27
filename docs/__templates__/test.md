@@ -27,7 +27,7 @@ related: []
 area: ""             # the human grouping, one section's worth of related checks; the verdict lives in the release ledger, not here (ADR-0037)
 after: []            # optional: checks that should have passed before this one is tested; orders the release test sheet and gates nothing (tools/instructions/TESTING.md, "The release test", rule 4)
 # readiness_for:     # optional on an acceptance check without a usable section procedure; name platforms with a preparation or decision reason (TESTING.md, "The release test", rule 5)
-#   ios: { kind: decision, reason: "Name the missing action or decision.", issue: "ISS-0000" }
+#   ios: { kind: decision, reason: "Name the missing action or decision.", issue: "ISS-0000", result: question }
 ---
 
 # <Test>

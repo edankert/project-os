@@ -9,27 +9,27 @@ updated: 2026-01-26
 # tests, word for word. It is the only link between the two files.
 section: ""
 # Optional when the sheet must retain preparation or filter setup. Positions
-# refer to numbered items under Steps, regardless of the digits written there.
+# refer to numbered items under Steps, counted across groups, regardless of the
+# digits written there.
 # requires:
-#   3: [1, 2]
+#   4: [3]
 # setup_for:
-#   trainer: [1, 2, 3]
+#   trainer: all
+#   kickr: [3, 4]
 # step_platforms:
 #   2: [android]
 # action_for:
-#   2: {android: "Open Profile — Connected.", ios: "Open Settings — Integrations."}
+#   2: {android: "Open the Hub full-width, in split-screen and on the phone.", ios: "Open the Hub sheet on the iPad and the iPhone."}
 # setup_platforms:
-#   trainer: [android]
-# state_for:
-#   3: "The same ride is running with the trainer connected."
+#   kickr: [android]
 # capture_for:
-#   2: "Record the cadence shown before switching sources."
+#   3: "Record the watts shown."
 # use_capture:
-#   5: [2] # Also add 2 to requires for step 5.
+#   4: [3] # Also add 3 to requires for step 4.
 # timer_for:
-#   5: 120 # Optional timer in seconds; it never records a result.
+#   4: 60 # Optional timer in seconds; it never records a result.
 # readiness_for:
-#   5: {kind: preparation, reason: "Bring the power meter to the bench.", issue: "ISS-0123"}
+#   4: {kind: preparation, reason: "Bring the power meter to the bench.", issue: "ISS-0123", result: blocked}
 related: []
 tags: [release-test, procedure]
 ---
@@ -46,18 +46,28 @@ Regenerate it with `tools/skills/release-test-procedure/SKILL.md` when the valid
 
 ## Steps
 
-<One numbered item per action. The first line names the screen, by SUR-#### id or by the surface's exact title. Under it, one line per thing to observe: the tags alone (`` - `TST-0001.1` ``), which prints the check's current Expect wording, or that wording quoted word for word, then the tags.>
+<One `### ` heading for each group of steps that start from the same state, with a `Start:` line under it saying what the app and the bench must look like first. Then one numbered item per action: one short line saying what to do. It does not need to name the screen. Under it, one line per check step it tests, holding the tags alone. The page prints the check's own Expect line in its place.>
 
-1. **Equipment panel (SUR-0003).** Open Settings > Equipment with the data-only trainer awake.
-   - The panel lists the trainer with no power icon. `TST-0648.1`
-   - A second slot reads "Add a sensor". `TST-0649.1`
-2. **Ride cockpit (SUR-0004).** Start a Power workout on the data-only trainer.
-   - The target power is shown and the trainer is not driven. `TST-0648.4`
-   - The cadence field stays empty. `TST-0653.2`
-3. **Ride cockpit (SUR-0004).** Swap to the drivable trainer and start the same workout.
-   - The trainer holds the target power within 5 W. `TST-0648.12` `TST-0649.13` `TST-0656.7`
+### Hub layout
 
-<Step 3 is the point of writing a procedure: one action three checks each expect the same thing from, tested once and ticked three times. It is only legal because all three notes word that expectation identically — the validator compares each quote against each check it tags.>
+Start: the trainer in Smart Trainer, nothing else bound. The Hub is open from the equipment icons.
+
+1. Read the Cadence slot.
+   - `TST-0657.1`
+2. Open the Hub full-width, in split-screen and on the phone.
+   - `TST-0657.2`
+
+### Power from a separate source
+
+Start: the trainer in Smart Trainer, the KICKR in Power Source.
+
+3. Start a ride and read the watts.
+   - `TST-0652.1`
+4. End the ride, choose the trainer as Power Source, and start another.
+   - `TST-0652.8`
+   - `TST-0655.2`
+
+<Step 4 is the point of writing a procedure: one action two checks expect something from, tested once and recorded for both.>
 
 ## Not covered here
 
