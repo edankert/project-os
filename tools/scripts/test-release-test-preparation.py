@@ -358,6 +358,21 @@ Connect the trainer.
         self.assertEqual([1], checks[1]["compare_with"])
         self.assertIn("Compare with what you kept at check 1.", rendered)
 
+    def test_a_section_budget_counts_printed_checks_not_test_notes(self):
+        # One owed test note, three printed checks (two of them preparation).
+        entry = self.placed("android", ["TST-1002"])
+        sheet = rt.ReleaseTest("REL-0001", "android", "2026-09-27", [], [entry], [])
+        found = rt.length_findings(rt.payload(sheet),
+                                   rt.LengthLimits(section_base=1, section_per_check=1))
+        self.assertTrue(any("over its budget of 4 (1 + 1 for each of its 3 checks)" in f
+                            for f in found), found)
+
+    def test_printed_words_count_what_the_tester_reads(self):
+        self.assertEqual(3, rt.printed_words("Open the panel. `TST-0401.1` `TST-0402`"))
+        self.assertEqual(3, rt.printed_words("[The check](docs/tests/TST-1.md) **1.**"))
+        self.assertEqual(0, rt.printed_words("![equipment-hub, now](docs/a.png)"))
+        self.assertEqual(3, rt.printed_words("#### Hub layout\n- [ ] two"))
+
     def test_an_expected_line_loses_the_checks_own_step_number(self):
         self.assertEqual("The tile shows cadence.",
                          rt.shown_expected("- Step 3: The tile shows cadence. `TST-1002.3`"))

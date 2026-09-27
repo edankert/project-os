@@ -3049,6 +3049,10 @@ def section_payload(number: int | None, placed: Placed | None, rows: list[Check]
     procedure = placed.procedure if placed is not None else None
     return {
         "number": number, "name": section.name, "unplaced": placed is None,
+        #: `count` is the numbered checks a tester works through; `owed` is
+        #: the test notes behind them. The approved example's "28 checks"
+        #: is the first; its "4 test notes" the second.
+        "count": sum(len(group["checks"]) for group in groups),
         "owed": len(rows), "tests": sorted({c.id for c in rows}),
         "bench_line": " · ".join(section.bench), "state": section.state,
         "procedure": procedure.path if procedure is not None else "",
@@ -3231,8 +3235,9 @@ def render_section(section: dict, platform: str, out: list[str]) -> None:
     else:
         out.append("## Section %d — %s" % (section["number"], section["name"]))
     out.append("")
-    out.append("%d %s · %s" % (section["owed"], _plural(section["owed"], "check"),
-                               ", ".join(section["tests"])))
+    out.append("%d %s · %d test %s: %s" % (section["count"], _plural(section["count"], "check"),
+                                           section["owed"], _plural(section["owed"], "note"),
+                                           ", ".join(section["tests"])))
     out.append("")
     if section["what_changed"]:
         out.append("### What changed on the screens this section tests")
@@ -3342,9 +3347,10 @@ def render_page(page: dict) -> str:
                '"The release test".' % page["generated"])
     out.append("")
     sections = page["sections"]
-    out.append("**%d owed %s in %d %s.**"
-               % (page["owed"], _plural(page["owed"], "check"),
-                  len(sections), _plural(len(sections), "section")))
+    count = sum(section["count"] for section in sections)
+    out.append("**%d %s in %d %s, from %d owed test %s.**"
+               % (count, _plural(count, "check"), len(sections), _plural(len(sections), "section"),
+                  page["owed"], _plural(page["owed"], "note")))
     out.append("")
     out.append("The validator counts from `mark:` on the note; this sheet counts "
                "from the ledger (project-os-dev ISS-0060).")
@@ -3368,7 +3374,7 @@ def render_page(page: dict) -> str:
     for section in sections:
         out.append("| %s | %s | %d | %s |" % (
             section["number"] if section["number"] is not None else "–",
-            section["name"].replace("|", "\\|"), section["owed"],
+            section["name"].replace("|", "\\|"), section["count"],
             section["bench_line"].replace("|", "\\|") or "Nothing extra"))
     out.append("")
     render_what_changed(page, out)
@@ -3423,6 +3429,8 @@ class Reading:
     changes: list[Change] = field(default_factory=list)
     short_lines: ShortLines | None = None
     platforms: list[str] = field(default_factory=list)
+    limits: LengthLimits = field(default_factory=lambda: LengthLimits())
+    limit_problems: list[str] = field(default_factory=list)
 
 
 def read_repo(repo_root: Path, platform: str) -> Reading:
@@ -3452,9 +3460,14 @@ def read_repo(repo_root: Path, platform: str) -> Reading:
             % (platform, ", ".join(known) or "(none)"))
     release_test_path = docs_root / RELEASE_TEST_REL
     authored = release_test_path.is_file()
+    limits, limit_problems = LengthLimits(), []
     if authored:
         gallery, sections, warnings = parse_section_order(
             release_test_path.read_text(encoding="utf-8"))
+        front = vd.parse_frontmatter(release_test_path)
+        limits, limit_problems = parse_limits(
+            front.get("length_limits") if isinstance(front, dict) else None,
+            "docs/%s" % RELEASE_TEST_REL)
     else:
         gallery, sections, warnings = "", unordered_sections(list(checks.values())), []
     surface_notes = load_surfaces(index)
@@ -3474,7 +3487,8 @@ def read_repo(repo_root: Path, platform: str) -> Reading:
         procedures=procedures, gallery=gallery, warnings=warnings,
         authored=authored, what_changed_release=release_id,
         what_changed_tag="" if problem else tag, what_changed_problem=problem, changes=changes,
-        short_lines=load_short_lines(docs_root, platform, repo_root), platforms=known)
+        short_lines=load_short_lines(docs_root, platform, repo_root), platforms=known,
+        limits=limits, limit_problems=limit_problems)
 
 
 def generate(repo_root: Path, release: str, platform: str) -> ReleaseTest:
@@ -3487,15 +3501,25 @@ def generate(repo_root: Path, release: str, platform: str) -> ReleaseTest:
             "what the platform owes NOW, not what that release owed when it "
             "was sealed, because a ledger resolves forward."
             % (release, release, sealed))
+    return sheet_from(read, release, platform, notices=notices)
+
+
+def sheet_from(read: Reading, release: str, platform: str, notices=None,
+               pictures: bool = True) -> ReleaseTest:
+    """The sheet for one platform from what `read_repo` read.
+
+    ``pictures`` off skips looking for screenshots and dating them, which
+    the length check does not need.
+    """
     return build_release_test(
         read.checks, read.events, read.sections, release=release, platform=platform,
         surfaces=read.surfaces, surface_notes=read.surface_notes,
         changes=read.changes, procedures=read.procedures, retired=read.retired,
-        captures=capture_finder(read.docs_root, repo_root, read.what_changed_tag),
+        captures=capture_finder(read.docs_root, read.repo_root, read.what_changed_tag) if pictures else None,
         gallery=read.gallery, warnings=read.warnings, notices=notices,
         authored_order=read.authored, what_changed_release=read.what_changed_release,
         what_changed_tag=read.what_changed_tag, what_changed_problem=read.what_changed_problem,
-        short_lines=read.short_lines, stale=stale_finder(repo_root),
+        short_lines=read.short_lines, stale=stale_finder(read.repo_root) if pictures else None,
         known_platforms=read.platforms)
 
 
@@ -3576,7 +3600,122 @@ def check_repo_findings(repo_root: Path, platform: str
         problems.extend(found)
         warnings.extend(warned)
     warnings.extend(short_line_findings(read, platform))
+    problems.extend(read.limit_problems)
+    if read.authored:
+        page = payload(sheet_from(read, "", platform, pictures=False))
+        for message in length_findings(page, read.limits):
+            if read.limits.error:
+                problems.append(message)
+            else:
+                warnings.append(("length", message))
     return problems, warnings, remarks
+
+
+# ----------------------------------------------------------- the length check
+
+@dataclass
+class LengthLimits:
+    """How long a printed line and a section may be (project-os-dev REQ-0036).
+
+    The defaults are the one place the limits are set. A project overrides
+    them in its section order file's frontmatter, `length_limits:`, with the
+    same keys. `error` turns the reports from warnings into errors.
+
+    The section budget is `section_base` words plus `section_per_check` words
+    for each owed check. The approved Equipment Hub example printed about
+    1,000 words for 28 checks; these defaults allow it about 1,420 until
+    your-trainer's pilot measures a rewritten section (TASK-0975).
+    """
+
+    action: int = 20
+    expected: int = 25
+    section_base: int = 300
+    section_per_check: int = 40
+    error: bool = False
+
+
+_LIMIT_KEYS = {"action", "expected", "section_base", "section_per_check", "error"}
+
+
+def parse_limits(raw, path: str) -> tuple[LengthLimits, list[str]]:
+    """`length_limits:` from the section order file, or the defaults."""
+    limits = LengthLimits()
+    if raw in (None, ""):
+        return limits, []
+    if not isinstance(raw, dict):
+        return limits, ["%s: `length_limits` must be a map of %s"
+                        % (path, ", ".join(sorted(_LIMIT_KEYS)))]
+    problems = []
+    for key, value in raw.items():
+        if key not in _LIMIT_KEYS:
+            problems.append("%s: `length_limits` has `%s`; the keys are %s"
+                            % (path, key, ", ".join(sorted(_LIMIT_KEYS))))
+        elif key == "error":
+            if not isinstance(value, bool):
+                problems.append("%s: `length_limits.error` must be true or false" % path)
+            else:
+                limits.error = value
+        elif isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            problems.append("%s: `length_limits.%s` must be a whole number of words above 0"
+                            % (path, key))
+        else:
+            setattr(limits, key, value)
+    return limits, problems
+
+
+_LINK_RE = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+
+
+def printed_words(text: str) -> int:
+    """The words a tester reads: no tags, no link targets, no pictures, no markup."""
+    count = 0
+    for line in text.splitlines():
+        if line.lstrip().startswith("!["):
+            continue
+        line = _TAG_SPAN_RE.sub("", line)
+        line = _LINK_RE.sub(lambda m: m.group(1), line)
+        line = re.sub(r"[`*_#|>]+", " ", line)
+        count += len([w for w in line.split() if re.search(r"\w", w)])
+    return count
+
+
+def length_findings(page: dict, limits: LengthLimits) -> list[str]:
+    """Every action line, expected line and section over its limit, on one page."""
+    out = []
+    for section in page["sections"]:
+        where = ("Unplaced" if section["unplaced"]
+                 else 'section %d, "%s"' % (section["number"], section["name"]))
+        for group in section["groups"]:
+            for check in group["checks"]:
+                tag = " ".join("`%s`" % tag for tag in check["tags"])
+                words = printed_words(check["action"])
+                if words > limits.action:
+                    out.append("%s, check %d (%s): the action is %d words, over the limit "
+                               "of %d: %s" % (where, check["number"], tag, words,
+                                              limits.action, _clip(check["action"])))
+                for line in check["expected"]:
+                    words = printed_words(line["text"])
+                    if words > limits.expected:
+                        out.append("%s, check %d (%s): an expected line is %d words, over "
+                                   "the limit of %d: %s" % (where, check["number"],
+                                                             " ".join("`%s`" % t for t in line["tags"]) or tag,
+                                                             words, limits.expected,
+                                                             _clip(line["text"])))
+        printed: list[str] = []
+        render_section(section, page["platform"], printed)
+        words = printed_words("\n".join(printed))
+        budget = limits.section_base + limits.section_per_check * section["count"]
+        if words > budget:
+            out.append("%s prints %d words, over its budget of %d (%d + %d for each of "
+                       "its %d checks)" % (where[0].upper() + where[1:], words, budget,
+                                           limits.section_base, limits.section_per_check,
+                                           section["count"]))
+    return out
+
+
+def _clip(text: str, words: int = 8) -> str:
+    parts = text.split()
+    return '"%s%s"' % (" ".join(parts[:words]), " ..." if len(parts) > words else "")
 
 
 #: A change note created on or after this date that names a screen must say
@@ -3710,6 +3849,8 @@ WARNING_KINDS = {
                  "are listed on every platform (project-os-dev REQ-0035)",
     "short_lines": "change(s) since the last release have no short what-changed line, "
                    "or a line names no change or no screen (project-os-dev REQ-0035)",
+    "length": "line(s) or section(s) are longer than their word limit "
+              "(project-os-dev REQ-0036)",
 }
 
 

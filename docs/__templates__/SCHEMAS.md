@@ -284,9 +284,10 @@ Where NOT used:
 
 Purpose: the one file per project that says in what order a release is tested by hand. Instantiated from `release-test.md` to `docs/tests/acceptance/RELEASE-TEST.md`, typed `[[reference]]`, resting at `active` (or `deprecated`). What a release test sheet does with it is stated once in `tools/instructions/TESTING.md`, "The release test"; this entry is the syntax alone.
 
-Frontmatter: the standing-document fields (`type`, `title`, `status`, `owner`, `created`, `updated`), plus one optional key:
+Frontmatter: the standing-document fields (`type`, `title`, `status`, `owner`, `created`, `updated`), plus two optional keys:
 
 - (optional) `gallery` (string): a command that regenerates the project's screen gallery. The release test sheet prints it at the top of what changed, as the thing to run and compare before testing anything.
+- (optional) `length_limits` (map): overrides the length check's limits, with the keys `action` (words in an action line, default 20), `expected` (words in an expected line, default 25), `section_base` and `section_per_check` (a section's budget is `section_base` plus `section_per_check` for each printed check; defaults 300 and 40), and `error` (true makes the reports errors; default false). Any other key, or a limit that is not a whole number above 0, fails `release-test.py --check`. What the check counts is `tools/instructions/TESTING.md`, "The release test", rule 10.
 
 Body: prose the tester reads once, then **one `### ` heading per section with one fenced `yaml` block under it**. The heading is the section's name as the sheet prints it. The block's keys:
 

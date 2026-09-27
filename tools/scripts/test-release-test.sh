@@ -194,7 +194,7 @@ hasnt "a pass stored under the old key mark still clears the check" '^- \[ \] \*
 hasnt "an excused check is absent while its ledger is open"    '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0003[-.]'
 has   "a check invalidated after its pass is owed again"       '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0006[-.]'
 has   "a never-tested check is owed"                           '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0004[-.]'
-has   "the header counts rows and sections"                    '\*\*6 owed checks in 3 sections\.\*\*'
+has   "the header counts rows and sections"                    '\*\*6 checks in 3 sections, from 6 owed test notes\.\*\*'
 has   "the header says which count the validator reports"      'ISS-0060'
 # REQ-0033: before any section, a table lists every section in order with
 # its owed count and one line of what it needs on the bench.
@@ -269,7 +269,7 @@ rm "$REPO/docs/tests/acceptance/RELEASE-TEST.md"
 OUT="$(python3 "$SHEET" --release REL-0042 --platform testbed --repo-root "$REPO" 2>&1)"
 has "without RELEASE-TEST.md the sheet says the order is unauthored" 'authored no section order'
 has "without RELEASE-TEST.md the rows are still grouped by area"     '^## Section [0-9]+ — Alpha'
-has "without RELEASE-TEST.md every owed row is still on the sheet"   '\*\*6 owed checks in'
+has "without RELEASE-TEST.md every owed row is still on the sheet"   '\*\*6 checks in [0-9]+ sections, from 6 owed'
 
 # --- --out writes the sheet and reports the count
 python3 "$SHEET" --release REL-0042 --platform testbed --repo-root "$REPO" --out "$TMP/sheet.md" >/dev/null 2>&1
@@ -377,7 +377,7 @@ has   "a check nobody ever tested is owed"                                    '^
 # dropping 35 of your-trainer's 61 owed rows. Found by independent review,
 # round two, 2026-09-13.
 has   "an invalidation in the OPEN ledger reopens a pass from a sealed one"   '^- \[ \] \*\*[0-9]+\.\*\* \[.*\]\([^)]*TST-0108[-.]'
-has   "only the three genuinely owed rows are on the sheet"                   '\*\*3 owed checks in'
+has   "only the three genuinely owed rows are on the sheet"                   '\*\*3 checks in [0-9]+ sections?, from 3 owed'
 
 # ---------------------------------------------------------------------------
 # Note shapes and RELEASE-TEST.md shapes a real corpus turns out to have.
@@ -1868,6 +1868,63 @@ has "a check's readiness result is printed on its row" 'Bring the meter\. Sugges
 sed -i.bak 's/result: blocked}/result: skipped}/' "$CHKRESULT/docs/tests/acceptance/TST-0405-Fixture.md"; rm -f "$CHKRESULT"/docs/tests/acceptance/*.bak
 procfail "a check readiness result that is not a stored value is refused" "$CHKRESULT" \
   "readiness_for. entry 'testbed' has .result: skipped."
+
+# ---------------------------------------------------------------------------
+# REQ-0036 (TASK-0192): the length check counts the words a tester sees, and
+# reports an action line, an expected line or a section over its limit.
+# ---------------------------------------------------------------------------
+LEN="$TMP/proc-length"; rm -rf "$LEN"; cp -R "$GRPS" "$LEN"
+python3 - "$LEN" <<'PY'
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+proc = root / "docs/tests/acceptance/release-test/the-bench.md"
+t = proc.read_text()
+t = t.replace("3. Start the workout.",
+              "3. Start the workout from the list of workouts on the main screen, then wait until the trainer holds the target power steadily.", 1)
+proc.write_text(t)
+chk = next((root / "docs/tests/acceptance").glob("TST-0402-*.md"))
+t = chk.read_text()
+t = t.replace("- The slot reads empty.",
+              "- The slot reads empty, and it stays empty for the whole ride, whatever the trainer does and however often the rider opens and closes the panel.", 1)
+chk.write_text(t)
+PY
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$LEN" 2>&1)"; code=$?
+check "an over-long line is a warning, and --check still passes" "$code" "$OUT"
+has "an action over 20 words is reported with its section, check number and tag" \
+  '^WARN  \[RELEASE-TEST\] .*section 1, "The bench", check 2 \(`TST-0401\.2` `TST-0402\.2`\): the action is 2[0-9] words, over the limit of 20: "Start the workout from the list of workouts ...'
+has "an expected line over 25 words is reported with its own tag" \
+  '^WARN  \[RELEASE-TEST\] .*section 1, "The bench", check 1 \(`TST-0402\.1`\): an expected line is 2[6-9] words, over the limit of 25'
+hasnt "a short line is not reported" 'check 1 \(`TST-0401\.1`\)'
+hasnt "a section inside its budget is not reported" 'over its budget'
+QUIETLEN="$(python3 "$SHEET" --check --quiet --platform testbed --repo-root "$LEN" 2>&1)"
+check "under --quiet the length warnings are one counted line" \
+  "$(printf '%s' "$QUIETLEN" | grep -q '^WARN  \[RELEASE-TEST\] release-test --check: 2 line(s) or section(s) are longer than their word limit' && echo 0 || echo 1)" "$QUIETLEN"
+# The limits and the budget are set in the section order file's frontmatter.
+limits() { # limits <dir> <yaml map>
+  python3 - "$1/docs/tests/acceptance/RELEASE-TEST.md" "$2" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+p.write_text(t.replace('type: "[[reference]]"\n', 'type: "[[reference]]"\nlength_limits: %s\n' % sys.argv[2], 1))
+PY
+}
+BUDGET="$TMP/proc-length-budget"; rm -rf "$BUDGET"; cp -R "$LEN" "$BUDGET"
+limits "$BUDGET" '{action: 40, expected: 40, section_base: 10, section_per_check: 5}'
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$BUDGET" 2>&1)"; code=$?
+hasnt "a raised action limit lets the long action through" 'the action is'
+hasnt "and a raised expected limit the long line"            'an expected line is'
+has   "a section over its budget is reported with the sum" \
+  '^WARN  \[RELEASE-TEST\] .*Section 1, "The bench" prints [0-9]+ words, over its budget of 30 \(10 \+ 5 for each of its 4 checks\)'
+STRICT="$TMP/proc-length-strict"; rm -rf "$STRICT"; cp -R "$LEN" "$STRICT"
+limits "$STRICT" '{error: true}'
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$STRICT" 2>&1)"; code=$?
+check "with error: true an over-long line fails --check" "$([[ $code -eq 1 ]]; echo $?)" "exit $code: $OUT"
+has   "and is printed as an error" '^ERROR \[RELEASE-TEST\] .*check 2 .*the action is'
+BADLIM="$TMP/proc-length-bad"; rm -rf "$BADLIM"; cp -R "$GRPS" "$BADLIM"
+limits "$BADLIM" '{action: 0, words: 30}'
+OUT="$(python3 "$SHEET" --check --platform testbed --repo-root "$BADLIM" 2>&1)"; code=$?
+check "a malformed length_limits fails --check" "$([[ $code -eq 1 ]]; echo $?)" "exit $code: $OUT"
+has   "naming an unknown key"   '`length_limits` has `words`; the keys are action, error, expected, section_base, section_per_check'
+has   "and a limit that is not above 0" '`length_limits.action` must be a whole number of words above 0'
 
 echo "test-release-test: $assertions assertions, $failures failure(s)"
 [[ "$failures" -eq 0 ]]
