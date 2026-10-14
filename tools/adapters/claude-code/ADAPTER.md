@@ -202,6 +202,14 @@ Claude Code runs the plugin from the repo's folder; it makes no copy. A sync tha
 
 Its tests run with `claude plugin test tools/adapters/claude-code/plugin`. Use the binary itself: a shell alias that puts an option before `plugin` makes the command refuse to run.
 
+### Moving the tested version
+
+`plugin.json`'s description names the Claude Code version the plugin was tested on, and the template's CI (`.github/workflows/validate-docs.yml`) installs exactly that version to run `claude plugin validate` and `claude plugin test`. To move to a newer release: install it, run both commands and a live session, then change the version in both places in one commit. The interface is early access and may change between releases, so the pin moves on purpose, never by itself.
+
+### A copy of a repo in a second folder
+
+A clone or worktree of a repo carries the same marketplace name. Claude Code keeps one registration per name per machine, so a session started in the second folder re-points it there, and the next session in the first folder points it back. Each session still loads a plugin, but possibly the other folder's copy until that happens. This matters only when the two copies' plugins differ. `claude plugin marketplace list` shows which folder a name points at.
+
 ### The project line
 
 There is one line above the Claude Code prompt, and the project-os plugin draws it. Another plugin may add its own facts to the end of the same line. The two never call each other; they meet only in the drawing that Claude Code passes from one plugin's `ui.render` hook to the next. The cockpit's plugin is the first to do this. These rules were checked live in Claude Code 2.1.300 (project-os-dev TASK-0198); the history of how they were chosen is project-os-dev REFERENCE-PROJECT-LINE-CONTRACT.
