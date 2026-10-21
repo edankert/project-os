@@ -4,7 +4,7 @@ id: LEDGERS-README
 status: active
 owner: group:maintainers
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-10-21
 tags: [releases, acceptance]
 ---
 
@@ -36,6 +36,8 @@ The platform is the surface a result was earned on. A project that is one applic
 An entry written before 2026-09-27 stores its result under `mark` instead of `result`. Every reader accepts both, and a sealed ledger is never rewritten to change it (project-os-dev ADR-0050).
 
 Every outcome except `pass` needs a `reason`. To withdraw a result after the code changes, add an entry with `invalidated_by:` naming the change note, rather than deleting the line.
+
+`method` says how a result arrived. It is `manual` when a person recorded it, `automated` or `migration` when a tool did, and `ride` when an app recorded it while a person ran the release test in it. `release-test.py --import-ride` writes the `ride` entries, and each one names the `build` it was earned on, such as `"2.2.0 (123)"`. The import copies the ride's evidence files into `evidence/<release>-<platform>-<started>/` in this folder. The ledger's `evidence` list names each file, with the `check` and `date` of its entry, the file's path as `ref` and the step it backs as `note`. The formats are in `docs/__templates__/SCHEMAS.md`, "The ride script and its results".
 
 ## What the validator does with them
 
