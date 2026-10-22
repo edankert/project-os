@@ -34,6 +34,7 @@ These files contain detailed rules. Read them when performing the related operat
 - Handoff/recovery: tools/instructions/HANDOFF.md
 - Importing from existing projects: tools/instructions/IMPORTING.md
 - Acceptance test sections and lifecycle: tools/instructions/TESTING.md
+- Test runs and CI results you can watch: tools/instructions/TEST-RUNS.md
 - Hook contracts: tools/instructions/HOOKS.md
 - Syncing template updates: tools/instructions/SYNCING.md
 

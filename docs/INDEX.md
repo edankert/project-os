@@ -34,6 +34,7 @@ Primary entrypoints for this documentation system.
 - Hook contracts: `../tools/instructions/HOOKS.md`
 - Obsidian conventions: `../tools/instructions/OBSIDIAN.md`
 - Acceptance tests and the release test: `../tools/instructions/TESTING.md`
+- Test runs and CI results you can watch: `../tools/instructions/TEST-RUNS.md`
 - Codex adapter: `../tools/adapters/codex/ADAPTER.md`
 - Skills playbooks: `../tools/skills/README.md`
 - Docs cockpit: `../tools/cockpit/README.md`
