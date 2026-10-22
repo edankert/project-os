@@ -41,7 +41,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 VERSION = 1
 GLYPH = {"passing": "■", "failing": "✗", "timed_out": "⧗", "unrunnable": "?",
-         "running": "▶", "waiting": "□", "interrupted": "✗"}
+         "running": "▶", "waiting": "□", "interrupted": "‖"}
 # The grid keeps to one-column glyphs so its rows wrap evenly; the lines under
 # it may use the wider ⏱.
 LINE_GLYPH = {**GLYPH, "timed_out": "⏱"}
